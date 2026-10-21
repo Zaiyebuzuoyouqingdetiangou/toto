@@ -19,7 +19,7 @@ export function tidyImageTags(text) {
     if (!source.trim()) return source;
     // 单提示词里的人物行「Alice: long hair, 1girl」：名字留在最前面，只理后面的标签。
     // 行首是权重括号（(red hair: 1.2), …）不算人名。
-    const label = /^([^,:\n({[]{1,40}):\s+(?=\S)/.exec(source);
+    const label = /^(?![({[])([^,:\n]{1,40}):\s+(?=\S)/.exec(source);
     if (label && !/::/.test(source)) return `${label[0]}${tidyImageTags(source.slice(label[0].length))}`;
     if (!source.includes(',') && source.length > 60) return source;
     // 自然语言画面描述（中文，或英文长句用逗号连起来）不当标签理。

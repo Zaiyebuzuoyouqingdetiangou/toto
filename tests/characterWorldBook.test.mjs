@@ -283,3 +283,17 @@ test('appearanceFromCast picks the looks sentences for one person, not the next 
     assert.match(appearanceFromCast(tricky, '阿竹', ['阿岩', '阿竹']), /金发碧眼/);
     assert.doesNotMatch(appearanceFromCast(tricky, '阿竹', ['阿岩', '阿竹']), /棕色短发/);
 });
+
+test('appearanceFromCast: English Hair:/Eyes: lines, a person after 是/和, and a first looks sentence about someone else', async () => {
+    const { appearanceFromCast } = await import('../src/characterWorldBook.js');
+    const en = JSON.stringify({ title: '阿岩', content: 'Role: knight.\nHair: silver.\nEyes: blue.' });
+    assert.match(appearanceFromCast(en, '阿岩'), /Hair: silver/);
+    const after = JSON.stringify({ title: '势力', content: '她的师妹是阿雪，一头银色长发，蓝色眼睛。' });
+    assert.match(appearanceFromCast(after, '阿雪', ['阿岩']), /银色长发/);
+    const small = JSON.stringify({ title: '势力', content: '小阿雪有一头红发。' });
+    assert.equal(appearanceFromCast(small, '阿雪', []), '');
+    const card = JSON.stringify({ title: '阿雪', content: '阿雪是山门的大师姐。\n【关系】阿竹：阿雪的师妹，红色长发。\n【外貌】阿雪：黑色长直发，绿色眼睛。' });
+    const looks = appearanceFromCast(card, '阿雪', ['阿竹']);
+    assert.match(looks, /黑色长直发/);
+    assert.doesNotMatch(looks, /红色长发/);
+});

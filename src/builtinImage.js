@@ -48,7 +48,8 @@ export function adoptDrawNotes(root) {
         const empty = node => !node.querySelector('[data-rm-draw-prompt]');
         // 按编号找；模型把模板的 "1" 原样复制给了几个图框、编号对不上时，按先后给还没拿到说明的图框。
         let frame = frames.find(node => String(node.getAttribute('data-rm-draw-frame') || '1').trim() === number && empty(node));
-        if (!frame) frame = frames.filter(empty)[Math.max(0, Number(number) - 1)] || frames.find(empty) || null;
+        // 编号对不上：说明 N 给第 N 个图框（它还空着的话），再不行给第一个还空着的。
+        if (!frame) { const nth = frames[Number(number) - 1]; frame = (nth && empty(nth) ? nth : null) || frames.find(empty) || null; }
         // 说明段落有时被模型多包了一层：找后代，不只找直接子节点。
         const parts = [...notes.querySelectorAll(PART)].filter(node => !node.parentElement?.closest?.(PART) || node.parentElement === notes);
         if (frame && parts.length) {
@@ -90,7 +91,7 @@ function hasModelPrompt(frame) {
 function legacyTitle(frame) {
     return String(frame.closest?.('details')?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').replace(/^【?兔子镜[:：]\s*/, '').replace(/】$/, '').trim();
 }
-function readPrompt(frame, { cleanTitle = false } = {}) {
+function readPrompt(frame, { cleanTitle = false, legacyCaption = false } = {}) {
     const node = frame.querySelector?.('[data-rm-draw-prompt]');
     let text = node ? node.textContent : '';
     if (!String(text).trim()) {
@@ -101,7 +102,7 @@ function readPrompt(frame, { cleanTitle = false } = {}) {
     // 图框在、画面描述却没写（模型漏写，或写到这里被截断了）：用这一面的标题和图框旁边写的字当画面，照样画。
     if (text.length < 4) {
         const title = cleanTitle ? fallbackTitle(frame) : legacyTitle(frame);
-        const caption = frameCaption(frame).replace(/^前：|；后：|^后：/g, ' ').replace(/\s*\/\s*/g, '，').trim();
+        const caption = frameCaption(frame, { legacy: legacyCaption }).replace(/^前：|；后：|^后：/g, ' ').replace(/\s*\/\s*/g, '，').trim();
         const fallback = [title, caption].filter(Boolean).join('：').replace(/\s+/g, ' ').trim();
         return fallback.length >= 8 ? fallback.slice(0, 400) : '';
     }
@@ -111,7 +112,7 @@ function readPrompt(frame, { cleanTitle = false } = {}) {
 // NAI 5（自然语言＋标签）：图框里另写的一行英文短标签，进标签栏；自然语言画面进自然语言栏，两栏不再塞同一段话。
 // 图框在这一面里紧挨着的文字（前后各一两段，往外最多找三层）：标题、说明、时间点。
 // 生图 LLM 照这个画「这张图在这一面里代表的东西」，不去画正文最新那段情节。
-function frameCaption(frame) {
+function frameCaption(frame, { legacy = false } = {}) {
     const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
     const textOf = node => {
         if (!node) return '';
@@ -119,7 +120,8 @@ function frameCaption(frame) {
         if (node.nodeType !== 1 || node.hidden || node.matches?.('script,style,template,[hidden],[data-rm-draw-frame],[aria-hidden="true"]')) return '';
         if (node.querySelector?.('[data-rm-draw-frame]')) return '';
         // 一律用 textContent：innerText 在这一面藏着（多面非当前面、收起）和显示着时结果不同，键会跟着变。
-        return clean(node.textContent);
+        // legacy：1.73.27 以前按 innerText 算的键，只用来找回那时存下的图。
+        return clean(legacy && typeof node.innerText === 'string' ? node.innerText : node.textContent);
     };
     const before = [];
     const after = [];
@@ -251,16 +253,22 @@ function readSaved(key) {
 // 当前键下没有这张图时：先找同一聊天里兼容的键（当时还没记上楼层），再看是不是聊天开了分支／改了名，图还存在旧名字下。
 // 还找不到时：同一聊天、同一楼层、同一 swipe、同一段提示词，只是图框序号变了（重新进聊天时这一面的结构被整理过、
 // 前面多了或少了一个图框）——也是那一张。claimed 是这一面里别的图框自己的键，被它们占着的不拿。
-function savedKeyFor(key, claimed = null) {
+function savedKeyFor(key, claimed = null, legacyKey = '') {
     const own = readSaved(key);
     if (own.broken || own.record) return key;
-    for (const other of [findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key), findShiftedBuiltinImageKey(key, claimed)]) {
-        if (other && readSaved(other).record) return other;
+    for (const other of [legacyKey, findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key), findShiftedBuiltinImageKey(key, claimed)]) {
+        if (other && other !== key && readSaved(other).record) return other;
     }
     return key;
 }
-function readSavedAnyChat(key, claimed = null) {
-    const where = savedKeyFor(key, claimed);
+// 没写画面说明、拿标题和旁边的字凑提示词的图框：1.73.27 以前相邻文字按 innerText 算，键可能不同。算一个旧键只用来找回。
+function legacyKeyFor(root, frame) {
+    if (hasModelPrompt(frame)) return '';
+    const legacy = readPrompt(frame, { legacyCaption: true });
+    return legacy ? storageKey(root, frame, legacy) : '';
+}
+function readSavedAnyChat(key, claimed = null, legacyKey = '') {
+    const where = savedKeyFor(key, claimed, legacyKey);
     return where === key ? readSaved(key) : readSaved(where);
 }
 
@@ -661,6 +669,8 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         const looks = tagHasLooks(entry.tag);
         const nlLooks = { hair: HAS_HAIR.test(entry.nl || ''), eye: HAS_EYE.test(entry.nl || '') };
         if (!tagsOnly) stripModelLooks(next, { hair: looks.hair || nlLooks.hair, eye: looks.eye || nlLooks.eye });
+        // 标签写法下建档只有中文自然语言（没有标签）：这一路什么都没给，不算「建档」来源，后面的角色卡、世界书照常补。
+        if (tagsOnly && !String(entry.tag || '').trim()) return next;
         return { ...next, text: mergeAppearance(entry, next.text, tagsOnly), libraryTag: String(entry.tag || ''), fromLibrary: true, looksSource: '建档' };
     });
     const ctx = getContext();
@@ -869,7 +879,7 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     const prompt = readPrompt(frame);
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);
-    const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame));
+    const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
     if (saved.broken) {
         note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
         return;
@@ -1005,7 +1015,7 @@ export function restoreSavedBuiltinImages(root) {
         if (frame.querySelector?.('img[data-rm-draw-result][src]')) continue;
         const prompt = readPrompt(frame);
         if (!prompt) continue;
-        let saved = readSavedAnyChat(storageKey(root, frame, prompt), () => otherFrameKeys(root, frame));
+        let saved = readSavedAnyChat(storageKey(root, frame, prompt), () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
         // 收藏的是多面里的某一面时，图框在原来那条消息里的序号可能和收藏里不同：同一段提示词按序号挨个找。
         if (!saved.record && frame.closest?.('details')?.dataset?.rmImageOwnerChat) {
             const base = storageKey(root, frame, prompt).split(':');
@@ -1071,16 +1081,18 @@ export function listBuiltinImageFrames(root) {
 export function builtinImageReady() { return getSettings().builtinImageEnabled === true; }
 
 // 聊天开了分支／改了名以后，图可能存在旧聊天名的键下：先把那份搬到当前键，之后翻历史、重画都对着当前键。
-function adoptSavedKey(key, claimed = null) {
+function adoptSavedKey(key, claimed = null, legacyKey = '') {
     const own = readSaved(key);
     if (own.broken || own.record) return;
-    const other = savedKeyFor(key, claimed);
+    const other = savedKeyFor(key, claimed, legacyKey);
     if (!other || other === key) return;
     const moved = readSaved(other).record;
     if (!moved) return;
     const { history = [], ...current } = moved;
     // 搬过来以后旧键下那份删掉：同一组图不在本机存两份（含整张图的 data: 存档会直接翻倍）。
-    try { replaceMirrorImageVersions(key, current, history); removeMirrorImage(other); } catch { /* 存不下就照旧对着旧键 */ }
+    // 同一聊天里的旧键（没记楼层、序号挪了）搬过来以后删掉，不存两份；分支／改名前那个聊天的那份只读不删。
+    const sameChat = other === legacyKey || builtinImageKeysCompatible(key, other) || builtinImageKeysShifted(key, other);
+    try { replaceMirrorImageVersions(key, current, history); if (sameChat) removeMirrorImage(other); } catch { /* 存不下就照旧对着旧键 */ }
 }
 
 // 沿用上次的提示词：有完整的构思记录就用它；只记了实际发出去的那段（智绘姬）就整段当提示词。
@@ -1107,7 +1119,7 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
     if (!original) throw Object.assign(new Error('这个图框里没有提示词，没法重画。'), { code: 'no_prompt' });
     const key = storageKey(root, frame, original);
     if (liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame))))) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
-    adoptSavedKey(key, () => otherFrameKeys(root, frame));
+    adoptSavedKey(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
     const savedState = readSaved(key);
     if (savedState.broken) throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
     const saved = savedState.record;
@@ -1138,7 +1150,7 @@ export function showBuiltinImageVersion(root, frame, index) {
     const prompt = readPrompt(frame);
     if (!prompt) return null;
     const key = storageKey(root, frame, prompt);
-    adoptSavedKey(key, () => otherFrameKeys(root, frame));
+    adoptSavedKey(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
     const record = loadMirrorImage(key);
     const { list, current } = versionsOf(record);
     const chosen = list[index];

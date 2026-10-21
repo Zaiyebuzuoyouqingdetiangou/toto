@@ -35,7 +35,7 @@ test('a flight whose host is still loading after success gets a terminal shell a
     assert.match(calls.summary[0], /生成完了，但没能挂上/);
     assert.match(calls.body[0], /不会自动重发/);
     assert.equal(calls.unsaved[0].slot, 'slot');
-    assert.equal(calls.unsaved[0].options.unmerged, true);
+    assert.equal(calls.unsaved[0].options, undefined, '已存档的单面不是「尚未合并到多面镜」');
     // 已经是 ready 的壳子不动
     host.dataset.rmState = 'ready';
     assert.equal(vm.runInContext('settleStuckLoadingHost', context)(flight, null), false);
@@ -47,5 +47,9 @@ test('the finally fallback no longer depends on uiSettled, and the accept step c
     assert.match(mount, /code:'RABBIT_MIRROR_STORED_UNRESTORABLE',requestCount:1/);
     assert.match(mount, /flight\.persisted=true;/);
     assert.match(mount, /if\(flight\.persisted\) return false;/);
-    assert.match(reroll, /STORED_UNRESTORABLE\|MARKUP_/);
+    assert.match(reroll, /STORED_UNRESTORABLE\)/);
+    assert.doesNotMatch(reroll, /STORED_UNRESTORABLE\|MARKUP_/, '结构超限仍按原来的规则自动补发');
+    // 成品过不了恢复检查时：占位壳换成失败说明，不标成 ready
+    assert.match(mount, /const keptReady=!!\(liveHost && liveHost\.dataset\?\.rmState!=='loading'/);
+    assert.match(mount, /else if\(liveEl\) ensureExternalUi\(liveEl,failedKey,failureMessage,'error','independent',failedHash\);/);
 });

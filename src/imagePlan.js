@@ -188,7 +188,7 @@ export function parseImagePlan(text) {
     // characters 写成对象（{名字: 标签}）也认；缺 tag 的人跳过，不让整次构思作废。
     const rawCharacters = value.characters == null ? []
         : Array.isArray(value.characters) ? value.characters
-            : typeof value.characters === 'object' ? Object.entries(value.characters).map(([name, item]) => (item && typeof item === 'object' ? { name, ...item } : { name, tag: item })) : null;
+            : typeof value.characters === 'object' ? Object.entries(value.characters).map(([name, item]) => (item && typeof item === 'object' && !Array.isArray(item) ? { name, ...item } : { name, tag: item })) : null;
     if (!Array.isArray(rawCharacters)) throw new TypeError('角色提示词必须是数组。');
     const parsedCharacters = rawCharacters.map(person => {
         const name = string(person?.name).trim();

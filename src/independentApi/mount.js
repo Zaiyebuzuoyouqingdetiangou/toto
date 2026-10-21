@@ -1052,7 +1052,11 @@ function ensureExternalUiCore(el,key,html,state='ready',source='independent',sou
        else {
         // 多面没挂上：壳子别留着「正在生成中」的标题，换成说明和入口。
         const details=host.querySelector?.(':scope > details');
-        if(details){ try{ setPlaceholderSummary(details,'【兔子镜：显示未完成】'); renderExternalErrorBody(details,'这条的多面兔子镜已有存档，但这次没能完整显示出来。不会自动重发；刷新或点「找回旧兔子镜」可以再试。'); }catch{} }
+        const message='这条的多面兔子镜已有存档，但这次没能完整显示出来。不会自动重发；刷新或点「找回旧兔子镜」可以再试。';
+        try{
+         if(details?.classList?.contains?.('rabbit-mirror-external-placeholder')){ setPlaceholderSummary(details,'【兔子镜：显示未完成】'); renderExternalErrorBody(details,message); }
+         else if(!externalFaceDetails(host).some(usableReadyDetails)) host.replaceChildren(fallbackExternalDetails('error',message));
+        }catch{}
        }
        return host;
       }
@@ -1518,7 +1522,7 @@ function settleStuckLoadingHost(flight,record=null,slot=''){
   const details=target.querySelector?.(':scope > details');
   if(details){ setPlaceholderSummary(details,'【兔子镜：生成完了，但没能挂上】'); renderExternalErrorBody(details,'这次的兔子镜已经生成，但没能在这里显示出来。成品已单独留出，可下载；刷新后插件会再试着把存下的那份挂回来。不会自动重发。'); }
   target.dataset.rmState='error';
-  if(record?.html) showIndependentUnsavedOutput(record,slot||flight.key,{unmerged:true});
+  if(record?.html) showIndependentUnsavedOutput(record,slot||flight.key);
  }catch{ return false; }
  return true;
 }
@@ -2136,10 +2140,11 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
    }
   // Paint first, then let the local transaction finish before settling this
   // request. Archive refusal is reported separately; it never resends the API.
-  await saveFaceSwipeArchive(messageBaseSlotKey(settledCtx,index,settledMsg),persistedOwnerForMessage(settledCtx,index,settledMsg)||completed);
   // 成品已存下、壳子却没换成 ready（挂载那一步失败了）：不能留着「正在生成中」。换成说明＋成品可下载，被动同步会再试着挂回来。
   settleStuckLoadingHost(flight,completed,settledSlot);
+  // 界面已经定了，先记上；下面等版本存档写完（最多几秒）期间用户切 swipe、重说，不会再把旧记录挂回来。
   flight.uiSettled=true;
+  await saveFaceSwipeArchive(messageBaseSlotKey(settledCtx,index,settledMsg),persistedOwnerForMessage(settledCtx,index,settledMsg)||completed);
   return completed;
  };
  const settleIndependentFailure=(err)=>{
@@ -2177,11 +2182,14 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
   });
   console.error('[RabbitMirror] independent generation failed',err);
   if(flight.completedFaceRecord){
-   if(liveHost){ liveHost.dataset.rmState='ready'; clearIndependentResayStatus(liveHost); }
-   else if(liveEl && previousReadyRecord?.html) ensureExternalUi(liveEl,failedKey,previousReadyRecord.html,'ready','independent',failedHash,previousReadyRecord);
-   showIndependentUnsavedOutput(flight.completedFaceRecord,failedIdentity.slot,{unmerged:true});
+   // 壳里挂着的是旧的可用面（多面单面重说）才保持 ready；只是个「正在生成中」的占位壳时，换成失败说明，不能标成 ready 还显示着生成中。
+   const keptReady=!!(liveHost && liveHost.dataset?.rmState!=='loading' && externalFaceDetails(liveHost).length && externalFaceDetails(liveHost).every(usableReadyDetails));
+   if(keptReady){ liveHost.dataset.rmState='ready'; clearIndependentResayStatus(liveHost); }
+   else if(liveEl && previousReadyRecord?.html && !liveHost) ensureExternalUi(liveEl,failedKey,previousReadyRecord.html,'ready','independent',failedHash,previousReadyRecord);
+   else if(liveEl) ensureExternalUi(liveEl,failedKey,failureMessage,'error','independent',failedHash);
+   showIndependentUnsavedOutput(flight.completedFaceRecord,failedIdentity.slot,{unmerged:!!multifaceResay});
    flight.uiSettled=true;
-   globalThis.toastr?.warning?.('本次成品已单独显示，可以操作和下载；原多面镜已保留，没有再次请求。');
+   globalThis.toastr?.warning?.(multifaceResay?'本次成品已单独显示，可以操作和下载；原多面镜已保留，没有再次请求。':'这次的兔子镜生成完了，但没法稳定存档和显示；成品已单独留出，可下载。没有再次请求。');
    return;
   }
   if(liveEl){

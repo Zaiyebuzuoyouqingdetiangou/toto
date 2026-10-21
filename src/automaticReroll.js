@@ -77,7 +77,7 @@ export function isNonRetryableRequestFailure(error, diagnostic = {}) {
 export function isLocalPreflightFailure(error, diagnostic = {}) {
     if (Number(diagnostic?.requestCount) === 0 || Number(error?.requestCount) === 0) return true;
     const text = `${error?.code || ''} ${diagnostic?.semanticFailure || ''} ${diagnostic?.transportCause || ''} ${diagnostic?.failureCategory || ''}`;
-    return /local-preflight|RABBIT_MIRROR_(?:CONTEXT_BOUNDARY|REQUEST_TOO_LARGE|DISPATCH_LEASE|BATCH_PLAN|CONNECTION_PROFILE|ADVANCED_OPTIONS|EXTERNAL_|APPEARANCE_|MEMORY_|STORED_UNRESTORABLE|MARKUP_)/i.test(text)
+    return /local-preflight|RABBIT_MIRROR_(?:CONTEXT_BOUNDARY|REQUEST_TOO_LARGE|DISPATCH_LEASE|BATCH_PLAN|CONNECTION_PROFILE|ADVANCED_OPTIONS|EXTERNAL_|APPEARANCE_|MEMORY_|STORED_UNRESTORABLE)/i.test(text)
         || /WORLD_BOOK_|MULTIFACE_PLAN_UNAVAILABLE/.test(String(error?.code || ''));
 }
 

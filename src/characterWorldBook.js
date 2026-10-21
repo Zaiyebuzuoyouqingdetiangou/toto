@@ -237,7 +237,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         // 标题就是这个人的条目（角色卡、Persona 也走这里）：长相常写在几百字的身份、背景后面，
         // 从写长相的地方往后摘，不只看开头。第一处写长相的句子是在讲别人（「乙：红发…」）时，接着找下一处。
         const content = row.content;
-        const words = new RegExp(APPEARANCE_WORDS.source, 'g');
+        const words = new RegExp(APPEARANCE_WORDS.source, APPEARANCE_WORDS.flags.includes('g') ? APPEARANCE_WORDS.flags : `${APPEARANCE_WORDS.flags}g`);
         let match, tries = 0, lastStart = -1;
         while ((match = words.exec(content)) && tries < 8) {
             const at = match.index;
@@ -257,8 +257,8 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         let tries = 0;
         for (let at = content.indexOf(who); at >= 0 && tries < 6; at = content.indexOf(who, at + who.length)) {
             if (!boundary.test(content.slice(at + who.length, at + who.length + 1))) continue;
-            // 名字前面紧挨着汉字（「小甲」里的「甲」）不算这个人。
-            if (at > 0 && /[\u3400-\u9fff]/.test(content[at - 1]) && /[\u3400-\u9fff]/.test(who[0])) continue;
+            // 名字前面紧挨着汉字（「小甲」里的「甲」）不算这个人；「和甲」「是甲」「叫甲」这类连词、动词后面的还是这个人。
+            if (at > 0 && /[\u3400-\u9fff]/.test(content[at - 1]) && /[\u3400-\u9fff]/.test(who[0]) && !/[和与及跟同是为给向对把让叫见称作当像似如有了着]/.test(content[at - 1])) continue;
             tries += 1;
             let window = content.slice(at, at + 360);
             window = window.slice(0, 1) + window.slice(1).split(/\n\s*\n|\n\s*【/)[0];

@@ -291,9 +291,10 @@ assert.equal(await calls(), base); checks++;
 assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /打不开/); checks++;
 
 // 15 画面说明编号对不上（模型把模板的 "1" 复制给了两个图框）、段落被多包了一层：按先后配给图框，不丢
-const notesFace = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="52" data-rabbit-mirror-owner-swipe="0"><summary>两格</summary>
-  <figure data-rm-draw-frame="1"></figure><figure data-rm-draw-frame="1"></figure>
+const notesFace = `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="52" data-rabbit-mirror-owner-swipe="0"><summary>三格</summary>
+  <figure data-rm-draw-frame="1"></figure><figure data-rm-draw-frame="1"></figure><figure data-rm-draw-frame="1"></figure>
   <div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">第一格：渡口清晨</p></div>
+  <div data-rm-draw-notes="3" hidden><p data-rm-draw-prompt="1">第三格：渡口夜里</p></div>
   <div data-rm-draw-notes="2" hidden><div><p data-rm-draw-prompt="1">第二格：渡口黄昏</p><p data-rm-draw-char="阿雪">红衣</p></div></div></details>`;
 const adopted = await page.evaluate(html => {
     document.body.innerHTML = html;
@@ -301,7 +302,7 @@ const adopted = await page.evaluate(html => {
     images.adoptDrawNotes(root);
     return [...root.querySelectorAll('[data-rm-draw-frame]')].map(frame => (frame.querySelector('[data-rm-draw-prompt]')?.textContent || '-') + '|' + (frame.querySelector('[data-rm-draw-char]')?.textContent || '-')).join(' ');
 }, notesFace);
-assert.equal(adopted, '第一格：渡口清晨|- 第二格：渡口黄昏|红衣'); checks++;
+assert.equal(adopted, '第一格：渡口清晨|- 第二格：渡口黄昏|红衣 第三格：渡口夜里|-'); checks++;
 
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
