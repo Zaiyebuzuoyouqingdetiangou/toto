@@ -1,7 +1,7 @@
 // 插件区域的部件归属：一个 data-rm-* 部件归哪个 [data-rm-ui] 区域。
 // 一般是离它最近的区域；但模型常把区域套在一起（比如按住区域里套着累积区域），外层的按钮写进了内层——
 // 最近的区域不认这个部件、外层认时，归外层。所有驱动、类型核对都用这一套，接线和检查才对得上。
-import { EXTRA_CONTROLS } from './behaviorExtras.js?rmv=1.76.1';
+import { EXTRA_CONTROLS } from './behaviorExtras.js?rmv=1.76.2';
 
 export const BEHAVIOR_GROUP = '[data-rm-ui]';
 // 每类驱动认哪些部件；不属于本类的标识（比如拖动区里碰巧写了 data-key）不接管它的点击。
