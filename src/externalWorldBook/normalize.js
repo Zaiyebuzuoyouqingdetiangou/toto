@@ -6,8 +6,8 @@ import {
     normalizeWorldBookEntry,
     normalizeWorldBookString,
     resolveEntriesContainer,
-} from './schema.js?rmv=1.76.14';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.76.14';
+} from './schema.js?rmv=1.76.15';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.76.15';
 
 function hashText(text = '') {
     let h = 2166136261;

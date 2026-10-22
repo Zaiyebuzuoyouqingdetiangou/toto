@@ -55,17 +55,61 @@ function innerButtonIsFree(el) {
     return true;
 }
 
-export function findOrphanStateTrigger(target) {
+function realButtons(node) {
+    return [...(node.querySelectorAll?.('button, [role="button"]') || [])].filter(el => el.matches('button') || !el.querySelector('button'));
+}
+// 返回 undefined：这一块不是「一排按钮」；返回 null：是一排按钮但对不上；返回按钮：对上了。
+// 算不算一块结果：就是要接的这块、默认藏着、已经接好的，或者摘掉状态类以后是藏着的（模型让第一块默认开着）。
+function isResultPanel(el, target, state) {
+    if (el === target || hiddenByStyle(el) || el.getAttribute(ORPHAN_STATE_ATTR)) return true;
+    if (!state || !el.classList?.contains(state)) return false;
+    el.classList.remove(state);
+    const hidden = hiddenByStyle(el);
+    el.classList.add(state);
+    return hidden;
+}
+function multiButtonTrigger(node, target, state) {
+    const buttons = realButtons(node);
+    if (buttons.length < 2) return undefined;
+    const panels = [];
+    for (let next = node.nextElementSibling; next; next = next.nextElementSibling) {
+        if (next.matches('style, script, br, hr')) continue;
+        if (!isResultPanel(next, target, state)) break;
+        panels.push(next);
+        if (next === target) break;
+    }
+    // 后面整排藏着的结果数一数（不止到 target 为止）。
+    let count = panels.length;
+    for (let next = target.nextElementSibling; next && panels.includes(target); next = next.nextElementSibling) {
+        if (next.matches('style, script, br, hr')) continue;
+        if (!isResultPanel(next, target, state)) break;
+        count += 1;
+    }
+    const index = panels.indexOf(target);
+    if (index < 0 || count !== buttons.length) return null;
+    const button = buttons[index];
+    return innerButtonIsFree(button) ? button : null;
+}
+
+export function findOrphanStateTrigger(target, state = '') {
     let node = target?.previousElementSibling;
     let firstReal = true;
+    let passedPanel = false;
     for (let step = 0; node && step < 3; step += 1, node = node.previousElementSibling) {
         if (node.matches?.('style, script, br, hr') || node.contains(target) || hiddenByStyle(node)) continue;
         const adjacent = firstReal;
         firstReal = false;
         // 它自己是另一组状态的主体：不拿来当触发处（点一下会同时切两样）。已经替前一块面板当触发处的照样可以（一个按钮开几块）。
-        if (node.getAttribute?.(ORPHAN_STATE_ATTR)) return null;
+        // 前面一块已经接好的结果（存档里正开着）：它自己不当触发处。只有再往前是「一排按钮配一排结果」时才越过它去对上，
+        // 别的情况照旧停下（不让这一块抢走前一块的开关）。
+        if (node.getAttribute?.(ORPHAN_STATE_ATTR)) { passedPanel = true; continue; }
         let pointer = false;
         try { pointer = node.ownerDocument?.defaultView?.getComputedStyle?.(node)?.cursor === 'pointer'; } catch { pointer = false; }
+        // 一排按钮（btn-group 这类）后面跟着同样多块藏着的结果：按顺序一一对上，第几个按钮开第几块；对不上就不猜。
+        // 整排一起当开关的话，点哪个都把几块一起开关。
+        const multi = !node.matches?.('button, a') ? multiButtonTrigger(node, target, state) : undefined;
+        if (multi !== undefined) return multi;
+        if (passedPanel) return null;
         if (node.matches?.('button, [role="button"], a') || pointer || TRIGGER_NAME.test(String(node.getAttribute?.('class') || ''))) return node;
         // 前面紧挨着的这一块本身不是按钮，但里面只有一个按钮（「签筒＋摇签按钮」整块在结果面板前面）：就是它。
         // 只看紧挨着的那一块、块里字不多；按钮已经有别的用处（插件交互、弹窗、表单、翻页）的不算。
@@ -90,7 +134,7 @@ export function attachOrphanStateToggle(target, state, trigger = null) {
         hiddenByDefault = hiddenByStyle(target);
         target.classList.add(state);
     }
-    if (!trigger && hiddenByDefault) trigger = findOrphanStateTrigger(target);
+    if (!trigger && hiddenByDefault) trigger = findOrphanStateTrigger(target, state);
     // 默认藏着、前面又找不到能点的东西：不接（接在看不见的主体上点不到，还会在诊断里显得像接好了）。
     if (!trigger && hiddenByDefault) return false;
     ORPHAN_STATE_WIRED.add(target);
@@ -135,6 +179,15 @@ export function rearmOrphanStateWiring(root) {
         const key = target.getAttribute(ORPHAN_TARGET_KEY);
         let trigger = null;
         if (key) { try { trigger = root.querySelector(`[${ORPHAN_TRIGGER_ATTR}~="${CSS.escape(key)}"]`); } catch { trigger = null; } }
+        // 旧存档里把一整排按钮当成一个开关的（点哪个都几块一起开）：撤掉，重新按顺序一一对上。
+        if (trigger && !trigger.matches?.('button, a') && realButtons(trigger).length > 1) {
+            trigger.removeAttribute(ORPHAN_TRIGGER_ATTR);
+            trigger.removeAttribute('aria-expanded');
+            if (trigger.getAttribute('role') === 'button') trigger.removeAttribute('role');
+            if (trigger.getAttribute('tabindex') === '0') trigger.removeAttribute('tabindex');
+            if (trigger.style?.cursor === 'pointer') trigger.style.removeProperty('cursor');
+            trigger = null;
+        }
         if (attachOrphanStateToggle(target, target.getAttribute(ORPHAN_STATE_ATTR), trigger)) wired += 1;
     }
     return wired;

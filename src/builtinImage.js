@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.76.14';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.14';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.14';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.14';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.14';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.14';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.14';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.14';
+import { getSettings } from './settings.js?rmv=1.76.15';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.15';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.15';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.15';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.15';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.15';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.15';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.15';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -856,7 +856,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.14');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.15');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -932,7 +932,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.76.14').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.76.15').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -946,7 +946,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.14');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.15');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;

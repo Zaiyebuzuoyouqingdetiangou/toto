@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — runtime.
 
-import { getSettings } from '../settings.js?rmv=1.76.14';
+import { getSettings } from '../settings.js?rmv=1.76.15';
 
-export const RUNTIME_VERSION = '1.76.14';
+export const RUNTIME_VERSION = '1.76.15';
 
 export const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 
@@ -371,6 +371,15 @@ export function isInsideChatMessage(node) {
 }
 
 
+// 这个 details 自己就是一面兔子镜（自己带作用域、标题写着兔子镜，或者是插件挂的外置面）。
+function isOwnRabbitMirrorFace(details) {
+    if (!details?.getAttribute) return false;
+    if (/^rmcss-[a-z0-9-]+$/i.test(String(details.getAttribute(RABBIT_MIRROR_CSS_SCOPE_ATTR) || '').trim())) return true;
+    if (details.getAttribute('data-rabbit-mirror-external-details') === 'true') return true;
+    const summary = details.querySelector?.(':scope > summary');
+    return /兔子[镜鏡]|rabbit\s*mirror/i.test(String(summary?.textContent || ''));
+}
+
 export function isRabbitMirrorDetails(details) {
     if (!details?.querySelector) return false;
     const summary = details.querySelector(':scope > summary') || details.querySelector('summary');
@@ -390,6 +399,9 @@ export function isRabbitMirrorDetails(details) {
     const scopedValue = String(scopedHost?.getAttribute?.(RABBIT_MIRROR_CSS_SCOPE_ATTR) || '').trim();
     if (scopedHost && scopedHost !== details && /^rmcss-[a-z0-9-]+$/i.test(scopedValue)) {
         const parentDetails = details.parentElement?.closest?.('details');
+        // 外面已经是一面兔子镜（模型在兔子镜里面又包了一层带作用域的 div，里面再写个折叠块「绘制说明」之类）：
+        // 里面这个折叠块只是这一面的一部分，不是另一面，不挂标题和维修兔。
+        if (parentDetails && isOwnRabbitMirrorFace(parentDetails)) return false;
         if (!parentDetails || !scopedHost.contains?.(parentDetails)) return true;
     }
 
