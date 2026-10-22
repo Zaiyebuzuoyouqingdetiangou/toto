@@ -63,3 +63,14 @@ test('result panel stops waiting: no new state means not executed; a replaced bu
     assert.equal(context.settle(button, 3), true);
     assert.equal(status.textContent, '修好了');
 });
+
+test('result panel no longer belongs to the face after its version is switched (remount epoch changes)', () => {
+    const code = between(chrome, 'function maintenancePanelFaceStillCurrent(', 'export function updateMaintenanceRabbitMenuState(');
+    const context = vm.createContext({ maintenanceResultContext: () => ({ index: 1 }) });
+    vm.runInContext(`${code}\nglobalThis.check = maintenancePanelFaceStillCurrent;`, context);
+    const host = { isConnected: true, dataset: { rmKey: 'k', rmSourceHash: 'h', rmFaceRemountEpoch: '2' } };
+    const feedback = { root: {}, context: { index: 1 }, face: { source: 'independent', host }, ownerKey: 'k', sourceHash: 'h', remountEpoch: '2' };
+    assert.equal(context.check(feedback), true);
+    host.dataset.rmFaceRemountEpoch = '3';
+    assert.equal(context.check(feedback), false);
+});
