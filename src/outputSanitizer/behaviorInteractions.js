@@ -1,14 +1,14 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.74.2';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.74.2';
-import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.74.2';
-import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.74.2';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.74.2';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.74.2';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.74.2';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.74.2';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.74.2';
-import { addDialectStateKeys, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.74.2';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.74.2';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.74.3';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.74.3';
+import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.74.3';
+import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.74.3';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.74.3';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.74.3';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.74.3';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.74.3';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.74.3';
+import { addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.74.3';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.74.3';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -58,7 +58,11 @@ function refreshResults(state) {
         state.authorShowCount = showCount;
         try { state.authorShows = authorManagedShows(state.root, state.group); } catch { state.authorShows = new Set(); }
     }
-    updateBehaviorShows(state.group, stateKeys(state), (node, active) => mirrorBehaviorState(state.root, node, active), state.authorShows);
+    try { adoptDoneResult(state); } catch { state.doneAdopted = []; }
+    const currentKeys = stateKeys(state);
+    updateBehaviorShows(state.group, currentKeys, (node, active) => mirrorBehaviorState(state.root, node, active), state.authorShows);
+    // 方言表 author-status-attr：模型的 CSS 按 data-rm-status／data-rm-state 写状态时，照当前状态写上去。
+    try { syncAuthorStatusAttrs(state, currentKeys); } catch (error) { console.debug('[RabbitMirror] author status sync failed:', error); }
     const adopted = adoptHiddenResult(state);
     if (adopted?.isConnected) {
         const active = state.type === 'hold' ? state.group.getAttribute('data-rm-active') === 'true' : (state.on?.size || 0) > 0;
@@ -961,6 +965,32 @@ function adoptHiddenResult(state) {
         }
     }
     return null;
+}
+
+// 连线、累积、口令这类「做完了才出结果」的区域：模型在区域里写了一段默认藏着的结果（class 叫 feedback、result 这类），
+// 却忘了写 data-rm-show。区域里一个显示条件都没写时，把这段当成「做完了才显示」（data-rm-show="done"）。
+// 只认名字明说是结果、里面没有控件、本来就被 CSS 藏着的那一段，不猜别的。
+const DONE_RESULT_TYPES = new Set(['connect', 'accumulate', 'sequence']);
+const DONE_RESULT_NAME = /(?:^|[-_\s])(?:feedback|fb|result|success|done|complete|completed|reward|unlock|unlocked|answer)(?:$|[-_\s\d])/i;
+function adoptDoneResult(state) {
+    if (state.doneAdopted !== undefined) return state.doneAdopted;
+    state.doneAdopted = [];
+    const { group, type } = state;
+    if (!DONE_RESULT_TYPES.has(type) || own(group, '[data-rm-show], [data-rm-result]').length) return state.doneAdopted;
+    const view = group.ownerDocument?.defaultView;
+    if (!view?.getComputedStyle) return state.doneAdopted;
+    for (const node of own(group, '[class], [id]')) {
+        if (node === group || node.matches(GROUP) || node.querySelector('button, input, select, textarea, [data-rm-end], [data-rm-step], [data-rm-code]')) continue;
+        const name = `${node.getAttribute('class') || ''} ${node.id || ''}`.replace(/\brmc-[a-z0-9]+-[a-z0-9]+-\d+-[a-z0-9]+-/gi, '');
+        if (!DONE_RESULT_NAME.test(name) || !String(node.textContent || '').trim()) continue;
+        if (view.getComputedStyle(node).display !== 'none') continue;
+        if (state.doneAdopted.some(other => other.contains(node))) continue;
+        // 它是被样式表藏着的：记一个显示时用的 display，驱动显示时才盖得过样式表（没做完时驱动照样藏起来）。
+        node.style.setProperty('display', node.matches('span, a, em, strong, b, i') ? 'inline-block' : 'block', 'important');
+        node.setAttribute('data-rm-show', 'done');
+        state.doneAdopted.push(node);
+    }
+    return state.doneAdopted;
 }
 
 function prepare(binding, group) {
@@ -2098,6 +2128,12 @@ export function releaseBehaviorGroup(root, group) {
         for (const name of ['data-rm-result-active', 'data-rm-result-display', 'data-rm-result-display-priority', 'hidden']) node.removeAttribute(name);
         node.style.setProperty('display', 'none');
     }
+    // 方言表收编的「做完才显示」结果块：退还时撤掉插件加的显示条件和内联显示，交回模型的样式表（默认藏着）。
+    for (const node of state?.doneAdopted || []) {
+        if (!node?.isConnected) continue;
+        for (const name of ['data-rm-show', 'data-rm-result-active', 'data-rm-result-display', 'data-rm-result-display-priority', 'hidden']) node.removeAttribute(name);
+        node.style.removeProperty('display');
+    }
     if (state) restoreStateUp(state);
     restoreNumberMirror(state);
     try { releaseStateCarriers(state?.root || root, group); } catch { /* 撤不掉就留着 */ }
@@ -2156,7 +2192,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.74.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.74.3').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2264,4 +2300,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.74.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.74.3').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});

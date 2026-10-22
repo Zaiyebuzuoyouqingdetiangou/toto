@@ -1,7 +1,7 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.74.2';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.74.2';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.74.2';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.74.2';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.74.3';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.74.3';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.74.3';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.74.3';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -16,6 +16,9 @@ export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'turn-prefixed-stops', label: '旋钮档位写成 item0、stop1 这种「名字＋号码」', note: '同一名字的号码对上当前档位；号码从 1 起、最大正好是档位数时按第几档算。' },
     { id: 'motion-equalizer', label: '动画区域里是一排音轨波形细条、没写动画', note: '给细条补一段可暂停的上下起伏：播放钮开始和暂停，进度滑杆拨到对应位置。只动细条的纵向缩放，不改内容。' },
     { id: 'effect-any-show', label: '一次性效果区域的显示条件写成 effect、fired、stamp 这类词', note: '效果区域只有「按过」和「没按过」两种状态：按过以后，写什么词的内容都显示，「!词」的内容藏起来。' },
+    { id: 'before-words', label: '「还没揭开／还没按」的内容写成 initial、hidden、before 这类词', note: '揭示区域没揭到底、一次性效果还没按时，这类词算当前状态；揭开或按过以后就不算了。' },
+    { id: 'answer-words', label: '「答对了／答错了」写成 answer、correct、wrong 这类词', note: '有标准答案的区域：答对时 answer、correct、right 这类词算当前状态，答错时 wrong、incorrect 这类词算。' },
+    { id: 'author-status-attr', label: '模型自己的 CSS 按 data-rm-status、data-rm-state 写状态', note: '区域上照 CSS 里写到的词，把当前状态里有的那个写到区域的 data-rm-status／data-rm-state 上（只写 CSS 里出现过的词，没有就恢复原来的值）。' },
     { id: 'range-as-cover', label: '揭示区域把遮罩标识写在滑杆自己身上', note: '滑杆不当遮罩裁掉，拖到底照常显示揭开后的内容。' },
     { id: 'author-css-show', label: '显示条件认不出，但模型自己写了 CSS 按状态管显隐', note: '驱动不再强行藏这些内容，交给模型的 CSS 按 data-rm-index、data-rm-on 这些状态显示。' },
     { id: 'state-carrier', label: '状态条件写在区域之外或之内的别处', note: '模型的 CSS 把 [data-rm-on~="词"]、[data-rm-active="true"]、[data-rm-index="2"] 这些状态条件写在了区域里面的某一层、或区域外面同时包着开关和内容的那一层上，驱动只写在区域自己身上。按 CSS 写的位置把区域上的状态同步过去（值原样照抄，不猜内容）；几个区域写同一层时各记各的。' },
@@ -142,14 +145,40 @@ function remoteTogglesOf(group) {
     return [...scope.querySelectorAll('[data-rm-toggle]')].filter(node => !node.closest(GROUP));
 }
 
+// 「还没揭开／还没按过」的词：模型常拿它们写初始状态才显示的内容（data-rm-show="initial"、"hidden"）。
+// 只收意思明确的；off、ready、start 这类按了以后也可能用的词不收。
+const BEFORE_WORDS = new Set(['initial', 'init', 'before', 'idle', 'pending', 'original', 'unfired', 'unrevealed', 'hidden', 'covered',
+    'locked', 'sealed', 'closed', 'waiting', 'unchanged']);
+// 有标准答案的区域：答对／答错的说法。
+const MATCH_WORDS = ['answer', 'answered', 'correct', 'right', 'solved', 'unlocked', 'success', 'pass', 'passed', 'win'];
+const MISS_WORDS = ['wrong', 'incorrect', 'error', 'fail', 'failed', 'mistake', 'lose'];
+const tokensOf = group => new Set(ownBehaviorShows(group).flatMap(node => behaviorShowTokens(node)).map(token => token.replace(/^!/, '')).filter(Boolean));
+const beforeTypes = new Set(['effect', 'reveal']);
+function beforeStage(state) {
+    if (state.type === 'effect') return !state.changed;
+    if (state.type === 'reveal') return (state.progress || 0) < 0.9;
+    return false;
+}
+
 // 驱动算显示状态时调用：按方言表补上的状态键。keys 是驱动已经算好的键，直接往里加。
 export function addDialectStateKeys(state, keys) {
     const { group } = state;
+    if (beforeTypes.has(state.type)) {
+        const before = beforeStage(state);
+        for (const token of tokensOf(group)) {
+            if (BEFORE_WORDS.has(token.toLowerCase())) { if (before) keys.add(token); else keys.delete(token); }
+        }
+    }
     if (state.type === 'effect' && state.changed) {
         for (const node of ownBehaviorShows(group)) for (const token of behaviorShowTokens(node)) {
             const key = token.replace(/^!/, '');
-            if (key && !COMMON_KEYS.includes(key)) keys.add(key);
+            if (key && !COMMON_KEYS.includes(key) && !BEFORE_WORDS.has(key.toLowerCase())) keys.add(key);
         }
+    }
+    if (group?.hasAttribute?.('data-rm-answer')) {
+        // 不只是显示条件：模型的样式按 data-rm-status="unlocked" 这类词写时也要对得上，所以整组都算。
+        const words = group.getAttribute('data-rm-match') === 'true' ? MATCH_WORDS : group.getAttribute('data-rm-miss') === 'true' ? MISS_WORDS : [];
+        for (const word of words) keys.add(word);
     }
     if (state.type === 'toggle' && state.on?.size && !keys.has('on')) {
         const named = toggleNames(group, state.remotes || []);
@@ -284,6 +313,47 @@ export function setBridgedCssWord(node, owner, word, on) {
     setBridgedState(node, wordOwners.get(owner), 'data-rm-on', on ? word : null);
 }
 
+// —— author-status-attr ——
+// 模型的 CSS 写了 [data-rm-status="词"]／[data-rm-state~="词"] 这类驱动从来不写的状态属性：属性名 → CSS 里出现过的词。
+const STATUS_RULE = /\[(data-rm-(?:status|state))\s*[~*|^$]?=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]+))\s*\]/g;
+const statusCache = new WeakMap();
+export function authorStatusWords(root) {
+    const text = behaviorStyleText(root);
+    const cached = statusCache.get(root);
+    if (cached?.text === text) return cached.words;
+    const words = new Map();
+    const listAttrs = new Set();
+    for (const match of text.matchAll(STATUS_RULE)) {
+        const word = String(match[2] ?? match[3] ?? match[4] ?? '').trim();
+        if (!word || /\s/.test(word)) continue;
+        if (!words.has(match[1])) words.set(match[1], new Set());
+        words.get(match[1]).add(word);
+        if (match[0].includes('~=')) listAttrs.add(match[1]);
+    }
+    words.listAttrs = listAttrs;
+    statusCache.set(root, { text, words });
+    return words;
+}
+// 按当前状态键把 CSS 里出现过的词写到区域上；一个都不在当前状态里时恢复区域原来写的值。
+const statusOriginal = new WeakMap();
+export function syncAuthorStatusAttrs(state, keys) {
+    const { group, root } = state;
+    if (!group?.setAttribute || !root) return;
+    const words = authorStatusWords(root);
+    if (!words.size) return;
+    if (!statusOriginal.has(group)) statusOriginal.set(group, Object.fromEntries([...words.keys()].map(name => [name, group.getAttribute(name)])));
+    const original = statusOriginal.get(group);
+    for (const [name, list] of words) {
+        // 开关的「属性程序」（开着时写 data-rm-state="reverse" 这类）已经在管这个属性：不插手。
+        if (state.attrProgram?.attr === name || String(group.getAttribute('data-rm-program') || '').startsWith(`${name}=`)) continue;
+        const hit = [...list].filter(word => keys.has(word));
+        // [属性~="词"] 认空格分开的多个词；[属性="词"] 要整值相等，只写一个（取 CSS 里最后写到的那个命中词）。
+        const value = hit.length ? (words.listAttrs?.has(name) ? hit.join(' ') : hit[hit.length - 1]) : original[name];
+        if (value === null || value === undefined) { if (group.hasAttribute(name)) group.removeAttribute(name); }
+        else if (group.getAttribute(name) !== value) group.setAttribute(name, value);
+    }
+}
+
 // ——— 诊断：哪些写法对不上（静态检查，不点真实控件）———
 
 const COMMON_KEYS = ['changed', 'active', 'match', 'done', 'miss', 'placed'];
@@ -328,7 +398,7 @@ export function reachableBehaviorKeys(group) {
             }
             break;
         }
-        case 'reveal': ['reveal', 'revealed', 'full', 'open'].forEach(key => keys.add(key)); break;
+        case 'reveal': ['reveal', 'revealed', 'full', 'open'].forEach(key => keys.add(key)); tokensOf(group).forEach(key => { if (BEFORE_WORDS.has(key.toLowerCase())) keys.add(key); }); break;
         case 'slide': {
             const items = own(group, '[data-rm-item]');
             items.forEach((item, index) => { keys.add(String(index + 1)); const name = String(item.getAttribute('data-rm-item') || '').trim(); if (name) { keys.add(name); keys.add(`${name}:seen`); } });
@@ -347,6 +417,7 @@ export function reachableBehaviorKeys(group) {
         case 'drag': case 'reorder': values(group, 'data-rm-item').forEach(key => keys.add(key)); break;
         default: break;
     }
+    if (group.hasAttribute('data-rm-answer')) [...MATCH_WORDS, ...MISS_WORDS].forEach(key => keys.add(key));
     return keys;
 }
 
@@ -413,6 +484,12 @@ export function inspectBehaviorDialect(root) {
             if (remoteTogglesOf(group).length && !own(group, '[data-rm-toggle]').length) used.add('remote-toggle');
         }
         if (type === 'turn' && prefixedNumbers(group).size) used.add('turn-prefixed-stops');
+        {
+            const shown = tokensOf(group);
+            if (beforeTypes.has(type) && [...shown].some(token => BEFORE_WORDS.has(token.toLowerCase()))) used.add('before-words');
+            if (group.hasAttribute('data-rm-answer') && [...MATCH_WORDS, ...MISS_WORDS].some(word => shown.has(word))) used.add('answer-words');
+            if (authorStatusWords(root).size) used.add('author-status-attr');
+        }
         try { if (collectStateCarriers(root, group).length) used.add('state-carrier'); } catch { /* 认不出就不报 */ }
         if (type === 'effect' && ownBehaviorShows(group).some(node => behaviorShowTokens(node).some(token => !COMMON_KEYS.includes(token.replace(/^!/, ''))))) used.add('effect-any-show');
         if (type === 'reveal' && own(group, '[data-rm-cover]').some(cover => cover.matches('input, button, label') || cover.querySelector('input[type="range"]'))) used.add('range-as-cover');

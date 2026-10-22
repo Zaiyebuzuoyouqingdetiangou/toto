@@ -1,4 +1,4 @@
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.74.2';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.74.3';
 // 插件写法的按类修复：不认某一面、某一条，只认“这一类写法常见的写错方式”。
 // 1. 类型名写成别名（flip、tabs、carousel、dial…）或漏了 rm 前缀 → 换成标准类型名；
 // 2. 声明的类型和里面的部件对不上（写 toggle 却放了 data-rm-pick）→ 按部件认出真正的类型；
@@ -53,7 +53,9 @@ export function behaviorTypeFits(group, type) {
         case 'drag': case 'reorder': return count(group, '[data-rm-item]') > 0;
         case 'adjust': return count(group, 'input[type="range"]') > 0;
         case 'reveal': return count(group, '[data-rm-cover]') > 0;
-        case 'input': return count(group, 'output') > 0;
+        // 输入区：有显示框（output），或者写了标准答案、里面有文字输入框（答对了才显示的那种）。
+        case 'input': return count(group, 'output') > 0
+            || (group.hasAttribute('data-rm-answer') && count(group, 'input:not([type]), input[type="text"], input[type="search"], textarea') > 0);
         case 'draw': return count(group, 'svg[data-rm-canvas]') > 0;
         case 'hold': return count(group, '[data-rm-hold]') > 0;
         case 'follow': return count(group, '[data-rm-surface]') > 0;
