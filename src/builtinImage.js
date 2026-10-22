@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.75.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.75.1';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.75.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.75.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.75.1';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.75.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.75.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.75.1';
+import { getSettings } from './settings.js?rmv=1.75.2';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.75.2';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.75.2';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.75.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.75.2';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.75.2';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.75.2';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.75.2';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -525,7 +525,7 @@ function uniqueLibrary(list) {
 // 衣着、发型：这一幕穿什么、头发怎么梳随剧情变。兔子镜这一面给这个人写了衣着时，建档、角色卡、世界书里写的衣着那几句／那几个标签不再发，
 // 只留长相（发色、瞳色、脸、身材这些）；这一面没写衣着时，照旧用它们兜底。
 const CLOTHING_TAG = /\b(?:dress|gown|robe|robes|kimono|yukata|hanfu|qipao|cheongsam|shirt|t-shirt|blouse|sweater|hoodie|cardigan|coat|overcoat|trench\s+coat|jacket|blazer|cloak|cape|mantle|poncho|vest|suit|tuxedo|uniform|armor|armour|skirt|miniskirt|pants|trousers|jeans|shorts|leggings|pantyhose|stockings|thighhighs|thigh\s+highs|socks|kneehighs|boots|shoes|heels|sandals|slippers|apron|bikini|swimsuit|leotard|bodysuit|lingerie|underwear|bra|panties|pajamas|nightgown|sleepwear|outfit|clothes|clothing|attire|garment|naked|nude|topless|bottomless|shirtless|serafuku|sailor\s+collar|haori|hakama|obi|sash|corset|tunic|camisole|tank\s+top|crop\s+top|turtleneck|scarf|gloves|fur\s+(?:coat|cloak|trim))\b/i;
-const CLOTHING_TEXT = /(?:(?<![望看拆揭戳])穿(?![过越透插梭行心])|身着|身穿|披着(?![一满]?头?[长短乌黑白银金]*[发髮])|裹着|套着|换上|着装|衣着|服饰|衣服|衣裳|衣衫|衣裙|外衣|内衣|里衣|中衣|上衣|下装|长裙|短裙|裙子|裙装|连衣裙|旗袍|和服|汉服|道袍|长袍|锦袍|外袍|斗篷|披风|大氅|狐裘|外套|夹克|西装|制服|校服|衬衫|毛衣|卫衣|背心|马甲|裤子|长裤|短裤|靴|鞋|袜|手套|围巾|铠甲|盔甲|赤裸|裸着|裸身|一丝不挂|未着寸缕)/;
+const CLOTHING_TEXT = /(?:(?<![望看拆揭戳])穿(?![过越透插梭行心])|身着|身穿|披着(?![一满]?头?[长短乌黑白银金]*[发髮])|裹着|套着|换上|着装|衣着|服饰|衣服|衣裳|衣衫|衣裙|外衣|内衣|里衣|中衣|上衣|下装|裙|劲装|便装|常服|礼服|衣袍|衫|旗袍|和服|汉服|道袍|长袍|锦袍|外袍|斗篷|披风|大氅|狐裘|外套|夹克|西装|制服|校服|衬衫|毛衣|卫衣|背心|马甲|裤子|长裤|短裤|靴|鞋|袜|手套|围巾|铠甲|盔甲|赤裸|裸着|裸身|一丝不挂|未着寸缕)/;
 // 发型（束发、披发、马尾、辫子）和衣着一样随这一幕变：兔子镜这一面写了发型，档里写的发型也不再发。头发长短、发色不算发型，照旧以档为准。
 // 标签按整个标签认（braided belt、hair down to waist 不算发型）。
 const HAIRSTYLE_TAG = /^\s*(?:(?:high|low|side|long|short|messy|loose)\s+)*(?:ponytail|twintails|twin\s+tails|pigtails|braid|braids|braided\s+hair|single\s+braid|twin\s+braids|french\s+braid|crown\s+braid|hair\s+buns?|buns?|double\s+buns?|updo|half\s+updo|topknot|chignon|hair\s+down|hair\s+up|loose\s+hair|tied\s+hair|hair\s+tied(?:\s+up)?|drill\s+hair|hair\s+over\s+(?:one\s+)?shoulder|hair\s+bobbles|hair\s+rings)\s*$/i;
@@ -549,7 +549,7 @@ function withoutSceneText(text, kinds) {
     const keepLooks = part => {
         const found = [...String(part).matchAll(HAIR_WORDS)].map(match => match[0]).concat([...String(part).matchAll(EYE_WORDS)].map(match => match[0]));
         // 只写了长短的（「高马尾的长发」）：长短也是长相，留着（发色里已经带着长短的不重复）。
-        if (!found.some(word => /[长短]/.test(word))) found.push(...[...String(part).matchAll(/(?:及腰|齐肩|及肩|过肩)?的?(?:长|短)发/g)].map(match => match[0]));
+        if (!found.some(word => /[长短]/.test(word))) found.push(...[...String(part).matchAll(/(?:(?:及腰|齐肩|及肩|过肩)的?)?[长短]发/g)].map(match => match[0]));
         return found.join('，');
     };
     return String(text || '').split(/(?<=[。；;！!？?\n])|(?=[，,、])/).map(part => {
@@ -643,7 +643,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.2');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -670,7 +670,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.75.1').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.75.2').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -684,7 +684,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.2');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
