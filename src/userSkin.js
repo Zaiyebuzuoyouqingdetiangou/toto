@@ -2,7 +2,7 @@
 // 只是一段样式，不跑脚本、不进提示词、不改模型写的画面；保存在这台设备上（和「主题与外观」的配色一样）。
 // 兔子镜承诺下面 SKIN_HOOKS 里这些名字以后不改，美化照着写，更新了也不会失效。
 
-import { getSettings, updateSettings } from './settings.js?rmv=1.74.0';
+import { getSettings, updateSettings } from './settings.js?rmv=1.74.3';
 
 export const USER_SKIN_STORAGE_KEY = 'rabbit_mirror_user_skin_v1';
 // 另存一份在酒馆的用户文件夹里（user/files，存在酒馆服务器上）：浏览器或宿主清掉网页数据、重启后本机那份没了，也能找回。

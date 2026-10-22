@@ -47,6 +47,7 @@ const result = await page.evaluate(async query => {
         completeWins: /【兔子镜：某教】/.test(request.extractMirrorInner(`<toto>${body}</toto><toto><details><summary>【兔子镜：某教】</summary><p>正文</p></details></toto>`)),
         fullKeepsStatus: /status-bar/.test(request.extractMirrorInner('<toto><details><summary>【兔子镜：某教】</summary><div class="phone"><status-bar>字字</status-bar><p>正文</p></div></details></toto>')),
         movedScope: /^<details data-rabbit-mirror-css-scope="sx1">/.test(request.extractMirrorInner(`<toto data-rabbit-mirror-css-scope="sx1">${body}</toto>`)),
+        hiddenNotes: (html => /^<details[^>]*><summary>【兔子镜：字字字的十二种反应】<\/summary>/.test(html) && /<details hidden><summary>字<\/summary><div data-rm-draw-notes="1" hidden>/.test(html))(request.extractMirrorInner(`<toto>${body}<details hidden><summary>字</summary><div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">字字字</p></div></details></toto>`)),
         tiny: !/<details/.test(request.extractMirrorInner('<toto><p>字</p></toto>')),
     };
 }, query);
@@ -61,6 +62,7 @@ assert.equal(result.h2Title, true);
 assert.equal(result.normal, true);
 assert.equal(result.tiny, true);
 assert.equal(result.prose, true);
+assert.equal(result.hiddenNotes, true);
 assert.equal(result.completeWins, true);
 assert.equal(result.fullKeepsStatus, true);
 assert.equal(result.movedScope, true);
