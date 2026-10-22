@@ -306,7 +306,7 @@ try {
 
     // 6. 写法骨架：文字全换成占位，标识和 CSS 留下，地址和模型写的记录去掉
     await page.evaluate(async query => { window.skeleton = await import('/src/outputSanitizer/writingSkeleton.js?' + query); }, query);
-    const skeleton = await page.evaluate(() => skeleton.skeletonizeRabbitMirrorHtml(`<details open data-rm-vs='{"c":[["剧情方案",0.5]],"pick":0}'><summary>【兔子镜：某某某的告示】</summary>
+    const skeleton = await page.evaluate(() => skeleton.skeletonizeRabbitMirrorHtml(`<details open data-rm-vs='{"c":[["剧情方案",0.5]],"pick":0}'><summary><span data-rabbit-mirror-title-display="【兔子镜：某某某的告示】">【兔子镜：某某某的告示】</span></summary>
         <style>.a{content:"秘密";background:url(https://example.com/x.png)} .b[data-rm-show="on"]{display:block}</style>
         <div data-rm-ui="toggle"><button data-rm-toggle="turn" title="按一下">按下去看</button><img src="https://example.com/pic.png" alt="两个人">
         <p data-rm-show="on">这是正文内容，很长很长。</p><p data-rm-draw-prompt="1" hidden>画面提示词</p><a href="#top">回到顶部</a></div>

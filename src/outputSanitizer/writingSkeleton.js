@@ -102,8 +102,12 @@ function scrubAttribute(element, name, value, keys) {
         const textual = tag === 'option' || tag === 'button' || (tag === 'input' && !['range', 'checkbox', 'radio', 'number', 'hidden'].includes(kind));
         return textual && !PLAIN_KEY.test(value) ? maskFaceText(value) : value;
     }
+    // 标题那一族（title-display、title-part……）放的是标题原文，英文标题也是正文：一律只留长度。
+    if (/^data-rabbit-mirror-title-/.test(lower)) return value && !/^(?:true|false|\d+)$/.test(value) ? maskFaceText(value) : value;
     if (lower.startsWith('data-rm-') || lower.startsWith('data-rabbit-mirror-') || STRUCTURAL_ATTRS.has(lower)) {
-        return /[^\x20-\x7e]/.test(value) && !lower.startsWith('data-rabbit-mirror-') ? maskKeys(value, keys) : value;
+        // 插件自己写的属性里带中文的（标题原文 data-rabbit-mirror-title-display 这类）也是正文，只留长度。
+        if (/[^\x20-\x7e]/.test(value)) return lower.startsWith('data-rabbit-mirror-') ? maskFaceText(value) : maskKeys(value, keys);
+        return value;
     }
     // 别的属性（data-text、data-tip 这类）：短英文标记留着，其余只留长度。
     return PLAIN_KEY.test(value) ? value : maskFaceText(value);
