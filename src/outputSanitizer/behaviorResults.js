@@ -109,7 +109,31 @@ export function behaviorShowTokens(node) {
     // 意思是「按对了／还没按对」，不是三个键各算各的。
     const answer = String(showOwner(node)?.getAttribute?.('data-rm-answer') || '').replace(/\s+/g, '');
     if (answer && /[,，、]/.test(answer) && raw.replace(/^!/, '').replace(/\s+/g, '') === answer) return [raw.startsWith('!') ? '!match' : 'match'];
-    return raw.split(/[\s,，、]+/).map(token => token.trim()).filter(Boolean);
+    return splitShowTokens(raw).map(normalizeShowToken).filter(Boolean);
+}
+
+// 显示条件按空格、逗号拆开；方括号、:not(...) 里面的空格逗号不拆（[data-rm-picked="a b"] 是一整个）。
+export function splitShowTokens(raw) {
+    return String(raw || '').match(/!?(?::not\((?:[^()]|\([^()]*\))*\)|\[[^\]]*\]|[^\s,，、])+/g) || [];
+}
+
+// 模型把显示条件写成 CSS 选择器的样子：[data-rm-match]、[data-rm-match="true"]、data-rm-done、:not([data-rm-match])、
+// [data-rm-match="false"]、[data-rm-picked="甲"]（→ 甲）。意思就是那个状态词或键（或它的反面），按它认。别的照原样。
+export function normalizeShowToken(token) {
+    let text = String(token || '').trim();
+    let negate = false;
+    if (text.startsWith('!')) { negate = true; text = text.slice(1); }
+    const not = text.match(/^:not\((.+)\)$/);
+    if (not) { negate = !negate; text = not[1].trim(); }
+    const attr = text.match(/^(\[)?\s*data-rm-([a-z][\w-]*)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]+)))?\s*(\])?$/i);
+    if (attr && Boolean(attr[1]) === Boolean(attr[6])) {
+        const name = attr[2];
+        const value = attr[3] ?? attr[4] ?? attr[5];
+        if (value === 'false') negate = !negate;
+        const word = value && value !== 'true' && value !== 'false' ? value.trim() : name;
+        return word ? `${negate ? '!' : ''}${word}` : '';
+    }
+    return text ? `${negate ? '!' : ''}${text}` : '';
 }
 
 // 翻页等驱动直接显隐某个节点，沿用同一套“记住原 display、隐藏时 display:none !important”的做法。

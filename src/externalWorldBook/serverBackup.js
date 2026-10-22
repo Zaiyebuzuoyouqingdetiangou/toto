@@ -2,9 +2,9 @@
 // 本地数据库被清掉（例如宿主更新时清了网页数据）以后，可以从这份备份一键恢复。
 // 只在导入、启用、改分类、删除等用户操作之后才写；启动时不打开本地库，除非用户开着母本库抽签。
 // 不经过模型，不发到酒馆以外的地方。
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.76.13';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.76.13';
-import { listExternalLibraries } from './store.js?rmv=1.76.13';
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.76.14';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.76.14';
+import { listExternalLibraries } from './store.js?rmv=1.76.14';
 
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;

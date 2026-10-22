@@ -1,3 +1,4 @@
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.76.14';
 // 插件驱动的扩展类型：滚动浏览、时间、滑动手势、节奏连击、悬停窥视、文字遮蔽、环境感应，以及跨面继承。
 // 和主驱动（behaviorInteractions.js）同一套状态模型：容器 data-rm-ui、部件 data-rm-*、显示 data-rm-show。
 // 主驱动在准备、点按、指针、同步、复位这几个点调进来；这里不碰别的类型，出错也只影响这一块。
@@ -241,7 +242,7 @@ function timerSync(state) {
 }
 function timerKeys(state, keys) {
     for (const node of H.own(state.group, '[data-rm-at]')) {
-        const key = String(node.getAttribute('data-rm-show') || '').trim();
+        const key = normalizeShowToken(String(node.getAttribute('data-rm-show') || '').trim());
         if (state.elapsed >= seconds(node, 'data-rm-at', Infinity) && key && !key.startsWith('!')) keys.add(key);
     }
     if (state.running) keys.add('running');

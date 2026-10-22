@@ -3,12 +3,12 @@
 // 就试着把这一块认成插件的「翻面／开关」或「多选一」，由插件按状态类去切换。
 // 和正向接力一样：先在隔离副本里改好标识再实测，没反应的变少、原来能用的仍能用，才在真实页面上照做；
 // 只认样式里确实写了的状态类，不补内容、不猜目标；含勾选框、单选、滑杆、内层折叠的区域不碰（那是老修复器的地盘）。
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.76.13';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.76.13';
-import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=1.76.13';
-import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.76.13';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.76.13';
-import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=1.76.13';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.76.14';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.76.14';
+import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=1.76.14';
+import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.76.14';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.76.14';
+import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=1.76.14';
 
 export const BEHAVIOR_REVERSE_ATTR = 'data-rabbit-mirror-behavior-reverse-relayed';
 const NODE_TAG = 'data-rm-rev-node';
