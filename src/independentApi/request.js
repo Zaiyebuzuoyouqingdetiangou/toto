@@ -566,9 +566,14 @@ function wrapMissingMirrorShell(inner,openTag=''){
   || body.match(/<([a-z0-9]+)\b[^>]*\bclass\s*=\s*["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i)?.[2]
   || '';
  // 标题只取一个短名字，不抄整句正文：本体标题开头是【名字】的取括号里那段；否则取到第一个标点为止，最多 14 个字。
- const bracketed=String(titled||'').replace(/<[^>]+>/g,'').trim().match(/^[【\[]([^】\]]{2,20})[】\]]/)?.[1]||'';
- const headline=plain(bracketed||titled).replace(/^[^\p{L}\p{N}]+/u,'').split(/[，。！？；：,.!?;:…—~～（(「『“"]/)[0].trim();
- const title=[...headline].slice(0,14).join('').trim()||'小剧场';
+ // 模型把「兔子镜：」也写进了本体标题的，先去掉；开头的序号（1.、一、）不算名字。
+ const heading=String(titled||'').replace(/<[^>]+>/g,'').replace(/&[a-z#0-9]+;/gi,' ').trim()
+  .replace(/^[【\[]?\s*兔子镜\s*[:：]\s*/,'').replace(/^(?:\d+|[一二三四五六七八九十]+)\s*[.、:：)）．]\s*/,'');
+ const bracketed=heading.match(/^[【\[［〔]([^】\]］〕]{2,20})[】\]］〕]/)?.[1]||'';
+ const whole=plain(heading).replace(/^[^\p{L}\p{N}]+/u,'');
+ const headline=plain(bracketed||heading).replace(/^[^\p{L}\p{N}]+/u,'').split(/[，。！？；：,.!?;:…—~～（）()「」『』“”"《》〔〕［］]/)[0].trim();
+ // 切出来不到两个字（「Dr. Who」只剩 Dr）：退回整句开头。
+ const title=[...([...headline].length>=2?headline:whole)].slice(0,14).join('').trim()||'小剧场';
  // 净化时 css 作用域挂在 <toto> 上（因为没有 details）；取出内部时要把它搬到补上的 details 上，不然样式全对不上。
  const scope=String(openTag||'').match(/\bdata-rabbit-mirror-css-scope\s*=\s*["']([^"']+)["']/i)?.[1]||'';
  const scopeAttr=scope?` data-rabbit-mirror-css-scope="${escapeLongText(scope)}"`:'';

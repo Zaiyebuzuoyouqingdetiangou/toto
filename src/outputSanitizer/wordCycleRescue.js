@@ -11,7 +11,7 @@ const SWITCH_WORDS = /切换|拨换|换成|变换|拉动|调换|调光|开关|�
 function hasOwnAction(button) {
     if (button.disabled || button.closest('[data-rm-ui]')) return true;
     if (button.hasAttribute('popovertarget') || button.hasAttribute('commandfor') || button.closest('a[href], form, label')) return true;
-    if ([...button.attributes].some(attr => /^data-rm-(?!press|polish|mobile)/.test(attr.name) || /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;
+    if ([...button.attributes].some(attr => /^data-rm-(?!press|polish|mobile|select)/.test(attr.name) || /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;
     return /^(?:submit|reset)$/i.test(button.getAttribute('type') || '');
 }
 

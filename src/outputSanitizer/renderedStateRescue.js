@@ -1351,8 +1351,11 @@ function findButtonAdjacentHiddenAfter(start, button) {
     return null;
 }
 
+// 别的接线已经管着的按钮（孤立状态开关、选项卡、选中条目、播放开关……）：不再当「点了显示后面那块」接，免得一下点击两边抢。
+const OTHER_WIRING = '[data-rm-orphan-state-trigger], [data-rm-sibling-tab], [data-rm-select-item], [data-rm-select-step], [data-rm-flag-toggle], [data-rm-state-group], [data-rm-pulse-trigger]';
 export function findRenderedButtonAdjacentHiddenTarget(button) {
     if (isBehaviorInteractionOwned(button) || button?.hasAttribute?.('popovertarget') || button?.hasAttribute?.('commandfor')) return null;
+    if (button?.matches?.(OTHER_WIRING)) return null;
     const direct = findButtonAdjacentHiddenAfter(button, button);
     if (direct) return direct;
     // 按钮单独包在一行操作区里（<div class="操作"><button>查看结果</button></div>），结果紧跟在这一行后面：
@@ -1366,26 +1369,47 @@ export function findRenderedButtonAdjacentHiddenTarget(button) {
         if (others.length || String(parent.textContent || '').replace(/\s+/g, '') !== ownText) break;
         host = parent;
         const target = findButtonAdjacentHiddenAfter(host, button);
-        if (target) return target;
+        if (target && !target.hasAttribute('data-rm-orphan-state-wired')) return target;
+        if (target) return null;
     }
     return null;
 }
 
-// 结果里「重新测试／再来一次」这类按钮：收起结果，把这一面里已经选的选项清掉，可以重新做。
+// 结果里「重新测试／再来一次」这类按钮：收起结果，把这道测验里已经选的选项清掉，可以重新做。
+// 只清离「查看结果」按钮最近、装着选项的那一块；整组里有默认选中的（导航、选项卡用的单选）不动；复选框回到原来的默认。
 const BUTTON_ADJACENT_RESET_ATTR = 'data-rabbit-mirror-button-adjacent-reset';
 const BUTTON_ADJACENT_RESET_TEXT = /^(?:重新[^，。]{0,4}|重来|再[测做来玩][^，。]{0,3}|重置|重做|reset|retry|restart|try again)$/i;
+const wiredResets = new WeakSet();
+// 原来写着的默认选中：存档里带回来的 checked 是用户上次选的，不算默认；插件记过最初状态的按记下的算。
+function initiallyChecked(input) {
+    const recorded = input.getAttribute('data-rm-reversible-radio-initial-checked');
+    if (recorded === 'true' || recorded === 'false') return recorded === 'true';
+    return input.defaultChecked;
+}
+function quizInputsFor(root, entry) {
+    let scope = entry.button.parentElement;
+    while (scope && scope !== root && !scope.querySelector('input[type="radio"], input[type="checkbox"]')) scope = scope.parentElement;
+    if (!scope) return [];
+    const inputs = [...scope.querySelectorAll('input[type="radio"], input[type="checkbox"]')]
+        .filter(input => !input.closest('summary, [data-rabbit-mirror-tool-entry-host]') && !entry.target.contains(input));
+    const defaultGroups = new Set(inputs.filter(input => input.type === 'radio' && initiallyChecked(input)).map(input => input.name || input));
+    return inputs.filter(input => input.type !== 'radio' || !defaultGroups.has(input.name || input));
+}
 function wireButtonAdjacentReset(root, entry) {
     for (const reset of entry.target.querySelectorAll('button')) {
-        if (reset.hasAttribute(BUTTON_ADJACENT_RESET_ATTR) || isBehaviorInteractionOwned(reset)
-            || reset.hasAttribute('popovertarget') || reset.hasAttribute('commandfor') || reset.hasAttribute('onclick')) continue;
+        if (wiredResets.has(reset) || isBehaviorInteractionOwned(reset) || reset.matches(OTHER_WIRING)
+            || reset.hasAttribute('popovertarget') || reset.hasAttribute('commandfor') || reset.hasAttribute('onclick')
+            || [...reset.attributes].some(attr => /^data-rabbit-mirror-.*(?:rescue|wired|fallback)$/.test(attr.name))) continue;
         if (!BUTTON_ADJACENT_RESET_TEXT.test(String(reset.textContent || '').replace(/\s+/g, ' ').trim())) continue;
+        wiredResets.add(reset);
         reset.setAttribute(BUTTON_ADJACENT_RESET_ATTR, 'true');
         reset.addEventListener('click', event => {
             event.preventDefault();
             applyRenderedButtonAdjacentHiddenEntry(entry, false);
-            for (const input of root.querySelectorAll('input[type="radio"], input[type="checkbox"]')) {
-                if (!input.checked || input.closest('summary, [data-rabbit-mirror-tool-entry-host]')) continue;
-                input.checked = false;
+            for (const input of quizInputsFor(root, entry)) {
+                const next = input.type === 'checkbox' ? initiallyChecked(input) : false;
+                if (input.checked === next) continue;
+                input.checked = next;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }

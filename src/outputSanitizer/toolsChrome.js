@@ -3646,6 +3646,8 @@ function wireInertPlayButtons(root) {
         if (PLAYBACK_BOUND.has(node) || node.closest('summary, label, [data-rm-ui], [data-rabbit-mirror-tool-entry-host]')) return false;
         // 已经被别的修复接管的按钮（带修复标记）不再接成暂停键，免得两边抢同一下点击。
         if ([...node.attributes].some(attr => /^data-rabbit-mirror-.*(?:rescue|program|repair)/i.test(attr.name))) return false;
+        // 已经接成「切换播放中」「上一首／下一首」「选这一条」的按钮也不再接。
+        if (node.matches('[data-rm-flag-toggle], [data-rm-select-step], [data-rm-select-item]')) return false;
         if (node.matches('input, label') || node.children.length > 1) return false;
         const text = String(node.textContent || '').replace(/\s+/g, '').trim();
         const aria = `${node.getAttribute('aria-label') || ''} ${node.getAttribute('title') || ''}`;

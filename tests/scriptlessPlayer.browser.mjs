@@ -63,6 +63,32 @@ try {
         d.querySelector('.btn:first-child').click(); await wait(50); r.prev = state();
         d.querySelector('.btn-play').click(); await wait(50); r.play = state();
         d.querySelector('.btn-play').click(); await wait(50); r.pause = state();
+        // 选项卡：.tab.active 只是高亮、内容块内联藏着；旁边一个「下一页」。点选项卡、点下一页都要换内容。
+        const t = await mount(`<style>.tab{cursor:pointer}.tab.active{color:red}</style><div class="tabs"><span class="tab active">一</span><span class="tab">二</span><span class="tab">三</span></div>
+            <div class="panel">阿雪的第一页内容字字字</div><div class="panel" style="display:none">阿岩的第二页内容字字字</div><div class="panel" style="display:none">阿竹的第三页内容字字字</div>
+            <span class="ctl next" style="cursor:pointer">下一页</span>`);
+        await wait(120);
+        const panels = () => [...t.querySelectorAll('.panel')].map(n => getComputedStyle(n).display !== 'none' ? 1 : 0).join('');
+        const tabs = () => [...t.querySelectorAll('.tab')].map(n => n.classList.contains('active') ? 1 : 0).join('');
+        t.querySelectorAll('.tab')[1].click(); await wait(80); r.tabClick = panels() + '/' + tabs();
+        t.querySelector('.next').click(); await wait(80); r.tabNext = panels() + '/' + tabs();
+        // 两列都有高亮、只有一对上一首／下一首：只给一列接，点一次只挪一格
+        const two = await mount(`<style>.a,.b{cursor:pointer}.a.on{color:red}.b.on{color:blue}</style><div class="np"><span class="np-name">甲一</span></div>
+            <div><div class="a on"><span class="x-name">甲一</span></div><div class="a"><span class="x-name">甲二</span></div></div>
+            <div><div class="b on">乙一字</div><div class="b">乙二字</div></div><button class="btn-next">❯</button>`);
+        two.querySelector('.btn-next').click(); await wait(50);
+        r.twoLists = [...two.querySelectorAll('.a, .b')].map(n => n.classList.contains('on') ? 1 : 0).join('');
+        // 「正在播放」那行带图标：只换名字那段字，图标留着
+        const icon = await mount(`<style>.it{cursor:pointer}.it.cur{color:red}</style><div class="now"><i class="ico">♪</i> 阿松的歌</div>
+            <div><div class="it cur"><span class="it-title">阿松的歌</span></div><div class="it"><span class="it-title">阿雪的歌</span></div></div>`);
+        icon.querySelectorAll('.it')[1].click(); await wait(50);
+        r.icon = !!icon.querySelector('.now .ico') && icon.querySelector('.now').textContent.includes('阿雪的歌');
+        // 常驻动画（均衡器）＋播放开关：播放键只切 data-playing，不被「暂停全部动画」那套同时接走
+        const eq = await mount(`<style>@keyframes b{to{height:2px}}.bar{display:inline-block;width:3px;height:9px;animation:b 1s infinite}.pl[data-playing="true"] .disc{color:red}.pbtn{cursor:pointer}</style>
+            <div class="pl" data-playing="false"><div class="disc">碟</div><span class="bar"></span><span class="bar"></span><div class="pbtn btn-play">▶</div><p>${'字'.repeat(40)}</p></div>`);
+        await wait(150);
+        eq.querySelector('.pbtn').click(); await wait(80);
+        r.eq = `${eq.querySelector('.pl').getAttribute('data-playing')}/${eq.querySelector('.pbtn').textContent}/${eq.querySelector('[data-rm-playback]')?.getAttribute('data-rm-playback') || '-'}`;
         return r;
     });
     console.log(JSON.stringify(out));
@@ -78,6 +104,11 @@ try {
     assert.equal(out.play.play, '❚❚'); checks++;
     assert.equal(out.pause.playing, 'false'); checks++;
     assert.equal(out.pause.play, '▶'); checks++;
+    assert.equal(out.tabClick, '010/010', '点选项卡换内容'); checks++;
+    assert.equal(out.tabNext, '001/001', '下一页也换内容'); checks++;
+    assert.equal(out.twoLists, '0110', '一对按钮只挪一列'); checks++;
+    assert.equal(out.icon, true); checks++;
+    assert.match(out.eq, /^true\/❚❚\/(?:-|playing)$/); checks++;
     assert.deepEqual(errors, []); checks++;
     console.log(`scriptlessPlayer: ${checks} checks passed`);
 } finally {

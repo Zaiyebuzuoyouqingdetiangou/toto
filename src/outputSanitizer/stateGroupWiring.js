@@ -113,10 +113,12 @@ function wireExclusiveGroup(root, base, state, skip) {
 }
 
 // ——— 3. 一列条目里亮着一条 ———
-const PREV_TEXT = /^(?:[❮‹«◀◁⏮←<]|上一[首曲页张个条]?|前一[首曲页张个条]?|prev(?:ious)?|back)$/i;
-const NEXT_TEXT = /^(?:[❯›»▷⏭→>]|下一[首曲页张个条]?|后一[首曲页张个条]?|next|forward)$/i;
-const PREV_NAME = /(?:^|[-_])prev(?:ious)?(?:$|[-_])|Prev(?:ious)?\b/;
-const NEXT_NAME = /(?:^|[-_])next(?:$|[-_])|Next\b/;
+const PREV_TEXT = /^(?:[❮‹«◀◁◄⏮←<]|上一[首曲页张个条]?|前一[首曲页张个条]?|prev(?:ious)?|back)$/i;
+const NEXT_TEXT = /^(?:[❯›»►⏭→>]|下一[首曲页张个条]?|后一[首曲页张个条]?|next|forward)$/i;
+const PREV_NAME = /(?:^|[\s_-])prev(?:ious)?(?=$|[\s_\d-])|[a-z]Prev(?:ious)?(?![a-z])/i;
+const NEXT_NAME = /(?:^|[\s_-])next(?=$|[\s_\d-])|[a-z]Next(?![a-z])/i;
+// 接过的上一首／下一首：一对按钮只给一列接（同一面里有两列高亮时不各挪一格）。按节点记，克隆出来的新节点重新接。
+const STEPPERS = new WeakSet();
 function nameOf(node) { return `${node.id || ''} ${[...node.classList].join(' ')} ${node.getAttribute('aria-label') || ''}`; }
 function stepDirection(node) {
     const text = String(node.textContent || '').replace(/\s+/g, '');
@@ -129,6 +131,12 @@ function itemName(item) {
     const named = [...item.querySelectorAll('*')].find(node => [...node.classList].some(name => /(?:^|-)(?:name|title)$/i.test(name)));
     return String(named?.textContent || '').trim();
 }
+// 「正在播放」那一行里装着名字的那个文字节点（只换这一段字，旁边的图标、子元素不动）。
+function nameTextNode(display, name) {
+    const walker = display.ownerDocument.createTreeWalker(display, 4);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) if (String(node.nodeValue || '').includes(name)) return node;
+    return null;
+}
 function wireSelectionList(root, base, state, skip) {
     let items;
     try { items = [...root.querySelectorAll(selectorFor(base))]; } catch { return 0; }
@@ -139,60 +147,71 @@ function wireSelectionList(root, base, state, skip) {
     if (lit.length !== 1) return 0;
     // 状态类只是高亮：摘掉以后还看得见（会藏起来的是第 1 类「只亮一张」，不归这里）。
     if (items.some(item => hiddenWithout(item, state) || !shown(item))) return 0;
-    if (!items.every(item => clickable(item) && innerButtonIsFree(item) && !item.querySelector('button, a, input, select, textarea, [role="button"]'))) return 0;
-    let current = items.indexOf(lit[0]);
+    // 条目自己已经被别的修复接成按钮（选项卡、圆点）：点条目照它们的来，这里只接上一首／下一首，挪的时候点那一条。
+    const owned = items.every(item => item.hasAttribute(GROUP_ATTR) || item.hasAttribute('data-rm-sibling-tab'));
+    if (!owned && !items.every(item => clickable(item) && innerButtonIsFree(item) && !item.querySelector('button, a, input, select, textarea, [role="button"]'))) return 0;
+    const startIndex = items.indexOf(lit[0]);
+    let current = startIndex;
     // 「正在播放」那行：条目外面、字里含着亮着那条的名字、字不长的那一块（取最里层）。
     const startName = itemName(lit[0]);
     let display = null;
-    if (startName) {
+    if (startName && !owned) {
         const candidates = [...root.querySelectorAll('*')].filter(node => !items.some(item => item.contains(node) || node.contains(item))
             && !node.closest('summary, style, script, [data-rabbit-mirror-tool-entry-host]')
             && String(node.textContent || '').includes(startName) && String(node.textContent || '').trim().length <= startName.length + 12
             && ![...node.children].some(child => String(child.textContent || '').includes(startName)));
         if (candidates.length === 1) display = candidates[0];
     }
-    const startText = display ? String(display.textContent || '') : '';
+    const textNode = display ? nameTextNode(display, startName) : null;
+    const startText = textNode ? String(textNode.nodeValue || '') : '';
+    // 上一首／下一首：这一面里闲着的、各只有一个，还没给别的列接过。
+    const steppers = [...root.querySelectorAll('button, [role="button"], *')].filter(node => !STEPPERS.has(node) && !items.some(item => item.contains(node))
+        && !node.closest('summary, [data-rabbit-mirror-tool-entry-host]') && (node.matches('button, [role="button"]') || clickable(node))
+        && innerButtonIsFree(node) && !node.querySelector('button, [role="button"]') && !node.hasAttribute(GROUP_ATTR) && stepDirection(node) !== 0);
+    const prev = steppers.filter(node => stepDirection(node) < 0);
+    const next = steppers.filter(node => stepDirection(node) > 0);
+    const stepPairs = [[prev, -1], [next, 1]].filter(([list]) => list.length === 1);
+    // 只有「当前位置」高亮、旁边没有上一首／下一首，也没有跟着换的那行字：可能只是静态的导航标记，不接。
+    if (!stepPairs.length && !textNode) return 0;
     const select = index => {
         current = (index + items.length) % items.length;
         items.forEach((item, at) => item.classList.toggle(state, at === current));
-        if (display) {
+        if (textNode) {
             const name = itemName(items[current]);
             if (name) {
                 let text = startText.replace(startName, name);
                 // 「1. 名字」这类前面的序号也跟着换。
                 const number = /^(\s*)(\d+)(?=\s*[.、:：\s])/.exec(startText);
-                if (number && Number(number[2]) === items.indexOf(lit[0]) + 1) text = text.replace(/^(\s*)\d+/, `$1${current + 1}`);
-                display.textContent = text;
+                if (number && Number(number[2]) === startIndex + 1) text = text.replace(/^(\s*)\d+/, `$1${current + 1}`);
+                textNode.nodeValue = text;
             }
         }
     };
-    items.forEach((item, index) => {
-        item.setAttribute(SELECT_ATTR, state);
-        item.setAttribute('role', 'button');
-        item.setAttribute('tabindex', '0');
-        const pick = event => {
-            if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault?.();
-            select(index);
-        };
-        item.addEventListener('click', pick);
-        item.addEventListener('keydown', pick);
-    });
-    // 上一首／下一首：这一面里闲着的、各只有一个。
-    const steppers = [...root.querySelectorAll('button, [role="button"], *')].filter(node => !items.some(item => item.contains(node))
-        && !node.closest('summary, [data-rabbit-mirror-tool-entry-host]') && (node.matches('button, [role="button"]') || clickable(node))
-        && innerButtonIsFree(node) && !node.querySelector('button, [role="button"]') && stepDirection(node) !== 0);
-    const prev = steppers.filter(node => stepDirection(node) < 0);
-    const next = steppers.filter(node => stepDirection(node) > 0);
-    for (const [list, delta] of [[prev, -1], [next, 1]]) {
-        if (list.length !== 1) continue;
+    if (!owned) {
+        items.forEach((item, index) => {
+            item.setAttribute(SELECT_ATTR, state);
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
+            const pick = event => {
+                if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+                if (event.type === 'keydown') event.preventDefault?.();
+                select(index);
+            };
+            item.addEventListener('click', pick);
+            item.addEventListener('keydown', pick);
+        });
+    }
+    for (const [list, delta] of stepPairs) {
         const button = list[0];
+        STEPPERS.add(button);
         button.setAttribute(STEP_ATTR, String(delta));
         if (!button.matches('button')) { button.setAttribute('role', 'button'); button.setAttribute('tabindex', '0'); }
         const move = event => {
             if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault?.();
-            select(current + delta);
+            // 点要去的那一条：条目上接着的处理（换页、换内容、上面的高亮）都照常走。
+            const at = items.findIndex(item => item.classList.contains(state));
+            items[((at < 0 ? current : at) + delta + items.length) % items.length].click();
         };
         button.addEventListener('click', move);
         button.addEventListener('keydown', move);
@@ -291,7 +310,7 @@ function wirePulse(root, base, state, skip) {
     return 0;
 }
 
-const EXCLUSIVE_STATE = /(?:^|-)(?:active|current|selected|show|shown|visible|on|open|opened|chosen|picked|highlighted|focused)$/i;
+const EXCLUSIVE_STATE = /(?:^|-)(?:active|current|cur|playing|selected|show|shown|visible|on|open|opened|chosen|picked|highlighted|focused)$/i;
 function statePairs(root) {
     const pairs = new Map();
     for (const style of root.querySelectorAll('style')) {
