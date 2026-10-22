@@ -1,10 +1,14 @@
-// Opt-in, one-request evidence. No storage, network, timers, live DOM reads or
-// random-number consumption. Observers can never affect generation outcomes.
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.73.32';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.73.32';
-import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=1.73.32';
+// 生成取证：本模块不写存储、不联网、不加定时器、不读实时 DOM（挂载结果由挂载层读好传进来）、不消耗随机数，观察者永远不影响生成结果。
+// 平时自动在本页内存里保留最近 RECENT_LIMIT 次独立 API 生成（出了问题直接导出，不必事先预知）；
+// 手动“记录下一次生成”拿到的那份会被钉住，后面的自动记录不会顶掉它。刷新页面即清空。
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.74.0';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.74.0';
+import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=1.74.0';
+const RECENT_LIMIT = 3;
 let armed = false;
-let current = null;
+let current = null;      // 手动钉住的那份；没有时为 null
+let recent = [];         // 最近几次（含钉住的那份），新的在后
+const live = new Set();  // 仍在记录中的
 let sequence = 0;
 const listeners = new Set();
 let results = new WeakMap();
@@ -62,12 +66,16 @@ function notify() {
     for (const listener of listeners) { try { listener(); } catch {} }
 }
 
+function shown() { return current || recent[recent.length - 1] || null; }
+
 export function getGenerationEvidenceState() {
-    return { armed, status: current?.status || 'idle', id: current?.id || '',
-        mesid: current?.context?.owner?.mesid ?? null, hasReport: !!current,
-        hasRequest: !!current?.request, hasResponse: !!current?.response,
-        hasProcessedHtml: !!current?.processed, complete: current?.status === 'complete',
-        timing: generationEvidenceTiming(current) };
+    const report = shown();
+    return { armed, pinned: !!current, recentCount: recent.length,
+        status: report?.status || 'idle', id: report?.id || '',
+        mesid: report?.context?.owner?.mesid ?? null, hasReport: !!report,
+        hasRequest: !!report?.request, hasResponse: !!report?.response,
+        hasProcessedHtml: !!report?.processed, complete: report?.status === 'complete',
+        timing: generationEvidenceTiming(report) };
 }
 
 export function subscribeGenerationEvidence(listener) {
@@ -77,6 +85,7 @@ export function subscribeGenerationEvidence(listener) {
 
 export function armGenerationEvidence() {
     if (current?.status === 'capturing') return false;
+    current = null;
     armed = true;
     notify();
     return true;
@@ -87,6 +96,8 @@ export function cancelGenerationEvidenceArm() { armed = false; notify(); }
 export function clearGenerationEvidence() {
     armed = false;
     current = null;
+    recent = [];
+    live.clear();
     results = new WeakMap();
     notify();
 }
@@ -143,12 +154,24 @@ function vsCheckFor(report) {
     };
 }
 
+function exportable(report) {
+    return { ...report, vsCheck: vsCheckFor(report), timing: generationEvidenceTiming(report) };
+}
+
 export function exportGenerationEvidence() {
-    return current ? JSON.stringify({ ...current, vsCheck: vsCheckFor(current), timing: generationEvidenceTiming(current) }, null, 2) : '';
+    const report = shown();
+    return report ? JSON.stringify(exportable(report), null, 2) : '';
+}
+
+// 最近几次一起导出（新的在前）。
+export function exportRecentGenerationEvidence() {
+    if (!recent.length) return '';
+    return JSON.stringify({ schema: 'rabbitmirror-generation-evidence-recent/1',
+        reports: [...recent].reverse().map(exportable) }, null, 2);
 }
 
 export function claimGenerationEvidence({ version, profile, owner, settings, faceIndex, serial } = {}) {
-    if (!armed) return null;
+    const pin = armed;
     armed = false;
     let record;
     try {
@@ -163,14 +186,29 @@ export function claimGenerationEvidence({ version, profile, owner, settings, fac
                 request: '插件交出请求时的内容；连接信息省略。宿主、服务端及中转站此后的改写不可见。',
                 response: '模型可见回复，未移除挑签标签、未净化；普通回复保留可确认的原内容及首尾空白，流式回复记录解析器拼接正文。textSource 标明来源；不采集隐藏 reasoning 或原始网络帧。',
                 processed: '插件处理完成后、交给挂载层之前的 HTML；不是宿主渲染或维修后的实时 DOM。',
+                mount: '挂载层拿到结果后的去向：挂上了、复用了已有成品，或因为消息已变、找不到消息而没有挂。',
                 scope: '仅一次独立 API 请求；多面单请求包含整批，逐面请求只含本次请求对应的一面。',
             },
             request: null, response: null, processed: null, outcome: null,
         };
-        current = record;
+        if (pin) {
+            record.pinned = true;
+            current = record;
+        }
+        recent.push(record);
+        // 超出上限时丢最旧的，但钉住的那份不丢。
+        while (recent.length > RECENT_LIMIT) {
+            // 先丢已经结束的旧记录；同时在记录的（逐面并行）尽量不中途掐掉。
+            let drop = recent.findIndex(item => item !== current && item !== record && item.status !== 'capturing');
+            if (drop < 0) drop = recent.findIndex(item => item !== current && item !== record);
+            if (drop < 0) break;
+            live.delete(recent[drop]);
+            recent.splice(drop, 1);
+        }
+        live.add(record);
     } catch { notify(); return null; }
     const observe = fn => {
-        if (current !== record || record.status !== 'capturing') return false;
+        if (!live.has(record) || record.status !== 'capturing') return false;
         try { fn(); notify(); return true; }
         catch { record.observationError = true; return false; }
     };
@@ -215,6 +253,17 @@ export function claimGenerationEvidence({ version, profile, owner, settings, fac
     };
     notify();
     return handle;
+}
+
+// 挂载层按消息号找回那一次的记录（最近一份还没写挂载结果的）。只写本页内存里的那份，不影响任何东西。
+export function noteGenerationEvidenceMount(mesid, detail = {}) {
+    for (let i = recent.length - 1; i >= 0; i--) {
+        const record = recent[i];
+        if (String(record?.context?.owner?.mesid ?? '') !== String(mesid) || record.mount) continue;
+        try { record.mount = { at: new Date().toISOString(), ...copy(detail) }; notify(); return true; }
+        catch { return false; }
+    }
+    return false;
 }
 
 export function associateGenerationEvidence(result, handle) {
