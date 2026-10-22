@@ -182,11 +182,11 @@ export function releaseBehaviorShow(node) {
 // 这种卡片一直显示，选中与否只照常同步状态（选中的那张挂 data-rm-active，模型的样式按它高亮）。
 function selfChooser(node, group, positive) {
     if (!positive.length || !node.querySelectorAll) return false;
-    for (const control of node.querySelectorAll('[data-rm-pick], [data-rm-toggle]')) {
+    // 只认「选这一个」的按钮（data-rm-pick）。开关不算：打开才显示的面板里放着自己的关闭开关，是关闭按钮，面板照样该藏。
+    for (const control of node.querySelectorAll('[data-rm-pick]')) {
         const owner = control.closest('[data-rm-ui]');
         if (owner && owner !== group) continue;
-        const raw = String(control.getAttribute(control.hasAttribute('data-rm-pick') ? 'data-rm-pick' : 'data-rm-toggle') || '').trim();
-        const key = control.hasAttribute('data-rm-pick') ? raw : (!raw || /^(?:true|yes)$/i.test(raw) ? 'on' : raw);
+        const key = String(control.getAttribute('data-rm-pick') || '').trim();
         if (key && positive.includes(key)) return true;
     }
     return false;

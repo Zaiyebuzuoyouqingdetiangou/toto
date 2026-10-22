@@ -67,6 +67,12 @@ try {
             <div class="res" data-rm-show="a">甲的结果<button data-rm-pick="b">换乙</button></div><div class="res" data-rm-show="b">乙的结果</div></div>`);
         o.querySelectorAll('.top')[0].click(); await wait(80);
         r.other = [...o.querySelectorAll('.res')].map(n => visible(n) ? 1 : 0).join('');
+        // 打开才显示的面板里放着自己的关闭开关：照样能关上
+        const p = await mount(`<div data-rm-ui="toggle"><button class="open" data-rm-toggle="open">打开</button>
+            <div class="panel" data-rm-show="open">阿松的话字字字字<button class="close" data-rm-toggle="open">关闭</button></div></div>`);
+        p.querySelector('.open').click(); await wait(80); const opened = visible(p.querySelector('.panel'));
+        p.querySelector('.close').click(); await wait(80);
+        r.panel = `${opened}/${visible(p.querySelector('.panel'))}`;
         return r;
     });
     console.log(JSON.stringify(out));
@@ -85,6 +91,7 @@ try {
     assert.equal(out.storedPick1.active, '100'); checks++;
     assert.equal(out.storedPick1.stage, '100'); checks++;
     assert.equal(out.other, '10'); checks++;
+    assert.equal(out.panel, 'true/false', '面板里的关闭开关能关上'); checks++;
     assert.deepEqual(errors, []); checks++;
     console.log(`selfChooserCards: ${checks} checks passed`);
 } finally {
