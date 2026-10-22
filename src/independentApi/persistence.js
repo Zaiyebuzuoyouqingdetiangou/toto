@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.76.0';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.76.0';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.76.0';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.76.2';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.76.2';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.76.2';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.76.0';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.76.0';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.76.0';
+} from '../swipeVersions.js?rmv=1.76.2';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.76.2';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.76.2';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.76.0';
+} from './faceSwipe.js?rmv=1.76.2';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.76.0';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.76.0';
+} from './connection.js?rmv=1.76.2';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.76.2';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.76.0';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.76.0';
+} from './geometry.js?rmv=1.76.2';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.76.2';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -167,9 +167,25 @@ function cacheCoverage(ctx,slot,record){
  const owner=rawOwnerForKey(ctx,parsed.index,parsed.swipe);
  if(!owner) return 'unconfirmed';
  if(owner.deleted) return 'covered';
+ // 只在本次会话里、或聊天数据里写了但还没确认存进聊天文件的那份，不算「聊天文件里已经有」。
+ if(!chatOwnerConfirmedInFile(ctx,chatOwnerKey(parsed.index,parsed.swipe),owner)) return 'unconfirmed';
  if(String(owner.html||'')===String(record?.html||'')) return 'covered';
  if(String(owner.sourceHash||'')===String(record?.sourceHash||parsed.sourceHash) && Number(owner.ts||0)>=Number(record?.ts||0)) return 'covered';
  return 'unconfirmed';
+}
+
+// 本机缓存里这一条的「这一版」是否确认另有可靠存档（容量不够、最后只能删缓存时用）：
+//   - 版本存档（IndexedDB）里确认写进并读回了同一版；或
+//   - 当前聊天、聊天文件里确认存过同一版（或这一层已删）。
+// 别的聊天、旧版本被新版本盖住的、还在等存盘的，一律不算。
+function outputVersionBackedUp(ctx,slot,record){
+ const html=String(record?.html||''); if(!html) return false;
+ const parsed=parseSlotKey(slot); if(!parsed) return false;
+ const archived=archivedOutputVersions.get(`${parsed.chat}:${parsed.index}:${parsed.swipe}`);
+ if(archived && archived.slot===String(slot) && archived.html===html) return true;
+ if(cacheCoverage(ctx,slot,record)!=='covered') return false;
+ const owner=rawOwnerForKey(ctx,parsed.index,parsed.swipe);
+ return owner?.deleted===true || String(owner?.html||'')===html;
 }
 
 // 每个聊天最新的那条缓存（别的聊天只有这一条可能还没进聊天文件）。
@@ -280,8 +296,17 @@ export function writeStore(v){
   // 先给插图存档瘦身（只瘦旧版本的长提示词，图不删），再动兔子镜自己的旧备份。
   try{ if(slimMirrorImagesForQuota()){ localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); try{ clearSavedIndependentOutputNotices(); }catch{} return true; } }catch{}
   if(freeHistoryRoomFor(JSON.stringify(compacted))){ try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
-  const entries=Object.entries(compacted).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
-  while(entries.length>1){ entries.pop(); try{ localStorage.setItem(STORE_KEY,JSON.stringify(Object.fromEntries(entries))); try{ clearSavedIndependentOutputNotices(); }catch{} warnStorageTrimmed(); return true; }catch{} }
+  // 最后一步：只删「这一版确认另有可靠存档」的旧缓存（见 outputVersionBackedUp），从最旧的删起，删一条试写一次。
+  // 以前这里不管有没有别处的存档都从最旧的删，可能把付费成品唯一的一份删掉。
+  // 腾不出地方就不动原来的缓存，这次算没存上：调用方照旧提示「尚未保存」，新成品仍会随聊天文件存盘。
+  let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
+  const kept={...compacted};
+  const evictable=Object.entries(compacted).filter(([key,item])=>outputVersionBackedUp(ctx,key,item))
+   .sort((a,b)=>Number(a[1]?.ts||0)-Number(b[1]?.ts||0));
+  for(const [key] of evictable){
+   delete kept[key];
+   try{ localStorage.setItem(STORE_KEY,JSON.stringify(kept)); try{ clearSavedIndependentOutputNotices(); }catch{} warnStorageTrimmed(); return true; }catch{}
+  }
   warnStorageTrimmed(); return false;
  }
 }
@@ -622,6 +647,58 @@ function saveChatOutputMetadata(ctx=getContext()){
 //   - 还是写入时那条聊天：同一份聊天数组、同一份聊天信息、聊天标识不变；
 //   - 聊天加载完整：有消息，条数不比写入时少，写入的那一层还在原位。
 // 几秒内的多次请求合成一次。
+// 聊天数据里「已写进内存、还没确认存进聊天文件」的兔子镜，按聊天信息对象记（换聊天或重新加载聊天就是新对象，
+// 那时读到的都来自聊天文件）。只有本插件自己请求的那次存盘真的跑完、而且还是同一条聊天，才把当时等着的这些记为已存。
+//   pending ——楼层键 → {html, record, slot}；record/slot 用来在存盘完成后收起对应的「尚未保存」提示；
+//   allGen  ——删楼层对号等整体改了楼层号时加一，确认存盘前所有楼层都当作还在等。
+const chatSaveStates=new WeakMap();
+function chatSaveState(metadata,create=false){
+ if(!metadata || typeof metadata!=='object') return null;
+ let state=chatSaveStates.get(metadata);
+ if(!state && create){ state={pending:new Map(),allGen:0,savedGen:0}; chatSaveStates.set(metadata,state); }
+ return state||null;
+}
+function markChatOwnerPending(ctx,ownerKey,record=null,slot=''){
+ const state=chatSaveState(chatMetadataObject(ctx),true); if(!state||!ownerKey) return;
+ state.pending.set(ownerKey,{html:String(record?.html||''),record:record&&typeof record==='object'?record:null,slot:String(slot||'')});
+}
+function markAllChatOwnersPending(ctx){
+ const state=chatSaveState(chatMetadataObject(ctx),true); if(state) state.allGen+=1;
+}
+function chatOwnerPending(ctx,ownerKey){
+ const state=chatSaveState(chatMetadataObject(ctx));
+ return !!state && (state.allGen!==state.savedGen || state.pending.has(ownerKey));
+}
+// 聊天文件里这一层的那份（不是只在本次会话里的副本），而且不在等存盘。
+function chatOwnerConfirmedInFile(ctx,ownerKey,owner){
+ if(!ownerKey) return false;
+ const raw=chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[ownerKey];
+ if(!raw || (owner && raw!==owner && String(raw.html||'')!==String(owner.html||''))) return false;
+ return !chatOwnerPending(ctx,ownerKey);
+}
+// 版本存档（IndexedDB）里确认写进并读回的那一版：base（聊天:楼层:swipe）→ {slot, html}。
+const archivedOutputVersions=new Map();
+const latestArchiveTokens=new Map();
+// 注意：确认只是尽力而为。酒馆的 saveMetadata() 在一些情况下没真存上也会正常返回——
+// 存聊天的网络错误、服务器 5xx 被它自己吞掉只弹提示，或者等上一次存盘（isChatSaving）超时后直接返回。
+// 这里拿不到更可靠的信号，只能把「返回落定且还是同一条聊天」当作已存。
+// 本插件请求的那次存盘确实跑完：把开始存盘时还在等的那些记为已存，并收起已经存下的「尚未保存」提示。
+function confirmChatSave(request,snapshot){
+ let live=null; try{ live=getContext(); }catch{ live=null; }
+ // 存盘期间换了聊天：酒馆存的可能是另一条聊天，不能算这条已存。
+ if(!live || live.chat!==request.chat || chatMetadataObject(live)!==request.metadata || chatKey(live)!==request.key) return false;
+ const state=chatSaveState(request.metadata); if(!state||!snapshot) return false;
+ const saved={};
+ for(const [key,entry] of snapshot.pending){
+  if(state.pending.get(key)!==entry) continue;
+  state.pending.delete(key);
+  if(entry.record?.html && entry.slot) saved[entry.slot]=entry.record;
+ }
+ if(state.allGen===snapshot.allGen) state.savedGen=snapshot.allGen;
+ if(Object.keys(saved).length){ try{ clearSavedIndependentOutputNotices({...readStore(),...saved}); }catch{} }
+ return true;
+}
+
 const SAFE_SAVE_DELAY_MS=2500;
 const SAFE_SAVE_RETRY_MS=4000;
 // 酒馆一直像在生成（比如上一轮的状态没收起来）时，2 分钟后改成每 10 秒看一次，最多等 30 分钟，
@@ -659,7 +736,18 @@ function runSafeChatSave(){
   return;
  }
  safeSaveRequest=null;
- try{ live.saveMetadataDebounced(); }catch(error){ console.debug('[RabbitMirror] 稍后保存聊天的请求没有发出：',error); }
+ // 记下这次存盘开始时还在等的那些；存盘真的跑完（酒馆的 saveMetadata 返回的结果落定）才算它们进了聊天文件。
+ // 酒馆只给了 saveMetadataDebounced（拿不到结果）时照旧请求，但不当作已存，「尚未保存」提示留着。
+ const state=chatSaveState(request.metadata);
+ const snapshot=state?{pending:new Map(state.pending),allGen:state.allGen}:null;
+ let saving=null;
+ try{
+  if(typeof live.saveMetadata==='function') saving=live.saveMetadata();
+  else live.saveMetadataDebounced();
+ }catch(error){ console.debug('[RabbitMirror] 稍后保存聊天的请求没有发出：',error); return; }
+ if(saving && typeof saving.then==='function'){
+  Promise.resolve(saving).then(()=>confirmChatSave(request,snapshot),error=>console.debug('[RabbitMirror] 聊天没有存上，兔子镜的这一版仍算未保存：',error));
+ }
 }
 
 function chatOwnerKey(index,swipe=0){
@@ -836,7 +924,13 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  if(session) session[ownerKey]=next;
  const base=messageBaseSlotKey(ctx,index,msg);
  const savedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),next);
+ // 这一层的版本存档要换成新的这份：读回确认之前，旧的那条确认记录作废。
+ const archiveToken=next.deleted?null:{slot:savedSlot,html:String(next.html||'')};
+ archivedOutputVersions.delete(base);
+ const archiveTokenRef={token:archiveToken};
+ latestArchiveTokens.set(base,archiveTokenRef);
  void saveFaceSwipeArchive(base,next).then(({saved,row})=>{
+  if(saved && archiveToken?.slot && latestArchiveTokens.get(base)===archiveTokenRef && String(row?.record?.html||'')===archiveToken.html) archivedOutputVersions.set(base,archiveToken);
   // Only a completed, read-back archive transaction can dismiss a current-work
   // warning when the separate localStorage cache refused the same record.
   if(saved) clearSavedIndependentOutputNotices({...readStore(),[savedSlot]:row.record});
@@ -845,12 +939,27 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  }).catch(()=>{});
  if(!metadata) return !!session;
  if(state.owners?.[ownerKey] && JSON.stringify(state.owners[ownerKey])===JSON.stringify(next)) return false;
- state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); return true;
+ state.version=CHAT_OUTPUT_METADATA_SCHEMA; state.owners[ownerKey]=next; metadata[CHAT_OUTPUT_METADATA_KEY]=state;
+ // 只是写进了内存里的聊天数据，存盘跑完之前记为「等存盘」（见 confirmChatSave）。
+ markChatOwnerPending(ctx,ownerKey,next.deleted?null:value,savedSlot);
+ saveChatOutputMetadata(ctx); return true;
 }
 
-// 这一版已经写进聊天数据（随聊天文件存盘）：本机缓存满了写不进去时，有这一份就不算没保存。
+// 这一版已经存进聊天文件：本机缓存满了写不进去时，有这一份就不算没保存。
+// 只写进了内存里的聊天数据、存盘还没跑完（或被换聊天取消）的不算——等存盘确认以后提示才收起（confirmChatSave）。
 // 要能真的存盘（酒馆给了存聊天的接口）才算；sourceHash 给了就连正文指纹一起比。
 export function savedInChatFile(ctx,index,msg,html,sourceHash=''){
+ const key=chatOwnerKey(index,swipeId(msg)); if(!key||!html) return false;
+ if(typeof ctx?.saveMetadataDebounced!=='function') return false;
+ const raw=chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
+ if(!raw || raw.deleted===true || String(raw.html||'')!==String(html)) return false;
+ if(chatOwnerPending(ctx,key)) return false;
+ return !sourceHash || String(raw.sourceHash||'')===String(sourceHash);
+}
+
+// 这一版已经写进内存里的聊天数据（等存盘或已存盘都算）：用来决定流程能不能接着往下走（换绑、维修保存）。
+// 它不代表已经存进聊天文件——「尚未保存」提示照样要等 savedInChatFile / confirmChatSave 确认后才收起。
+export function writtenToChatMetadata(ctx,index,msg,html,sourceHash=''){
  const key=chatOwnerKey(index,swipeId(msg)); if(!key||!html) return false;
  if(typeof ctx?.saveMetadataDebounced!=='function') return false;
  const raw=chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
@@ -883,7 +992,7 @@ function mergeChatOutputsIntoLocalStore(ctx,store){
    // older chatMetadata copy is observed before the queued server save finishes,
    // keep the newer local HTML authoritative and immediately heal metadata.
    if(String(existingReady.html||'')!==String(record.html||'') || JSON.stringify(existingReady.ownerLineage)!==JSON.stringify(record.ownerLineage)){
-    state.owners[ownerKey]=existingReady; metadataChanged=true;
+    state.owners[ownerKey]=existingReady; metadataChanged=true; markChatOwnerPending(ctx,ownerKey);
    }
   }else if(!existingReady || String(existingReady.html||'')!==String(record.html||'') || JSON.stringify(existingReady.ownerLineage)!==JSON.stringify(record.ownerLineage)){
    saveRecordForSlot(store,slot,record,{dropLegacy:false}); storeChanged=true;
@@ -910,7 +1019,7 @@ function migrateLegacyLocalOutputsToChatMetadata(ctx,store){
   }
   const compact=compactChatPersistedRecord(record);
   if(!compact?.html || !independentStoredHtmlRestorable(compact.html)) continue;
-  state.owners[ownerKey]=compact; metadataChanged=true;
+  state.owners[ownerKey]=compact; metadataChanged=true; markChatOwnerPending(ctx,ownerKey);
  }
  if(metadataChanged){ metadata[CHAT_OUTPUT_METADATA_KEY]=state; saveChatOutputMetadata(ctx); }
  return {metadataChanged,storeChanged};
@@ -919,6 +1028,10 @@ function migrateLegacyLocalOutputsToChatMetadata(ctx,store){
 export function synchronizeIndependentChatPersistence(ctx,store){
  const imported=mergeChatOutputsIntoLocalStore(ctx,store);
  const migrated=migrateLegacyLocalOutputsToChatMetadata(ctx,store);
+ // 从本机缓存补进聊天数据的那些也要尽快进聊天文件，才能确认已存；走同一个安全存盘（几秒内多次请求合成一次）。
+ if(imported.metadataChanged||migrated.metadataChanged){
+  try{ const last=ctx.chat.length-1; if(last>=0) requestSafeChatSave(ctx,last,ctx.chat[last]); }catch{}
+ }
  return {
   storeChanged:!!(imported.storeChanged||migrated.storeChanged),
   metadataChanged:!!(imported.metadataChanged||migrated.metadataChanged),
@@ -1075,7 +1188,8 @@ export function reconcileIndependentChatOwners(ctx=getContext(),options={}){
    rememberChatMessageOrder(ctx);
    return result;
   }
-  if(ownersPlan.changed){ state.owners=ownersPlan.next; result.changed=true; }
+  // 楼层号整体改了：聊天文件里还是旧楼层号，确认存盘前所有楼层都当作还在等。
+  if(ownersPlan.changed){ state.owners=ownersPlan.next; result.changed=true; markAllChatOwnersPending(ctx); }
   // 只要动了楼层号（聊天文件或本机缓存任何一处），就把对号次数加一，聊天文件和本机同时记下。
   const bumpEpoch=()=>{
    if(!state||typeof state!=='object') return;

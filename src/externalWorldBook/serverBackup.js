@@ -2,9 +2,9 @@
 // 本地数据库被清掉（例如宿主更新时清了网页数据）以后，可以从这份备份一键恢复。
 // 只在导入、启用、改分类、删除等用户操作之后才写；启动时不打开本地库，除非用户开着母本库抽签。
 // 不经过模型，不发到酒馆以外的地方。
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.76.0';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.76.0';
-import { listExternalLibraries } from './store.js?rmv=1.76.0';
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.76.2';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.76.2';
+import { listExternalLibraries } from './store.js?rmv=1.76.2';
 
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;
@@ -30,6 +30,9 @@ function writePendingDeletes(ids) {
 }
 
 let timer = 0;
+// 读不到酒馆备份时自动重试的间隔；用户再操作一次也会重新存。
+const RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
+let retryCount = 0;
 let saving = null;
 let pendingDeleted = new Set(readPendingDeletes().ids);
 let lastStatus = null;
@@ -55,17 +58,36 @@ function base64Utf8(text) {
     return btoa(binary);
 }
 
-/** 读酒馆里的备份；没有备份返回 null，读不到（宿主不支持、网络问题）抛错。 */
+/** 读不到酒馆备份（不是「没有」）：服务器出错、网络断了、文件坏了。这时不能当成没有备份去新建。 */
+export class MotherLibraryServerBackupReadError extends Error {
+    constructor(message, cause) {
+        super(message);
+        this.name = 'MotherLibraryServerBackupReadError';
+        this.readFailed = true;
+        if (cause !== undefined) this.cause = cause;
+    }
+}
+
+/**
+ * 读酒馆里的备份。只有「确定没有」（404、空文件、宿主拿首页顶替的非 JSON）返回 null；
+ * 读不到（宿主不支持、网络问题、5xx、JSON 损坏）一律抛 MotherLibraryServerBackupReadError。
+ */
 export async function readMotherLibraryServerBackup({ fetchImpl = globalThis.fetch } = {}) {
-    if (typeof fetchImpl !== 'function') throw new Error('当前环境不能读取酒馆文件。');
-    const response = await fetchImpl(`${backupUrl()}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
-    if (response.status === 404) return null;
-    if (!response.ok) throw new Error(`读取酒馆备份失败（${response.status}）。`);
-    const text = await response.text();
+    if (typeof fetchImpl !== 'function') throw new MotherLibraryServerBackupReadError('当前环境不能读取酒馆文件。');
+    let response;
+    try { response = await fetchImpl(`${backupUrl()}?t=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' }); }
+    catch (error) { throw new MotherLibraryServerBackupReadError(`读取酒馆备份失败（网络错误：${String(error?.message || error || '原因不明')}）。`, error); }
+    if (response?.status === 404) return null;
+    if (!response?.ok) throw new MotherLibraryServerBackupReadError(`读取酒馆备份失败（${response?.status ?? '无响应'}）。`);
+    let text;
+    try { text = await response.text(); }
+    catch (error) { throw new MotherLibraryServerBackupReadError('读取酒馆备份失败（内容没有读完）。', error); }
     if (!text.trim()) return null;
     // 有的宿主对不存在的文件返回首页 HTML：不是 JSON 就当没有备份。
-    if (!/^\s*[{﻿]/.test(text)) return null;
-    return parseExternalLibraryBackup(text);
+    if (!/^\s*[{\uFEFF]/.test(text)) return null;
+    // 看起来是 JSON 却解析不了：是坏了的备份，不是没有备份。不能拿本机的库把它整个盖掉。
+    try { return parseExternalLibraryBackup(text); }
+    catch (error) { throw new MotherLibraryServerBackupReadError(`酒馆里的母本库备份读不懂（${String(error?.message || error || '格式不对')}），这次没有覆盖它。`, error); }
 }
 
 async function uploadBackup(backup, { fetchImpl = globalThis.fetch, headerProvider = getHostRequestHeaders } = {}) {
@@ -87,10 +109,23 @@ async function uploadBackup(backup, { fetchImpl = globalThis.fetch, headerProvid
  * 所以本机被清空后先导入新库，也不会把酒馆里的旧库覆盖掉。
  */
 export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fetchImpl, headerProvider } = {}) {
-    const deleted = new Set([...pendingDeleted, ...deletedLibraryIds].map(String));
+    // 这次要删的先记进本机：万一下面读备份失败，下次重试时还记得要删。
+    const extra = deletedLibraryIds.map(String);
+    for (const id of extra) pendingDeleted.add(id);
+    if (extra.length) writePendingDeletes([...readPendingDeletes().ids, ...extra]);
+    const deleted = new Set([...pendingDeleted, ...readPendingDeletes().ids, ...extra]);
     const local = validateExternalLibraryBackup(JSON.parse((await exportExternalLibraryBackup()).text));
     let server = null;
-    try { server = await readMotherLibraryServerBackup({ fetchImpl }); } catch { server = null; }
+    try { server = await readMotherLibraryServerBackup({ fetchImpl }); }
+    catch (error) {
+        // 读不到酒馆备份（不是「没有」）：这次不上传，免得只拿本机的库把酒馆里别的设备存的库盖掉。
+        // 待删记号原样留着，记一笔失败，稍后重试。
+        const failure = error?.readFailed ? error : new MotherLibraryServerBackupReadError(String(error?.message || error || '读取酒馆备份失败。'), error);
+        const previous = readStatus();
+        writeStatus({ ok: false, readFailed: true, failedAt: Date.now(), message: `${failure.message}这次没有存，稍后会再试；酒馆里原有的备份没有动。`,
+            savedAt: previous?.savedAt || 0, ...(previous && Number.isFinite(Number(previous.localCount)) ? { localCount: Number(previous.localCount) } : {}) });
+        throw failure;
+    }
     const localIds = new Set(local.libraries.map(item => item.library.libraryId));
     const kept = (server?.libraries || []).filter(item => !localIds.has(item.library.libraryId) && !deleted.has(item.library.libraryId));
     const merged = validateExternalLibraryBackup({ format: EXTERNAL_BACKUP_FORMAT, version: EXTERNAL_BACKUP_VERSION, exportedAt: Date.now(),
@@ -99,6 +134,7 @@ export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fe
     for (const id of deleted) pendingDeleted.delete(id);
     // 这次已经从备份里去掉的不再记；保存期间又删的留着下次。
     writePendingDeletes(readPendingDeletes().ids.filter(id => !deleted.has(id) || pendingDeleted.has(id)));
+    retryCount = 0;
     // localCount：存的时候本机有几本。之后本机变空时，靠它分辨「被宿主清掉了」还是「自己删光的」。
     const status = { ok: true, savedAt: merged.exportedAt, libraryCount: merged.libraries.length, localCount: local.libraries.length,
         entryCount: merged.libraries.reduce((sum, item) => sum + item.entries.length, 0), keptFromServer: kept.length };
@@ -117,8 +153,14 @@ export function scheduleMotherLibraryServerBackup({ deletedLibraryIds = [] } = {
         const run = async () => {
             try { await saveMotherLibraryServerBackup(); }
             catch (error) {
-                writeStatus({ ok: false, failedAt: Date.now(), message: String(error?.message || error || '存进酒馆备份失败。'), savedAt: readStatus()?.savedAt || 0 });
+                // 读备份失败时 save 已经记过状态（带 readFailed），这里不再覆盖。
+                if (!error?.readFailed) writeStatus({ ok: false, failedAt: Date.now(), message: String(error?.message || error || '存进酒馆备份失败。'), savedAt: readStatus()?.savedAt || 0 });
                 console.warn('[RabbitMirror] 母本库酒馆备份没有存上', error);
+                // 读不到酒馆备份多半是一时的（服务器忙、网络断）：隔一会儿自动再试几次。
+                if (error?.readFailed && retryCount < RETRY_DELAYS_MS.length) {
+                    const delay = RETRY_DELAYS_MS[retryCount++];
+                    if (!timer) timer = setTimeout(() => { timer = 0; scheduleMotherLibraryServerBackup(); }, Math.max(0, delay - SAVE_DELAY_MS));
+                }
             }
         };
         saving = (saving || Promise.resolve()).then(run, run).finally(() => { saving = null; });

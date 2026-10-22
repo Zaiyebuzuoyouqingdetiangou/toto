@@ -1,12 +1,13 @@
 // Split from outputSanitizer.js — idsAndRearm.
 
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.2';
 import {
     RABBIT_MIRROR_CSS_SCOPE_ATTR,
     escapeCssIdentifier,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.76.0';
+} from './runtime.js?rmv=1.76.2';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -22,26 +23,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.76.0';
+} from './checkedStateRescue.js?rmv=1.76.2';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.76.0';
+} from './scriptedInteractionRescue.js?rmv=1.76.2';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.76.0';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.76.0';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.76.0';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.76.0';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.76.0';
-import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.76.0';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.76.0';
-import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.76.0';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.76.0';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.76.0';
+} from './fallbackRescue.js?rmv=1.76.2';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.76.2';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.76.2';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.76.2';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.76.2';
+import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.76.2';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.76.2';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.76.2';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.76.2';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.76.2';
 
 let interactionScopeCounter = 0;
 
@@ -775,6 +776,9 @@ export function rearmRabbitMirrorSerializedInteractionRoot(root) {
     delete root.dataset?.rabbitMirrorSelfMutationFallback;
     delete root.dataset?.rabbitMirrorInertActionFallback;
     delete root.dataset?.rabbitMirrorTargetFallback;
+    // 「只有状态类、没有触发器」的开关：接线记号随 outerHTML 留下、监听却丢了（收藏重开、缓存还原、副本）。
+    // 按记号原样接回，免得看着像接过线、点了却不动；没接过线的主体不碰，接过的不重复接。
+    try { rearmOrphanStateWiring(root); } catch { /* 接不回就保持原样 */ }
     return cleared;
 }
 

@@ -1,29 +1,29 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.76.0';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.76.0';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.76.0';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.76.2';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.76.2';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.76.2';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.76.0';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.76.0';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.0';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.76.2';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.76.2';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.2';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.76.0';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.76.0';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.76.0';
-import { getSettings } from '../settings.js?rmv=1.76.0';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.76.0';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.76.0';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.76.0';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.76.2';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.76.2';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.76.2';
+import { getSettings } from '../settings.js?rmv=1.76.2';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.76.2';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.76.2';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.76.2';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.76.0';
+} from '../independentSecurityGuard.js?rmv=1.76.2';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.76.0';
+} from '../advancedRequestOptions.js?rmv=1.76.2';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -32,15 +32,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.76.0';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.76.0';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.76.0';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.76.0';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.76.0';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.76.0';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.76.0';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.0';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.76.0';
+} from '../promptBuilder.js?rmv=1.76.2';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.76.2';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.76.2';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.76.2';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.76.2';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.76.2';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.76.2';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.2';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.76.2';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -49,9 +49,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.76.0';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.76.0';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.76.0';
+} from '../storage.js?rmv=1.76.2';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.76.2';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.76.2';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -62,8 +62,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.76.0';
-import { operationEpochForBase } from './flights.js?rmv=1.76.0';
+} from './runtime.js?rmv=1.76.2';
+import { operationEpochForBase } from './flights.js?rmv=1.76.2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -78,7 +78,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.76.0';
+} from './persistence.js?rmv=1.76.2';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -114,7 +114,7 @@ import {
     swipeId,
     validatedIndependentConnectionProfile,
     connectionProfileSecretState,
-} from './connection.js?rmv=1.76.0';
+} from './connection.js?rmv=1.76.2';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -125,7 +125,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.76.0';
+} from './geometry.js?rmv=1.76.2';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -140,8 +140,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.76.0';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.76.0';
+} from './mount.js?rmv=1.76.2';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.76.2';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -430,8 +430,11 @@ async function readApiResponse(response,{expectedStream=false,signal=null,onProg
     const {done,value}=await reader.read();
     if(done){reachedEof=true;break;}
     receivedBytes+=Number(value?.byteLength||0);
-    onProgress?.('response-chunk');
+    // 只有真写出了字才算「在写」：会思考的模型先只发一个空的开头帧、保活注释，然后安静地想很久，
+    // 这类帧不该当成「已经开始写了」去启动 90 秒没动静就掐断的计时。
+    const textBefore=incremental.state.text.length;
     incremental.push(decoder.decode(value,{stream:true}));
+    onProgress?.(incremental.state.text.length>textBefore?'response-chunk':'response-frame');
     // [DONE] is a successful protocol terminal, not a cancellation. Cancelling
     // the reader here closes SillyTavern's request socket and can make its
     // backend abort an already successful provider request. Return immediately
@@ -915,7 +918,7 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
   includePreset:false,
   includeInstruct:false,
  },overrides);
- options.onProgress?.('connection-manager-response');
+ options.onProgress?.('response-headers'); // 流式时这里只是拿到了响应头，还没写字。
  let text=''; let terminatedAfterComplete=false; const observedHidden={}; let finishReason='unknown';
  const observeFinish=value=>{
   const raw=String(value?.finish_reason ?? value?.choices?.[0]?.finish_reason ?? value?.stop_reason ?? value?.candidates?.[0]?.finishReason ?? '').trim().toLowerCase();
@@ -1029,16 +1032,18 @@ async function requestIndependentConnectionProfileCompletion(runtime,profile,opt
   if(!generator || typeof generator[Symbol.asyncIterator]!=='function') throw new Error('Connection Manager 返回的流式结果格式无效。');
   try{
    for await(const frame of generator){
-    options.onProgress?.('connection-manager-frame');
     const reportedError=connectionProfileApiError(frame);
     if(reportedError) throw reportedError;
     observeFinish(frame);
     const incoming=textFromContent(frame?.text ?? frame?.content ?? '');
+    let grew=false;
     if(incoming){
      const previousText=text;
      text=mergeIndependentStreamText(text,incoming);
-     if(text!==previousText) appendIncrementalResponseString('text',previousText,text);
+     if(text!==previousText){ appendIncrementalResponseString('text',previousText,text); grew=true; }
     }
+    // 和直连流式一样：只带思考内容、没写出正文的帧不算「已经开始写」。
+    options.onProgress?.(grew?'response-chunk':'response-frame');
     const hiddenKeys=[];
     if(frame && typeof frame==='object'){
      let hiddenScanWork=0;
@@ -1763,7 +1768,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.76.0').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.76.2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1976,7 +1981,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.76.0');}
+  try{module=await import('../appearanceReference.js?rmv=1.76.2');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;

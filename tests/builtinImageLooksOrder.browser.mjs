@@ -194,6 +194,100 @@ assert.doesNotMatch(JSON.stringify(k.request.characters || []), /black cloak|黑
 assert.match(JSON.stringify(k.request.characters || []), /auburn hair/); checks++;
 await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksModel: true }); });
 
+// 建档重名：两份「阿松」、一份「阿松儿」。图框写「阿松」时不猜、也不宽松认到「阿松儿」头上，保留这一面自己写的发色。
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [
+    { name: '阿松', tag: '1boy, grey hair', nl: '灰色短发' }, { name: '阿松', tag: '1boy, white hair', nl: '白色短发' }, { name: '阿松儿', tag: '1girl, red hair', nl: '红色长发' },
+] }); });
+const amb = await draw(`<p data-rm-draw-char="阿松" hidden>棕色短发的少年</p><p data-rm-draw-char-tags="阿松" hidden>1boy, brown hair</p>`);
+const amb1 = (amb.request.characters || []).find(item => item.name === '阿松') || {};
+assert.match(amb1.nl || '', /棕色短发/, '重名不猜，保留这一面写的'); checks++;
+assert.match(amb1.tag || '', /brown hair/); checks++;
+assert.doesNotMatch(JSON.stringify(amb.request.characters || []), /红色长发|red hair|灰色短发|白色短发/, '不认到阿松儿、也不挑一份重名的'); checks++;
+const amb2 = await draw(`<p data-rm-draw-char="阿松（少年）" hidden>棕色短发的少年</p>`);
+assert.doesNotMatch(JSON.stringify(amb2.request.characters || []), /红色长发|灰色短发|白色短发/, '加了后缀的也不猜'); checks++;
+// 宽松认人只认名字边界：建档只有「阿松儿」时，「阿松」不是他
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿松儿', tag: '1girl, red hair', nl: '红色长发' }] }); });
+const amb3 = await draw(`<p data-rm-draw-char="阿松" hidden>棕色短发的少年</p>`);
+assert.doesNotMatch(JSON.stringify(amb3.request.characters || []), /红色长发/); checks++;
+assert.match(JSON.stringify(amb3.request.characters || []), /棕色短发/); checks++;
+// 千千结同样：两份「阿松」加一份「阿松儿」，图框写「阿松」时不用任何一份
+await page.evaluate(() => {
+    window.STBaiBaiImage.getCharacters = () => ({ characters: [] });
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status: 'ready', identity: { hostChatId: 'c' }, people: { status: 'ready', items: [
+        { entityId: 'a', displayName: '阿松', aliases: [], profile: { name: '阿松', hair: '灰色短发' } },
+        { entityId: 'b', displayName: '阿松', aliases: [], profile: { name: '阿松', hair: '白色短发' } },
+        { entityId: 'c', displayName: '阿松儿', aliases: [], profile: { name: '阿松儿', hair: '红色长发' } },
+    ] } }) };
+});
+const amb4 = await draw(`<p data-rm-draw-char="阿松" hidden>棕色短发的少年</p>`);
+assert.doesNotMatch(JSON.stringify(amb4.request.characters || []), /红色长发|灰色短发|白色短发/); checks++;
+assert.match(JSON.stringify(amb4.request.characters || []), /棕色短发/); checks++;
+// 千千结快照没准备好、或者不是当前聊天的：不用
+const myriadOnly = (status, hostChatId) => page.evaluate(([status, hostChatId]) => {
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status, identity: { hostChatId }, people: { status, items: [
+        { entityId: 'e1', displayName: '阿松', aliases: ['松儿'], profile: { name: '阿松', hair: '灰色短发' } },
+    ] } }) };
+    return window.images.myriadPeopleLooks().map(person => person.name);
+}, [status, hostChatId]);
+assert.deepEqual(await myriadOnly('ready', 'c'), ['阿松']); checks++;
+assert.deepEqual(await myriadOnly('ready', 'other-chat'), [], '别的聊天的快照不用'); checks++;
+assert.deepEqual(await myriadOnly('loading', 'c'), [], '没准备好的不用'); checks++;
+
+// 开了生图 LLM：千千结单独一栏（myriadCharacters，带 source），排在角色卡/Persona 之后、世界书之前，不冒充建档；
+// 先认出这一面提到的人再算名额，24 份无关建档挤不掉这一面出场的千千结人物。
+await page.evaluate(async query => {
+    const ext = await import('/extensions.js');
+    Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLlmEnabled: true, imageLlmBaseUrl: 'http://127.0.0.1:9/v1', imageLlmModel: 'm' });
+    window.planModule = await import('/src/imagePlan.js?' + query);
+    window.__planInputs = [];
+    window.__rabbitMirrorIndependentActionsV1 = { prepareImageTarget: details => ({ floor: 0, faceText: details.textContent, plan: async input => {
+        window.__planInputs.push({ input: JSON.parse(JSON.stringify(input)), faceText: details.textContent });
+        return { prompt: '1boy, standing', flatPrompt: '1boy, standing', nl: '', characters: [], promptFormat: 'nai5-natural' };
+    } }) };
+    window.STBaiBaiImage.getCharacters = () => ({ characters: Array.from({ length: 24 }, (_, i) => ({ name: `某教弟子${i + 1}号`, tag: '1boy, black hair', nl: '黑发' })) });
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status: 'ready', identity: { hostChatId: 'c' }, people: { status: 'ready', items: [
+        { entityId: 'e1', displayName: '阿松', aliases: ['松儿'], profile: { name: '阿松', hair: '灰色短发', eyes: '琥珀色眼睛' } },
+        { entityId: 'e2', displayName: '阿岩', aliases: [], profile: { name: '阿岩', hair: '紫色长发' } },
+    ] } }) };
+}, query);
+const planOf = async chars => {
+    await page.evaluate(() => { window.__planInputs.length = 0; });
+    const result = await draw(chars);
+    const captured = await page.evaluate(() => window.__planInputs[0] || null);
+    assert.ok(result.request && captured, '规划后发出了生图请求'); checks++;
+    const built = await page.evaluate(({ input, faceText }) => window.planModule.buildImagePlanningPrompt({ ...input, faceText, character: { name: '阿雪' }, persona: { name: '阿竹' } }), captured);
+    const row = built.userPrompt.split('\n').find(line => line.startsWith('{'));
+    return { input: captured.input, materials: JSON.parse(row), systemPrompt: built.systemPrompt };
+};
+const llm = await planOf(`<p data-rm-draw-char="松儿" hidden>黑发少年，披着斗篷</p>`);
+assert.deepEqual(llm.input.myriadCharacters, [{ name: '松儿', tag: '', nl: '灰色短发，琥珀色眼睛', source: '千千结' }], '24 份无关建档挤不掉；阿岩没出场不带'); checks++;
+assert.ok(llm.input.publicCharacters.every(person => person.source !== '千千结'), '建档一栏里没有千千结'); checks++;
+assert.ok(llm.input.publicCharacters.length + llm.input.myriadCharacters.length <= 24); checks++;
+assert.deepEqual(llm.materials.myriadCast, [{ name: '松儿', nl: '灰色短发，琥珀色眼睛' }]); checks++;
+assert.ok(!llm.materials.publicCharacters.some(person => person.name === '松儿'), '规划材料里千千结不进角色库（建档）'); checks++;
+assert.match(llm.systemPrompt, /角色卡\/Persona → materials\.myriadCast（千千结人物档案[^）]*排在角色卡\/Persona 之后、worldBookCast 之前）→ materials\.worldBookCast/); checks++;
+// 老调用方把千千结混在 publicCharacters（带 source）里：规划材料照样分到 myriadCast，不当建档
+const legacy = await page.evaluate(() => window.planModule.buildImagePlanningPrompt({ faceText: '松儿和阿岩说话', publicCharacters: [{ name: '阿岩', tag: '1boy', nl: '' }, { name: '松儿', tag: '', nl: '灰色短发', source: '千千结' }] }));
+const legacyRow = JSON.parse(legacy.userPrompt.split('\n').find(line => line.startsWith('{')));
+assert.deepEqual(legacyRow.publicCharacters.map(person => person.name), ['阿岩']); checks++;
+assert.deepEqual(legacyRow.myriadCast, [{ name: '松儿', nl: '灰色短发' }]); checks++;
+// 同一个叫法对上两份千千结档案：不猜
+await page.evaluate(() => {
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status: 'ready', people: { status: 'ready', items: [
+        { entityId: 'e1', displayName: '阿松', aliases: ['松儿'], profile: { name: '阿松', hair: '灰色短发' } },
+        { entityId: 'e3', displayName: '阿柏', aliases: ['松儿'], profile: { name: '阿柏', hair: '白色短发' } },
+    ] } }) };
+});
+const llm2 = await planOf(`<p data-rm-draw-char="松儿" hidden>黑发少年</p>`);
+assert.deepEqual(llm2.input.myriadCharacters, []); checks++;
+// 建档里已经有这个人：千千结不再给第二份
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿松', tag: '1boy, grey hair', nl: '灰色短发' }] });
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status: 'ready', people: { status: 'ready', items: [{ entityId: 'e1', displayName: '阿松', aliases: [], profile: { name: '阿松', hair: '紫色短发' } }] } }) }; });
+const llm3 = await planOf(`<p data-rm-draw-char="阿松" hidden>黑发少年</p>`);
+assert.deepEqual(llm3.input.myriadCharacters, []); checks++;
+assert.equal(llm3.input.publicCharacters[0]?.name, '阿松', '这一面提到的建档排前面'); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLlmEnabled: false }); delete globalThis.qqj_v3_public_bridge_v1; delete window.__rabbitMirrorIndependentActionsV1; });
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

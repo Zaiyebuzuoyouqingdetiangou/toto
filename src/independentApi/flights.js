@@ -1,9 +1,9 @@
 // Split from independentApi.js — flights.
 
-import { getSettings } from '../settings.js?rmv=1.76.0';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.76.0';
-import { baseSlotOf } from './connection.js?rmv=1.76.0';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.76.0';
+import { getSettings } from '../settings.js?rmv=1.76.2';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.76.2';
+import { baseSlotOf } from './connection.js?rmv=1.76.2';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.76.2';
 
 export const pending = new Map();
 // A failed automatic generation owns its exact chat+mesid+swipe+sourceHash until
@@ -110,7 +110,7 @@ export function clearAutomaticFailureStop(slot='',sourceHash=''){ automaticFailu
 export function clearAutomaticFailureStops(){ automaticFailureStops.clear(); }
 
 export function createIndependentRequestDeadline(controller,onTimeout,options={}){
- let idleTimer=0; let absoluteTimer=0; let settled=false; let lastProgressAt=Date.now();
+ let idleTimer=0; let absoluteTimer=0; let settled=false; let lastProgressAt=Date.now(); let contentStarted=false;
  const idleMs=Number(options.idleMs);
  const absoluteMs=Number(options.absoluteMs);
  const idleWait=Number.isFinite(idleMs)&&idleMs>0?idleMs:configuredAutomaticRerollIdleMs(getSettings());
@@ -151,8 +151,11 @@ export function createIndependentRequestDeadline(controller,onTimeout,options={}
    absoluteTimer=setTimeout(()=>fail('absolute'),absoluteWait);
    return true;
   }
-  if(kind==='request-sent'){ if(idleTimer) clearTimeout(idleTimer); idleTimer=0; }
-  else if(kind!=='response-headers') armIdle();
+  // 新发一次请求（逐面生成的下一面、换参数重试）：重新算「还没写字」。
+  if(kind==='request-sent'){ if(idleTimer) clearTimeout(idleTimer); idleTimer=0; contentStarted=false; }
+  // 没有字的帧（开头的空帧、保活）：还没开始写字时不启动「没动静就掐断」，交给 20 分钟总上限；已经在写了才照常续命。
+  else if(kind==='response-frame'){ if(contentStarted) armIdle(); }
+  else if(kind!=='response-headers'){ if(kind==='response-chunk') contentStarted=true; armIdle(); }
   return true;
  },
   clear(){
