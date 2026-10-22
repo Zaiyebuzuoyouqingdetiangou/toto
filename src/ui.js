@@ -836,10 +836,10 @@ export function initRabbitMirrorUI() {
         updateSettings({ facePagerPosition: e.target.value });
         refreshFacePagerPositions(document, getSettings().facePagerPosition);
     });
+    $('#rh_image_composition').val(settings.imageCompositionMode || 'scene').on('change', e => updateSettings({ imageCompositionMode: e.target.value }));
     for (const [id, key] of [['#rh_image_looks_library', 'imageLooksLibrary'], ['#rh_image_looks_card', 'imageLooksCard'], ['#rh_image_looks_world_book', 'imageLooksWorldBook'], ['#rh_image_looks_model', 'imageLooksModel']]) {
         $(id).prop('checked', settings[key] !== false).on('change', e => updateSettings({ [key]: e.target.checked === true }));
     }
-    $('#rh_image_composition').val(settings.imageCompositionMode || 'scene').on('change', e => updateSettings({ imageCompositionMode: e.target.value }));
     $('#rh_character_world_book').prop('checked', settings.independentReadCharacterWorldBook === true).on('change', e => updateSettings({ independentReadCharacterWorldBook: e.target.checked === true }));
     $('#rh_behavior_rule_status').text(settings.behaviorRuleMode === 'off' ? '当前：不注入；已保存的内容仍保留。' : settings.behaviorRuleMode === 'adult-only' ? '当前：仅在抽到成人内容时向独立 API 注入。' : '当前：每轮向独立 API 注入已保存内容。');
     $('#rh_behavior_rule_mode').on('change', () => {
