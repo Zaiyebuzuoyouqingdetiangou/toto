@@ -1,6 +1,6 @@
-import { getSettings, updateSettings } from './settings.js?rmv=1.76.11';
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.76.11';
-import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.76.11';
+import { getSettings, updateSettings } from './settings.js?rmv=1.76.12';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.76.12';
+import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.76.12';
 
 const owners = new WeakMap();
 const MODE_LABELS = { none: '不追加', random: '随机抽取' };
