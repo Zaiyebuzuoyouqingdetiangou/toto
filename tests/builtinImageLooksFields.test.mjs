@@ -45,6 +45,42 @@ test('clothing removal does not eat colour, skin or verb words right before the 
     assert.equal(english, 'Silver hair, blue eyes');
 });
 
+test('follow-up cases: verb with modifiers, hair length after hair colour, conflicting skin and mole, underscore tags', () => {
+    const cleared = withoutSceneText('身穿精致白裙的她皮肤雪白且眼下有红痣', clothing);
+    assert.match(cleared, /皮肤雪白/);
+    assert.match(cleared, /红痣/);
+    assert.doesNotMatch(cleared, /白裙|精致/);
+    assert.doesNotMatch(withoutSceneText('穿过长廊，黑发', clothing), /^$/);
+
+    const hair = { name: '阿雪', text: '', modelTag: '' };
+    fillLooksFrom(hair, '黑发。', '人设');
+    fillLooksFrom(hair, '阿雪：一头银色及腰长直发，齐刘海。', '世界书');
+    assert.match(hair.text, /及腰长直发/);
+    assert.match(hair.text, /齐刘海/);
+    assert.doesNotMatch(hair.text, /银色/);
+
+    const skin = { name: '阿竹', text: '黝黑皮肤，左眼下一颗黑痣，穿着蓝衣', modelTag: 'dark skin, mole under left eye, blue dress' };
+    fillLooksFrom(skin, '雪白皮肤，右眼下一颗红痣。', '人设');
+    assert.match(skin.text, /雪白皮肤/);
+    assert.match(skin.text, /右眼下一颗红痣/);
+    assert.doesNotMatch(skin.text, /黝黑|黑痣/);
+    assert.match(skin.text, /蓝衣/);
+    assert.equal(skin.modelTag, 'blue dress');
+
+    assert.equal(mergeTagLists('silver hair', 'black_hair, long_hair'), 'silver hair, long_hair');
+    // 去掉模型写的同一项时，同一句里的动作、表情、姿势照留；身材、脸不去。
+    const action = { name: '阿岩', text: '眉眼含笑地看着他，高挑的身材倚在门边，皮肤被晒得发红，捂着脸上的伤疤哭泣', modelTag: 'smile, lips parted, face down, tall grass, scar on hand' };
+    fillLooksFrom(action, '白皙皮肤，脸颊有一道疤，身材高挑，瓜子脸。', '世界书');
+    for (const word of ['眉眼含笑地看着他', '倚在门边', '晒得发红', '哭泣']) assert.match(action.text, new RegExp(word));
+    assert.equal(action.modelTag, 'smile, lips parted, face down, tall grass, scar on hand');
+    assert.equal(withoutSceneText('站着，穿着紫色眼睛般的长裙', clothing).includes('紫色眼睛'), true);
+    const marks = { name: '阿松', text: '她鼻尖的雀斑，脸上有些雀斑，手背上有块胎记，眼下一颗小痣，皮肤白得近乎透明，白色皮肤，坐着', modelTag: 'dark-skinned female, freckles, smile' };
+    fillLooksFrom(marks, '皮肤雪白，左眼下一颗泪痣。', '人设');
+    assert.doesNotMatch(marks.text, /雀斑|胎记|小痣|白得|白色皮肤|鼻尖的|有些|有块/);
+    assert.match(marks.text, /坐着/);
+    assert.equal(marks.modelTag, 'female, smile');
+});
+
 test('looks are filled per field: card hair only does not stop the world book filling eyes, skin and mole', () => {
     const person = { name: '阿雪', text: '蓝色眼睛，穿着红衣在雪中回眸', modelTag: 'blue eyes, red dress' };
     fillLooksFrom(person, '黑发。', '人设');
@@ -113,6 +149,10 @@ test('one oversized world-book entry is trimmed to a valid JSON row, so its look
     assert.ok(rows.length >= 1);
     for (const line of rows) assert.doesNotThrow(() => JSON.parse(line));
     assert.match(appearanceFromCast(cast.text, '阿松'), /墨绿色眼睛/);
+    // 长相写在一大段身世后面、离名字很远：也要留得住。
+    const far = '阿松，' + '身世'.repeat(2500) + '。阿松的眼睛是琥珀色，左眼下一颗泪痣。' + '往事'.repeat(2500);
+    const farCast = await readCharacterWorldBookContext({ characterId: 0, characters: [{ name: '甲', data: { character_book: { name: '书', entries: [{ content: far, enabled: true, comment: '阿松', keys: ['阿松'] }] } } }] }, { focusText: '阿松', onlyMentioned: true, maxChars: 4000 });
+    assert.match(appearanceFromCast(farCast.text, '阿松'), /琥珀色/);
 });
 
 test('image LLM plan keeps a person with natural-language looks but no English tag (NAI 5 only)', () => {

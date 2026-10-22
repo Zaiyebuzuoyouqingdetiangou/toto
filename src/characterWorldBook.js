@@ -150,6 +150,17 @@ export async function readCharacterWorldBookContext(ctx, {
                     if (look >= 0) spans.push({ start, end, rank: (own.has(anchor) ? 0 : 10000) + look });
                 }
             }
+            // 标题就是这个人的长条目：长相常写在一大段身世后面，离名字很远。整条里写长相的那几处也各留一段（排在名字附近的那几段后面）。
+            if ([...own].some(value => String(item.title || '').includes(value))) {
+                const words = new RegExp(APPEARANCE_WORDS.source, `${APPEARANCE_WORDS.flags.replace('g', '')}g`);
+                let match, count = 0;
+                while ((match = words.exec(item.content)) && count < 6) {
+                    const at = match.index;
+                    if (spans.some(span => at >= span.start && at < span.end)) continue;
+                    count += 1;
+                    spans.push({ start: safe(item.content, Math.max(0, at - 60)), end: safe(item.content, Math.min(item.content.length, at + 240)), rank: 5000 + count });
+                }
+            }
             if (!spans.length) continue;
             spans.sort((a, b) => a.rank - b.rank);
             const merged = [];
