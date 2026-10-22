@@ -516,10 +516,33 @@ async function imageCharacters(floor) {
 // 没开生图 LLM 时，外貌原来只靠兔子镜模型顺手写的一句；用户在柏宝绘角色库／智绘姬角色预设里配好的外貌没用上。
 // 这里按原名把角色库里唯一对得上的那份外貌放在前面，模型写的接在后面（两边都留，不互相覆盖）；
 // 模型漏写了外貌、但画面里点了角色卡或 Persona 的名字时，也从角色库补上这个人。
+// 重名的几份档案（两份「阿雪」）谁都不用，名字记进 ambiguous：这一面写的正是这个名字时不再往别的名字上宽松去认，保留这一面原有的写法。
 function uniqueLibrary(list) {
     const counts = new Map();
     for (const person of list) counts.set(person.name, (counts.get(person.name) || 0) + 1);
-    return new Map(list.filter(person => person.name && counts.get(person.name) === 1).map(person => [person.name, person]));
+    const unique = new Map(list.filter(person => person.name && counts.get(person.name) === 1).map(person => [person.name, person]));
+    const ambiguous = new Set([...counts.keys()].filter(name => name && counts.get(name) > 1));
+    return { unique, ambiguous };
+}
+
+// 名字宽松对应：模型给名字加了后缀（「阿雪（少女）」「阿雪 少女」）时认作同一个人。
+// 只认落在名字边界上的包含，「阿雪儿」不算「阿雪」，「阿雪」也不算「阿雪儿」。
+const NAME_BOUNDARY = /[\s（）()【】\[\]「」『』《》<>·・_\-—~～:：,，、;；\/|｜]/;
+function looseNameMatch(a, b) {
+    a = String(a || ''); b = String(b || '');
+    if (a.length < 2 || b.length < 2 || a === b) return false;
+    const [short, long] = a.length < b.length ? [a, b] : [b, a];
+    if (short.length === long.length) return false;
+    if (long.startsWith(short) && NAME_BOUNDARY.test(long[short.length])) return true;
+    return long.endsWith(short) && NAME_BOUNDARY.test(long[long.length - short.length - 1]);
+}
+// 这段字里提到了 key 吗：比它长、又包含它的别的名字（「阿雪儿」之于「阿雪」）先挖掉再找。
+function mentionedIn(text, key, keys = []) {
+    key = String(key || '');
+    if (!key) return false;
+    let rest = String(text || '');
+    for (const other of [...new Set(keys)].map(String).filter(other => other.length > key.length && other.includes(key)).sort((a, b) => b.length - a.length)) rest = rest.split(other).join('\u0000');
+    return rest.includes(key);
 }
 
 // 衣着、发型：这一幕穿什么、头发怎么梳随剧情变。兔子镜这一面给这个人写了衣着时，建档、角色卡、世界书里写的衣着那几句／那几个标签不再发，
@@ -668,6 +691,14 @@ export function myriadPeopleLooks() {
     if (!bridge || typeof bridge.getPeopleSnapshot !== 'function') return [];
     let snapshot;
     try { snapshot = bridge.getPeopleSnapshot(); } catch { return []; }
+    // 只用准备好的、属于当前聊天的快照：切换聊天后千千结还没换过来时，上一个聊天的人不能套到这里。
+    if (snapshot?.status !== 'ready' && snapshot?.people?.status !== 'ready') return [];
+    const hostChatId = String(snapshot?.identity?.hostChatId ?? snapshot?.people?.identity?.hostChatId ?? '');
+    if (hostChatId) {
+        let current = '';
+        try { const ctx = getContext(); current = String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? ''); } catch { current = ''; }
+        if (hostChatId !== current) return [];
+    }
     const items = Array.isArray(snapshot?.people?.items) ? snapshot.people.items : [];
     return items.map(item => {
         const profile = item?.profile && typeof item.profile === 'object' ? item.profile : {};
@@ -682,8 +713,8 @@ function myriadEntryFor(list, name) {
     const exact = list.filter(person => person.name === name || person.aliases.includes(name));
     if (exact.length === 1) return exact[0];
     if (exact.length > 1) return null;
-    // 模型给名字加了后缀（「甲（少女）」）：唯一包含／被包含的那个。
-    const loose = list.filter(person => [person.name, ...person.aliases].some(key => key.length >= 2 && name.length >= 2 && (name.includes(key) || key.includes(name))));
+    // 模型给名字加了后缀（「甲（少女）」）：唯一在名字边界上包含／被包含的那个（「阿雪儿」不算「阿雪」）。
+    const loose = list.filter(person => [person.name, ...person.aliases].some(key => looseNameMatch(name, key)));
     return loose.length === 1 ? loose[0] : null;
 }
 async function withMyriadAppearance(people, frame, tagsOnly) {
@@ -755,16 +786,19 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
     const floorValue = Number(details?.dataset?.rabbitMirrorOwnerMesid);
     const floor = Number.isSafeInteger(floorValue) && floorValue >= 0 ? floorValue : undefined;
     const raw = await imageCharacters(floor);
-    const library = uniqueLibrary((Array.isArray(raw) ? raw : []).map(person => ({
+    const { unique: library, ambiguous } = uniqueLibrary((Array.isArray(raw) ? raw : []).map(person => ({
         name: String(person?.name || '').trim(), tag: String(person?.tag || '').trim(), nl: String(person?.nl || '').trim(),
     })).filter(person => person.name && (person.tag || person.nl)));
     if (!library.size) return people;
     // 建档角色排第一：它写了发色／瞳色的，模型写的同类词去掉，不让两种发色一起发给生图。
-    // 模型给名字加了后缀（「甲（少女）」）时，按建档里唯一包含／被包含的那个名字认。
-    const entryFor = name => library.get(name) || (() => {
-        const hits = [...library.keys()].filter(key => key.length >= 2 && name.length >= 2 && (name.includes(key) || key.includes(name)));
-        return hits.length === 1 ? library.get(hits[0]) : null;
-    })();
+    // 模型给名字加了后缀（「甲（少女）」）时，按建档里唯一在名字边界上包含／被包含的那个名字认。
+    // 这个名字本身在建档里重名：不猜，也不宽松认到别人（「阿雪儿」）头上；宽松认到的名字里有重名的也不认。
+    const entryFor = name => {
+        if (library.has(name)) return library.get(name);
+        if (ambiguous.has(name)) return null;
+        const hits = [...library.keys(), ...ambiguous].filter(key => looseNameMatch(name, key));
+        return hits.length === 1 && library.has(hits[0]) ? library.get(hits[0]) : null;
+    };
     const merged = people.map(person => {
         const entry = entryFor(person.name);
         if (!entry) return { ...person };
@@ -781,8 +815,8 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
     const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
     for (const name of owners) {
         // 这个人已经在了（含模型加了后缀的写法）就不再补一条，免得同一个人发成两条。
-        if (merged.length >= 4 || merged.some(person => person.name === name || (name.length >= 2 && (person.name.includes(name) || name.includes(person.name))))) continue;
-        if (!library.has(name) || !String(prompt || '').includes(name)) continue;
+        if (merged.length >= 4 || merged.some(person => person.name === name || looseNameMatch(person.name, name))) continue;
+        if (!library.has(name) || !mentionedIn(prompt, name, [...library.keys(), ...ambiguous, ...merged.map(person => person.name)])) continue;
         merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly), libraryTag: String(library.get(name)?.tag || ''), fromLibrary: true, looksSource: '建档' });
     }
     return merged.filter(person => person.text || person.libraryTag || person.modelTag);
@@ -828,20 +862,36 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         if (!target?.plan) throw planningFailure();
         const focus = readPrompt(frame, { cleanTitle: true });
         const looksSettings = getSettings();
-        const publicCharacters = looksSettings.imageLooksLibrary !== false ? [...(await imageCharacters(target.floor) || [])] : [];
-        // 千千结的人物档案排在建档之后：建档里已经有的人不再给第二份。
-        if (looksSettings.imageLooksMyriad !== false) {
-            const have = new Set(publicCharacters.map(person => String(person?.name || '').trim()));
-            // 这一面只写了别名（「松儿」）时，用这一面写的那个叫法，生图 LLM 那边按名字对这一面的字。
-            const faceText = `${frame?.closest?.('details')?.textContent || ''} ${readCharacters(frame).map(person => person.name).join(' ')}`;
-            for (const person of myriadPeopleLooks()) {
-                const name = [person.name, ...person.aliases].find(key => faceText.includes(key)) || person.name;
-                if (!have.has(person.name) && !have.has(name) && publicCharacters.length < 24) publicCharacters.push({ name, tag: '', nl: person.looks, source: '千千结' });
-            }
+        const library = looksSettings.imageLooksLibrary !== false ? [...(await imageCharacters(target.floor) || [])] : [];
+        const myriad = looksSettings.imageLooksMyriad !== false ? myriadPeopleLooks() : [];
+        // 先认出这一面提到的人、去掉重名的，再算名额：不让二十几份无关的建档把这一面真正出场的千千结人物挤掉。
+        // 这一面只写了别名（「松儿」）时，用这一面写的那个叫法，生图 LLM 那边按名字对这一面的字。
+        const faceText = [details?.textContent || '', focus, ...readCharacters(frame).map(person => person.name), ...frameCastNames(frame)].join('\n');
+        const libraryName = person => String(person?.name || '').trim();
+        const allKeys = [...library.map(libraryName), ...myriad.flatMap(person => [person.name, ...person.aliases])].filter(Boolean);
+        let owners = [];
+        try { owners = [characterGroup(), String(getContext()?.name1 || globalThis.name1 || '').trim()].filter(Boolean); } catch { owners = []; }
+        const relevantLibrary = library.filter(person => libraryName(person) && (owners.includes(libraryName(person)) || mentionedIn(faceText, libraryName(person), allKeys)));
+        const otherLibrary = library.filter(person => !relevantLibrary.includes(person));
+        // 千千结的人物档案单独一栏（myriadCharacters），带着 source 交给 imagePlan：长相先后排在角色卡/Persona 之后、世界书之前，
+        // 和没开生图 LLM 时一样，不冒充建档。建档里已经有的人不再给第二份；同一个叫法对上两份档案的不猜。
+        const have = new Set(library.map(libraryName));
+        const keyOwners = new Map();
+        for (const person of myriad) for (const key of new Set([person.name, ...person.aliases])) keyOwners.set(key, (keyOwners.get(key) || 0) + 1);
+        const myriadRelevant = [];
+        for (const person of myriad) {
+            const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
+            const name = keys.find(key => keyOwners.get(key) === 1);
+            if (!name || have.has(person.name) || have.has(name) || myriadRelevant.some(item => item.name === name)) continue;
+            myriadRelevant.push({ name, tag: '', nl: person.looks, source: '千千结' });
         }
+        const BUDGET = 24;
+        const publicFirst = relevantLibrary.slice(0, BUDGET);
+        const myriadCharacters = myriadRelevant.slice(0, Math.max(0, BUDGET - publicFirst.length));
+        const publicCharacters = [...publicFirst, ...otherLibrary.slice(0, Math.max(0, BUDGET - publicFirst.length - myriadCharacters.length))];
         if (!isCurrent()) throw staleImageRequest();
         // 图框里模型写好的出场人物外貌和当时衣着一并单独给生图 LLM，不让它从别处另找衣着、场景。
-        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
+        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, myriadCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim()) throw planningFailure();
         return plan;
     } catch (error) {
@@ -1226,7 +1276,8 @@ function reusablePlan(saved) {
         const characters = Array.isArray(meta.characters) ? meta.characters : null;
         return {
             prompt: String(meta.prompt || ''), nl: String(meta.nl || ''),
-            flatPrompt: String(meta.flatPrompt || '') || (!characters && sent ? sent : ''),
+            // 旧记录只有 flatPrompt、没有分人物 characters：实际发出去的整段（带着各人长相）才是完整画面，重画按它来，不退回不带长相的 flatPrompt。
+            flatPrompt: (!characters && sent) ? sent : String(meta.flatPrompt || ''),
             characters: characters || [], promptFormat: meta.promptFormat,
         };
     }

@@ -190,6 +190,7 @@ export const defaultSettings = Object.freeze({
     // 独立 API 外置兔子镜挂在消息的哪一层：auto（正文画了气泡就进正文，否则正文下面）/ body（一律进正文）/ outside（整条消息外面，老位置）
     // 默认挂在整条消息外面（1.73.0 以前的位置）：挂进正文气泡时，正文一重新渲染，失败卡片连同「重新生成」按钮会一起不见。
     independentExternalAnchor: 'outside',
+    independentExternalAnchorDefaultV2: false,
     // 连接配置没存 Secret 时，它在酒馆里被切到时用的是哪把 key（只记 key 的编号，不记 key 本身）。
     independentConnectionSecretMemo: {},
     independentApiBaseUrl: '',
@@ -675,6 +676,8 @@ export function updateSettings(patch) {
     for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;
     }
+    // 自己选过挂载位置：以后不再按 1.76.1 的默认改动。
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'independentExternalAnchor')) safePatch.independentExternalAnchorDefaultV2 = true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageCompositionMode')) safePatch.imageCompositionMode = safePatch.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imagePromptFormat')) safePatch.imagePromptFormat = safePatch.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'visualSceneryCombination')) {

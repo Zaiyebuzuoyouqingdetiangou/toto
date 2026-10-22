@@ -137,6 +137,34 @@ export async function persistImage(image, { label = '智绘姬' } = {}) {
     }
 }
 
+// 画中人物统一成 { name, tag, nl } 的纯文字副本：存档里不留对构思结果的引用。
+function plainCharacters(list) {
+    return (Array.isArray(list) ? list : []).filter(person => person && typeof person === 'object')
+        .map(person => ({ name: String(person.name || ''), tag: String(person.tag || ''), nl: String(person.nl || '') }));
+}
+
+/**
+ * 从存档里的一张图还原「上次的提示词」，用来重开面板、重画。
+ * 新记录存了 characters：原样还原，重画时由 buildSingleImagePrompt 照样拼回每个人的外貌（同一段只拼一次）。
+ * 旧记录没存 characters：第一次请求时拼进去的外貌只留在实际发出去的整段（record.prompt）里，
+ * 所以拿这整段当完整通用提示词、人物留空——外貌不丢，也不会再拼第二遍。
+ * 什么提示词都没有返回 null。
+ */
+export function draftFromSavedImage(record) {
+    if (!record || typeof record !== 'object') return null;
+    const meta = record.promptMetadata && typeof record.promptMetadata === 'object' ? record.promptMetadata : {};
+    const sent = String(record.prompt || '').trim();
+    const prompt = String(meta.prompt || ''), nl = String(meta.nl || ''), flatPrompt = String(meta.flatPrompt || '');
+    const promptFormat = meta.promptFormat === 'nai45-tags' ? 'nai45-tags' : meta.promptFormat ? 'nai5-natural' : undefined;
+    const format = promptFormat ? { promptFormat } : {};
+    if (Array.isArray(meta.characters)) {
+        if (!(prompt.trim() || nl.trim() || flatPrompt.trim() || sent)) return null;
+        return { prompt: prompt || (flatPrompt.trim() || nl.trim() ? '' : sent), nl, flatPrompt, characters: plainCharacters(meta.characters), ...format };
+    }
+    if (!sent) return prompt.trim() || nl.trim() || flatPrompt.trim() ? { prompt, nl, flatPrompt, characters: [], ...format } : null;
+    return { prompt: prompt || sent, nl, flatPrompt: sent, characters: [], ...format };
+}
+
 export async function generateViaChatu8(plan, { signal, size, assertCurrent } = {}) {
     const status = chatu8Status();
     if (!status.configured) throw failure('not_configured', status.reason);
@@ -151,7 +179,9 @@ export async function generateViaChatu8(plan, { signal, size, assertCurrent } = 
     return {
         url: stored.path || stored.dataUrl, path: stored.path, dataUrl: stored.dataUrl, prompt, provider: 'st-chatu8',
         generatedAt: new Date().toISOString(),
+        // characters 也存下：重开、重画时才能把每个人的外貌照样拼回去（只存 flatPrompt 时外貌会丢）。
         promptMetadata: { prompt: String(plan?.prompt || ''), nl: String(plan?.nl || ''), flatPrompt: String(plan?.flatPrompt || ''),
+            characters: plainCharacters(plan?.characters),
             promptFormat: plan?.promptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural', backend: `st-chatu8:${status.mode}`, size, saveFailed: stored.saveFailed === true },
     };
 }

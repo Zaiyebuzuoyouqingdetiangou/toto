@@ -66,6 +66,40 @@ try {
         return out;
     }, html);
     assert.deepEqual(result, { wiredPanel: true, wiredCard: true, afterTrig: true, innerKeeps: true, afterSecond: false, card: true, rearmed: 2, afterRearm: true, panelRole: null, both: true, savedOpen: true, lone: false });
+    // 收藏重开：收藏存的是 cloneNode 的 outerHTML，接线记号留着、监听丢了。经共用的 rearm 入口（rearmRabbitMirrorSerializedInteractionRoot）
+    // 接回后点触发处照样能开关；收藏打开走的 ensureExternalTools（收藏不走工具栏链）也要接回。
+    await page.evaluate(async query => {
+        window.rearm = await import('/src/outputSanitizer/idsAndRearm.js?' + query);
+        window.geometry = await import('/src/independentApi/geometry.js?' + query);
+    }, query);
+    const favorite = await page.evaluate(html => {
+        const out = {};
+        document.body.innerHTML = html;
+        orphan.attachOrphanStateToggle(document.querySelector('.panel'), 'active');
+        orphan.attachOrphanStateToggle(document.querySelector('.card'), 'flipped');
+        const saved = document.querySelector('details').cloneNode(true).outerHTML;
+        // 和 extractReadyDetails 一样：先在脱离文档的 template 里解析、rearm，再挂上去
+        const template = document.createElement('template');
+        template.innerHTML = saved;
+        const details = template.content.querySelector('details');
+        window.rearm.rearmRabbitMirrorSerializedInteractionRoot(details);
+        document.body.replaceChildren(details);
+        document.querySelector('.trig').click(); out.detached = document.querySelector('.panel').classList.contains('active');
+        document.querySelector('.card').click(); out.detachedCard = document.querySelector('.card').classList.contains('flipped');
+        // 再 rearm 一次不重复接（点一下只切一次）
+        window.rearm.rearmRabbitMirrorSerializedInteractionRoot(document.body);
+        document.querySelector('.trig').click(); out.noDouble = document.querySelector('.panel').classList.contains('active');
+        // 收藏宿主：直接塞进 outerHTML（不经 rearm），由 ensureExternalTools 接回
+        const host = document.createElement('div');
+        host.dataset.rmSource = 'favorite'; host.dataset.rmFavorite = 'true'; host.dataset.rmState = 'ready'; host.dataset.rmPlacement = 'contained';
+        host.innerHTML = saved;
+        document.body.replaceChildren(host);
+        try { window.geometry.ensureExternalTools(host); } catch (error) { out.ensureError = String(error?.message || error); }
+        host.querySelector('.trig').click(); out.favorite = host.querySelector('.panel').classList.contains('active');
+        host.querySelector('.card').click(); out.favoriteCard = host.querySelector('.card').classList.contains('flipped');
+        return out;
+    }, html);
+    assert.deepEqual(favorite, { detached: true, detachedCard: true, noDouble: false, favorite: true, favoriteCard: true });
     assert.deepEqual(errors, []);
     console.log('orphanStateTrigger ok');
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

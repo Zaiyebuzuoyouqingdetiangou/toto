@@ -134,6 +134,7 @@ import {
     independentRecordWithinBudget,
     persistedOwnerForMessage,
     savedInChatFile,
+    writtenToChatMetadata,
     independentHistoryLoaded,
     independentHistoryReadState,
     restoreIndependentHistory,
@@ -2493,10 +2494,14 @@ function adoptEditedIndependentMirror(identity){
  record.ts=Date.now();
  const store=readStore();
  saveRecordForSlot(store,slot,record,{dropLegacy:false});
- // 先写聊天数据（随聊天文件存盘），再写本机缓存：本机满了写不进去，聊天数据里有就照样算接上了。
+ // 先写聊天数据（随聊天文件存盘），再写本机缓存：本机满了写不进去，聊天数据里有就照样算接上了；
+ // 聊天还没存盘确认之前留着「尚未保存」提示，存盘确认后自动收起。
  writePersistedOwner(ctx,index,msg,record,{overwrite:true});
  requestSafeChatSave(ctx,index,msg);
- if(!writeStore(store) && !savedInChatFile(ctx,index,msg,record.html,sourceHash)) return false;
+ if(!writeStore(store)){
+  if(!writtenToChatMetadata(ctx,index,msg,record.html,sourceHash)) return false;
+  if(!savedInChatFile(ctx,index,msg,record.html,sourceHash)) showIndependentUnsavedOutput(record,slot);
+ }
  setOwnerLockForBase(identity.baseSlot,slot,sourceHash);
  host.dataset.rmKey=slot;
  host.dataset.rmSourceHash=sourceHash;
@@ -3127,11 +3132,13 @@ function persistIndependentRepairFromEvent(event) {
  // 本机缓存只是缓存：写不进去（多半是满了）时，修好的这一版已经写进聊天数据、随聊天文件存盘，照样算保存了。
  // 聊天数据里也没有，才当没保存。
  const localSaved=writeStore(store) && String(findSavedRecord(readStore(),identity.slot,identity.legacySlots||[])?.html||'')===html;
- const chatSaved=()=>savedInChatFile(identity.ctx,identity.index,identity.msg,html,identity.sourceHash);
+ // 已写进聊天数据（等存盘也算）就接着走；还没确认存进聊天文件时留着「尚未保存」提示，存盘确认后自动收起。
+ const chatSaved=()=>writtenToChatMetadata(identity.ctx,identity.index,identity.msg,html,identity.sourceHash);
  if(!localSaved && !chatSaved()){
   showIndependentUnsavedOutput(repaired,identity.slot);
-  return abort(`本机存储写不进去，多半是满了，聊天数据里也没写上。${describeLocalStorageUsage()}`);
+  return abort(`本机存储写不进去，多半是满了，这一版也没能写进聊天数据。${describeLocalStorageUsage()}`);
  }
+ if(!localSaved && !savedInChatFile(identity.ctx,identity.index,identity.msg,html,identity.sourceHash)) showIndependentUnsavedOutput(repaired,identity.slot);
  if(localSaved){
   setOwnerLockForBase(identity.baseSlot,identity.slot,identity.sourceHash);
   const savedOwnerLock=ownerLockForBase(identity.baseSlot);

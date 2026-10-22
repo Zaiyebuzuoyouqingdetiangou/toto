@@ -1,5 +1,6 @@
 // Split from outputSanitizer.js — idsAndRearm.
 
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.1';
 import {
     RABBIT_MIRROR_CSS_SCOPE_ATTR,
     escapeCssIdentifier,
@@ -775,6 +776,9 @@ export function rearmRabbitMirrorSerializedInteractionRoot(root) {
     delete root.dataset?.rabbitMirrorSelfMutationFallback;
     delete root.dataset?.rabbitMirrorInertActionFallback;
     delete root.dataset?.rabbitMirrorTargetFallback;
+    // 「只有状态类、没有触发器」的开关：接线记号随 outerHTML 留下、监听却丢了（收藏重开、缓存还原、副本）。
+    // 按记号原样接回，免得看着像接过线、点了却不动；没接过线的主体不碰，接过的不重复接。
+    try { rearmOrphanStateWiring(root); } catch { /* 接不回就保持原样 */ }
     return cleared;
 }
 

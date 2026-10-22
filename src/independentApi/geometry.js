@@ -1,5 +1,6 @@
 // Split from independentApi.js — geometry.
 import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.76.1';
+import { rearmOrphanStateWiring } from '../outputSanitizer/orphanStateWiring.js?rmv=1.76.1';
 import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.76.1';
 
 import { bindVisualHistoryTarget } from '../storage.js?rmv=1.76.1';
@@ -1880,6 +1881,8 @@ export function ensureExternalTools(host){
  // scheduled once after an external mirror is actually opened.
  if(host.dataset?.rmFavorite==='true' || host.dataset?.rmSource==='favorite'){
   host.querySelectorAll?.('[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-face-swipe-bar], [data-rm-face-swipe-delete], [data-rm-face-favorite-star]').forEach(node=>node.remove());
+  // 收藏不走工具栏链：存下来的 outerHTML 里带着状态开关的接线记号、监听却丢了，这里按记号接回（接过的不重复接）。
+  try{ rearmOrphanStateWiring(host); }catch(error){ console.debug('[RabbitMirror] favorite orphan-state rearm skipped:',error); }
  }else{
   try{ refreshRabbitMirrorToolsInScope(host,{historyRestoreLight}); }catch(error){ console.debug('[RabbitMirror] external tool preparation skipped:',error); }
  }

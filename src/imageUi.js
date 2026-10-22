@@ -5,6 +5,7 @@ import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImage
 import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.76.1';
 import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.1';
 import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.76.1';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=1.76.1';
 import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.76.1';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
@@ -388,8 +389,9 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     } };
     const pending = target && pendingSaves.get(target.key);
     if (pending) localRecord = pendingImage(target.key, localRecord);
+    // 从存档还原时连人物外貌一起还原；旧记录没存人物就用实际发出去的整段（见 draftFromSavedImage）。
     const latestDraft = state.draft && (!localRecord || Number(state.draft.updatedAt || 0) >= (Date.parse(localRecord.generatedAt || '') || 0))
-        ? state.draft : localRecord?.promptMetadata || localRecord || state.draft || {};
+        ? state.draft : draftFromSavedImage(localRecord) || state.draft || {};
     fillDraft(latestDraft); showRecord(localRecord); renderState();
     let modalOpened = false;
     try {
