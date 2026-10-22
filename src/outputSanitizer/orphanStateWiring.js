@@ -8,20 +8,79 @@ export function isOrphanStateWired(target) {
     return ORPHAN_STATE_WIRED.has(target);
 }
 
-export function attachOrphanStateToggle(target, state) {
+// 主体默认藏着（.面板{display:none} .面板.active{display:block}）时，点它是点不到的：
+// 由紧挨在它前面的那个「看着就是让人点的」东西（按钮、cursor:pointer、类名带 trigger/btn/toggle）来切换。
+export const ORPHAN_TRIGGER_ATTR = 'data-rm-orphan-state-trigger';
+const ORPHAN_TARGET_KEY = 'data-rm-orphan-state-key';
+let orphanKeySeq = 0;
+const TRIGGER_NAME = /(?:^|[-_])(?:trigger|btn|button|toggle|tap|click|handle|opener|switch|link)(?:$|[-_\d])/i;
+
+function hiddenByStyle(node) {
+    try {
+        const view = node.ownerDocument?.defaultView;
+        const style = view?.getComputedStyle?.(node);
+        return !!style && (style.display === 'none' || style.visibility === 'hidden');
+    } catch { return false; }
+}
+
+export function findOrphanStateTrigger(target) {
+    let node = target?.previousElementSibling;
+    for (let step = 0; node && step < 3; step += 1, node = node.previousElementSibling) {
+        if (node.matches?.('style, script, br, hr') || node.contains(target) || hiddenByStyle(node)) continue;
+        // 它自己是另一组状态的主体：不拿来当触发处（点一下会同时切两样）。已经替前一块面板当触发处的照样可以（一个按钮开几块）。
+        if (node.getAttribute?.(ORPHAN_STATE_ATTR)) return null;
+        let pointer = false;
+        try { pointer = node.ownerDocument?.defaultView?.getComputedStyle?.(node)?.cursor === 'pointer'; } catch { pointer = false; }
+        if (node.matches?.('button, [role="button"], a') || pointer || TRIGGER_NAME.test(String(node.getAttribute?.('class') || ''))) return node;
+        // 中间隔着一段普通文字就不再往前找。
+        if (String(node.textContent || '').trim().length > 40) return null;
+    }
+    return null;
+}
+
+export function attachOrphanStateToggle(target, state, trigger = null) {
     if (!target || !state || ORPHAN_STATE_WIRED.has(target)) return false;
+    // 默认藏着：存档里正开着的（带着状态类），先摘掉类看它本来藏不藏，再放回去。
+    let hiddenByDefault = hiddenByStyle(target);
+    if (!hiddenByDefault && target.classList.contains(state)) {
+        target.classList.remove(state);
+        hiddenByDefault = hiddenByStyle(target);
+        target.classList.add(state);
+    }
+    if (!trigger && hiddenByDefault) trigger = findOrphanStateTrigger(target);
+    // 默认藏着、前面又找不到能点的东西：不接（接在看不见的主体上点不到，还会在诊断里显得像接好了）。
+    if (!trigger && hiddenByDefault) return false;
     ORPHAN_STATE_WIRED.add(target);
     target.setAttribute(ORPHAN_STATE_ATTR, state);
-    target.setAttribute('role', 'button');
-    target.setAttribute('tabindex', '0');
-    target.style.cursor = 'pointer';
+    const clicker = trigger || target;
+    if (trigger) {
+        const key = target.getAttribute(ORPHAN_TARGET_KEY) || `o${Date.now().toString(36)}${(orphanKeySeq += 1)}`;
+        target.setAttribute(ORPHAN_TARGET_KEY, key);
+        const keys = new Set(String(trigger.getAttribute(ORPHAN_TRIGGER_ATTR) || '').split(/\s+/).filter(Boolean));
+        keys.add(key);
+        trigger.setAttribute(ORPHAN_TRIGGER_ATTR, [...keys].join(' '));
+        trigger.setAttribute('aria-expanded', String(target.classList.contains(state)));
+        // 旧存档里接在主体自己身上的那一套（role、tabindex、手形光标）撤掉，主体本来不是让人点的。
+        if (target.getAttribute('role') === 'button') target.removeAttribute('role');
+        if (target.getAttribute('tabindex') === '0') target.removeAttribute('tabindex');
+        if (target.style.cursor === 'pointer') target.style.removeProperty('cursor');
+    }
+    if (!clicker.matches?.('button, a')) {
+        clicker.setAttribute('role', 'button');
+        clicker.setAttribute('tabindex', '0');
+    }
+    clicker.style.cursor = 'pointer';
     const toggle = event => {
         if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+        // 主体自己接线时，点到主体里面的按钮、链接不算点主体。
+        const inner = event.target?.closest?.('button, a, input, select, textarea');
+        if (!trigger && inner && inner !== target && target.contains(inner)) return;
         event.preventDefault?.();
-        target.classList.toggle(state);
+        const on = target.classList.toggle(state);
+        if (trigger) trigger.setAttribute('aria-expanded', String(on));
     };
-    target.addEventListener('click', toggle);
-    target.addEventListener('keydown', toggle);
+    clicker.addEventListener('click', toggle);
+    clicker.addEventListener('keydown', toggle);
     return true;
 }
 
@@ -30,7 +89,10 @@ export function rearmOrphanStateWiring(root) {
     if (!root?.querySelectorAll) return 0;
     let wired = 0;
     for (const target of root.querySelectorAll(`[${ORPHAN_STATE_ATTR}]`)) {
-        if (attachOrphanStateToggle(target, target.getAttribute(ORPHAN_STATE_ATTR))) wired += 1;
+        const key = target.getAttribute(ORPHAN_TARGET_KEY);
+        let trigger = null;
+        if (key) { try { trigger = root.querySelector(`[${ORPHAN_TRIGGER_ATTR}~="${CSS.escape(key)}"]`); } catch { trigger = null; } }
+        if (attachOrphanStateToggle(target, target.getAttribute(ORPHAN_STATE_ATTR), trigger)) wired += 1;
     }
     return wired;
 }

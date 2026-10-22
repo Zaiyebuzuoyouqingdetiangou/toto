@@ -112,6 +112,88 @@ const e = await draw(`<p data-rm-draw-char="阿雪" hidden>棕色短发的少女
 assert.match((e.request.characters || [])[0].nl, /黑色长直发/); checks++;
 assert.doesNotMatch((e.request.characters || [])[0].nl, /红色长发|棕色短发/); checks++;
 
+// 档里写了常穿的衣服（A），这一面写了这一幕换的衣服（B）：档里的衣着不再发，只留长相；这一面没写衣着时照用档里的
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes, white robe, boots', nl: '赤褐色头发，榛色眼睛，穿白色长袍' }] }); });
+const f = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);
+const f1 = (f.request.characters || [])[0] || {};
+assert.match(f1.tag, /auburn hair, hazel eyes/); checks++;
+assert.match(f1.tag, /black cloak/); checks++;
+assert.doesNotMatch(f1.tag, /white robe|boots/, '档里的衣着不发'); checks++;
+assert.match(f1.nl, /赤褐色头发/); checks++;
+assert.match(f1.nl, /黑色斗篷/); checks++;
+assert.doesNotMatch(f1.nl, /白色长袍/); checks++;
+const g = await draw(`<p data-rm-draw-char="阿岩" hidden>神情冷峻</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, serious</p>`);
+assert.match(((g.request.characters || [])[0] || {}).tag, /white robe/, '这一面没写衣着：用档里的'); checks++;
+
+// 发型也一样：档里束发（high ponytail），这一面披发：档里的发型不发，头发长短、发色照旧以档为准
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, long hair, auburn hair, high ponytail', nl: '赤褐色长发，高高束起马尾' }] }); });
+const m = await draw(`<p data-rm-draw-char="阿岩" hidden>披着一头长发，散发着酒气</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, hair down</p>`);
+const m1 = (m.request.characters || [])[0] || {};
+assert.match(m1.tag, /long hair/); checks++;
+assert.match(m1.tag, /auburn hair/); checks++;
+assert.match(m1.tag, /hair down/); checks++;
+assert.doesNotMatch(m1.tag, /ponytail/, '档里的束发不发'); checks++;
+assert.doesNotMatch(m1.nl, /马尾/); checks++;
+assert.match(m1.nl, /赤褐色长发/); checks++;
+const n = await draw(`<p data-rm-draw-char="阿岩" hidden>散发着酒气</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, drunk</p>`);
+assert.match(((n.request.characters || [])[0] || {}).tag, /high ponytail/, '这一面没写发型（「散发着」不是披发）：用档里的'); checks++;
+
+// 发型和发色写在同一句（「高马尾的黑发」）：只去掉发型，发色留着；「披着一头长发」只说长短不算发型；braided belt 不算发型
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, black hair, ponytail, braided belt', nl: '高马尾的黑发，束起腰带' }] }); });
+const q = await draw(`<p data-rm-draw-char="阿岩" hidden>头发披散</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, hair down</p>`);
+const q1 = (q.request.characters || [])[0] || {};
+assert.match(q1.nl, /黑发/, '同一句里的发色留着'); checks++;
+assert.doesNotMatch(q1.nl, /马尾/); checks++;
+assert.match(q1.nl, /腰带/, '束起腰带不是发型'); checks++;
+assert.match(q1.tag, /braided belt/); checks++;
+assert.doesNotMatch(q1.tag, /ponytail/); checks++;
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, white dress', nl: '白裙配碧眼，高马尾的长发' }] }); });
+const w = await draw(`<p data-rm-draw-char="阿岩" hidden>换了黑色劲装，头发散乱</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black clothes</p>`);
+const w1 = ((w.request.characters || [])[0] || {}).nl || '';
+assert.match(w1, /碧眼/, '衣着那一句里的瞳色留着'); checks++;
+assert.match(w1, /长发/, '发型那一句里的长短留着'); checks++;
+assert.doesNotMatch(w1, /白裙|马尾/); checks++;
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, black hair, ponytail', nl: '黑发，高马尾' }] }); });
+const v = await draw(`<p data-rm-draw-char="阿岩" hidden>挽着他出发，扎发带</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, walking</p>`);
+assert.match(((v.request.characters || [])[0] || {}).nl || '', /马尾/, '挽着他出发、扎发带不算写了发型'); checks++;
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, black hair, ponytail, braided belt', nl: '高马尾的黑发，束起腰带' }] }); });
+const u = await draw(`<p data-rm-draw-char="阿岩" hidden>披着一头长发，浑身散发冷意</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, cold</p>`);
+assert.match(((u.request.characters || [])[0] || {}).tag, /ponytail/, '只写了长短、散发冷意：不算写了发型'); checks++;
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes, white robe, boots', nl: '赤褐色头发，榛色眼睛，穿白色长袍' }] }); });
+
+// 千千结的人物档案：排在角色卡之后、世界书之前；按名字或别名认人
+await page.evaluate(() => {
+    window.STBaiBaiImage.getCharacters = () => ({ characters: [] });
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status: 'ready', people: { status: 'ready', items: [
+        { entityId: 'e1', displayName: '阿松', aliases: ['松儿'], profile: { name: '阿松', hair: '灰色短发', eyes: '琥珀色眼睛', clothingStyle: '常穿蓝布衫' } },
+        { entityId: 'e2', displayName: '阿雪', aliases: [], profile: { name: '阿雪', hair: '紫色长发' } },
+    ] } }) };
+});
+const mk = await draw(`<p data-rm-draw-char="松儿" hidden>黑发少年，披着斗篷</p><p data-rm-draw-char="阿雪" hidden>棕色短发的少女</p>`);
+const mkp = name => (mk.request.characters || []).find(item => item.name === name) || {};
+assert.match(mkp('松儿').nl, /灰色短发/, '别名认人'); checks++;
+assert.doesNotMatch(mkp('松儿').nl, /黑发|蓝布衫/, '模型写的发色去掉；写了衣着，档里的衣着不发'); checks++;
+assert.match(mkp('松儿').nl, /斗篷/); checks++;
+assert.match(mkp('阿雪').nl, /黑色长直发/, '角色卡排在千千结前面'); checks++;
+assert.doesNotMatch(mkp('阿雪').nl, /紫色长发/); checks++;
+assert.equal(mk.sources?.['松儿'], '千千结'); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksMyriad: false }); });
+const mk2 = await draw(`<p data-rm-draw-char="松儿" hidden>黑发少年</p>`);
+assert.doesNotMatch(JSON.stringify(mk2.request.characters || []), /灰色短发/, '勾掉千千结就不用'); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksMyriad: true }); delete globalThis.qqj_v3_public_bridge_v1;
+    window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes, white robe, boots', nl: '赤褐色头发，榛色眼睛，穿白色长袍' }] }); });
+
+// 设置里勾掉外貌来源：不用建档、不用兔子镜写的
+await page.evaluate(async query => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksLibrary: false }); }, query);
+const h = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);
+assert.doesNotMatch(JSON.stringify(h.request.characters || []), /auburn hair|赤褐色/, '建档勾掉了就不用'); checks++;
+assert.match(JSON.stringify(h.request.characters || []), /black cloak/); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksLibrary: true, imageLooksModel: false }); });
+const k = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);
+assert.doesNotMatch(JSON.stringify(k.request.characters || []), /black cloak|黑色斗篷/, '兔子镜写的勾掉了就不用'); checks++;
+assert.match(JSON.stringify(k.request.characters || []), /auburn hair/); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksModel: true }); });
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();

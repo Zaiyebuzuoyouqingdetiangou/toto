@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.74.3';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.74.3';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.74.3';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.76.0';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.76.0';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.76.0';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -521,6 +521,15 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               </details>
               <p>默认关闭。从每面的小兔子工具入口打开「生图」。首次点击生成时，使用当前副 API 构思一次，再调用柏宝绘出图一次；查看、编辑不调用模型。</p>
               <label>提示词格式 <select id="rh_image_prompt_format" class="text_pole"><option value="nai5-natural">自然语言＋标签（NAI 5）</option><option value="nai45-tags">标签（NAI 4.5）</option></select></label>
+              <fieldset id="rh_image_looks_sources" style="border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:8px;padding:6px 10px;margin:6px 0;">
+                <legend style="font-size:13px;">人物外貌从哪里取</legend>
+                <label class="checkbox_label"><input id="rh_image_looks_library" type="checkbox"> 柏宝绘／智绘姬里建好的档</label>
+                <label class="checkbox_label"><input id="rh_image_looks_card" type="checkbox"> 角色卡和 Persona</label>
+                <label class="checkbox_label"><input id="rh_image_looks_myriad" type="checkbox"> 千千结里的人物档案</label>
+                <label class="checkbox_label"><input id="rh_image_looks_world_book" type="checkbox"> 角色绑定的世界书</label>
+                <label class="checkbox_label"><input id="rh_image_looks_model" type="checkbox"> 兔子镜这一面写的外貌和衣着</label>
+                <p style="font-size:12px;opacity:.75;margin:4px 0 0;">同一个人按上面的先后取，排前面的有长相就以它为准；这一幕的衣着以兔子镜写的为准，没写才用档里、卡里的。开了生图 LLM 时，建好的档、千千结和兔子镜写的这三项同样按这里给它。</p>
+              </fieldset>
               <label for="rh_image_composition">生图构图方式</label><select id="rh_image_composition" class="text_pole" style="min-height:44px;"><option value="scene">场景插画</option><option value="auto">按展现形式演绎／长文本高光</option></select>
               <p>按形式画角色参与的场景：信件画 char 写信，相册画角色翻看相册；长文本取正文高光。动作、神态和构图结合当前人物与内容。</p>
               <p>模型、密钥、画幅像素等在柏宝绘配置。这里的格式只决定提示词写法，不替换它的模型。柏宝绘内部重试遵循其原有规则。</p>
