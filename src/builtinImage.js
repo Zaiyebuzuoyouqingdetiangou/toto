@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.76.5';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.5';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.5';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.5';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.5';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.5';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.5';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.5';
+import { getSettings } from './settings.js?rmv=1.76.11';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.11';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.11';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.11';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.11';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.11';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.11';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.11';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -161,14 +161,14 @@ function readCharacters(frame) {
     const tags = new Map();
     for (const node of frame.querySelectorAll?.('[data-rm-draw-char-tags]') || []) {
         const name = clean(node.getAttribute('data-rm-draw-char-tags')).slice(0, 40);
-        const text = clean(node.textContent).slice(0, 300);
+        const text = clean(node.textContent).slice(0, 600);
         if (name && text && !tags.has(name)) tags.set(name, text);
     }
     const nodes = [...(frame.querySelectorAll?.('[data-rm-draw-char]') || [])];
     const seen = new Set();
     return nodes.map(node => {
         const name = clean(node.getAttribute('data-rm-draw-char')).slice(0, 40);
-        return { name, text: clean(node.textContent).slice(0, 400), modelTag: tags.get(name) || '' };
+        return { name, text: clean(node.textContent).slice(0, 800), modelTag: tags.get(name) || '' };
     }).filter(person => {
         // 同一个人写了两条（几个图框共用一块说明时常见）：只留第一条。
         if (!person.name || seen.has(person.name) || !(person.text.length >= 2 || person.modelTag)) return false;
@@ -189,10 +189,17 @@ const TAG_COLOR = `(?:(?:(?:light|dark|pale|deep|bright)[-\\s]+)?${TAG_HUE}(?:is
 // 先把长短、样子的词去掉，再认颜色。
 const TAG_STYLE = /\b(?:very|absurdly|long|short|medium|shoulder[-\s]?length|wavy|curly|straight|messy|spiky|fluffy|silky|big|large|small|narrow|sharp|droopy|tsurime|tareme)\b/g;
 const TAG_LENGTH = /\b(?:long|short|medium|shoulder[-\s]?length)\b/;
+function isBangsTag(tag) {
+    const bare = String(tag || '').toLowerCase().replace(/_/g, ' ').trim();
+    return /(?:^|[^a-z])bangs(?:$|[^a-z])/.test(bare) || /(?:^|[^a-z])fringe\s*$/.test(bare) || bare === 'hair between eyes';
+}
 const TAG_TRAITS = [
     ['hair-color', bare => /\bhair$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+hair$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim())],
     ['eye-color', bare => bare === 'heterochromia' || (/\b(?:eyes|pupils|irises)$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+(?:eyes|pupils|irises)$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim()))],
     ['hair-length', bare => /\bhair$/.test(bare) && TAG_LENGTH.test(bare)],
+    // 刘海：swept bangs、blunt_bangs、fringe 都算一类，前面写过的，后面的整个不要。
+    // fringe 只认在标签末尾的（fringe dress、fringe trim 是衣服的流苏）。
+    ['bangs', bare => isBangsTag(bare)],
 ];
 
 // 权重括号或 :: 没配对：这一段是跨逗号的权重组拆出来的半截，去掉它会让括号配不上，权重漏到后面所有标签上。这种不动。
@@ -211,17 +218,37 @@ function tagTraits(part, loose = false) {
 }
 function tagTrait(part, loose = false) { return tagTraits(part, loose)[0] || ''; }
 
-// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个；第一串写过的长相类，后面的同类不要。
+// 一个标签里和前面已定下的长相类冲突的那几个词去掉，剩下的照留：前面定了发色，「long straight black hair」只去掉 black，
+// 留下 long straight hair；前面也定了长短，再去掉 long。去完只剩 hair／eyes 这种空壳的整个不要。带权重括号的不拆（括号会配不上），整个不要。
+const TAG_COLOR_WORD = new RegExp(`\\b${TAG_COLOR}\\b`, 'gi');
+function withoutClaimedLooks(part, claimed) {
+    const traits = tagTraits(part);
+    const clash = traits.filter(trait => claimed.has(trait));
+    if (!clash.length) return part;
+    if (/[{}()[\]]|::/.test(part) || clash.includes('eye-color') && /heterochromia/i.test(part) || clash.includes('bangs')) return '';
+    // black_hair 这种下划线写法：按空格认词，去完再换回下划线。
+    const underscored = /_/.test(part);
+    let rest = part.replace(/_/g, ' ');
+    if (clash.includes('hair-color') || clash.includes('eye-color')) rest = rest.replace(TAG_COLOR_WORD, ' ');
+    if (clash.includes('hair-length')) rest = rest.replace(new RegExp(TAG_LENGTH.source, 'gi'), ' ');
+    rest = rest.replace(/\s+/g, ' ').trim();
+    // 只剩 very、absurdly 这种程度词加 hair 的（「very very long white hair」去掉颜色和长短后）也算空壳。
+    if (!rest || /^(?:(?:very|absurdly)\s+)*(?:hair|eyes|pupils|irises)$/i.test(rest)) return '';
+    return underscored ? rest.replace(/ /g, '_') : rest;
+}
+
+// 逗号标签合并：前面的优先，大小写不同的同一标签只留一个；第一串写过的长相类，后面的同类那几个词不要（其余的词照留）。
 function mergeTagLists(...lists) {
     const seen = new Set();
     const claimed = new Set(String(lists[0] || '').split(',').flatMap(part => tagTraits(part.trim(), true)));
-    return lists.flatMap((list, index) => String(list || '').split(',').map(part => [part.trim(), index])).filter(([part, index]) => {
-        const key = part.toLowerCase();
-        if (!part || seen.has(key)) return false;
-        if (index > 0 && tagTraits(part).some(trait => claimed.has(trait))) return false;
-        seen.add(key);
-        return true;
-    }).map(([part]) => part).join(', ');
+    return lists.flatMap((list, index) => String(list || '').split(',').map(part => [part.trim(), index]))
+        .map(([part, index]) => (index > 0 && part ? withoutClaimedLooks(part, claimed) : part))
+        .filter(part => {
+            const key = part.toLowerCase();
+            if (!part || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).join(', ');
 }
 
 function storageKey(root, frame, prompt) {
@@ -548,7 +575,7 @@ function mentionedIn(text, key, keys = []) {
 // 衣着、发型：这一幕穿什么、头发怎么梳随剧情变。兔子镜这一面给这个人写了衣着时，建档、角色卡、世界书里写的衣着那几句／那几个标签不再发，
 // 只留长相（发色、瞳色、脸、身材这些）；这一面没写衣着时，照旧用它们兜底。
 const CLOTHING_TAG = /\b(?:dress|gown|robe|robes|kimono|yukata|hanfu|qipao|cheongsam|shirt|t-shirt|blouse|sweater|hoodie|cardigan|coat|overcoat|trench\s+coat|jacket|blazer|cloak|cape|mantle|poncho|vest|suit|tuxedo|uniform|armor|armour|skirt|miniskirt|pants|trousers|jeans|shorts|leggings|pantyhose|stockings|thighhighs|thigh\s+highs|socks|kneehighs|boots|shoes|heels|sandals|slippers|apron|bikini|swimsuit|leotard|bodysuit|lingerie|underwear|bra|panties|pajamas|nightgown|sleepwear|outfit|clothes|clothing|attire|garment|naked|nude|topless|bottomless|shirtless|serafuku|sailor\s+collar|haori|hakama|obi|sash|corset|tunic|camisole|tank\s+top|crop\s+top|turtleneck|scarf|gloves|fur\s+(?:coat|cloak|trim))\b/i;
-const CLOTHING_TEXT = /(?:(?<![望看拆揭戳])穿(?![过越透插梭行心])|身着|身穿|披着(?![一满]?头?[长短乌黑白银金]*[发髮])|裹着|套着|换上|着装|衣着|服饰|衣服|衣裳|衣衫|衣裙|外衣|内衣|里衣|中衣|上衣|下装|裙|劲装|便装|常服|礼服|衣袍|衫|旗袍|和服|汉服|道袍|长袍|锦袍|外袍|斗篷|披风|大氅|狐裘|外套|夹克|西装|制服|校服|衬衫|毛衣|卫衣|背心|马甲|裤子|长裤|短裤|靴|鞋|袜|手套|围巾|铠甲|盔甲|赤裸|裸着|裸身|一丝不挂|未着寸缕)/;
+const CLOTHING_TEXT = /(?:(?<![望看拆揭戳])穿(?![过越透插梭行心])|身着|身穿|披着(?![一满]?头?[长短乌黑白银金]*[发髮])|裹着|套着|换上|着装|衣着|服饰|衣服|衣裳|衣衫|衣裙|外衣|内衣|里衣|中衣|上衣|下装|裙|劲装|便装|常服|礼服|衣袍|(?<!同)袍(?!泽)|衫|旗袍|和服|汉服|道袍|长袍|锦袍|外袍|斗篷|披风|大氅|狐裘|外套|夹克|西装|制服|校服|衬衫|毛衣|卫衣|背心|马甲|裤子|长裤|短裤|靴|鞋|袜|手套|围巾|铠甲|盔甲|赤裸|裸着|裸身|一丝不挂|未着寸缕)/;
 // 发型（束发、披发、马尾、辫子）和衣着一样随这一幕变：兔子镜这一面写了发型，档里写的发型也不再发。头发长短、发色不算发型，照旧以档为准。
 // 标签按整个标签认（braided belt、hair down to waist 不算发型）。
 const HAIRSTYLE_TAG = /^\s*(?:(?:high|low|side|long|short|messy|loose)\s+)*(?:ponytail|twintails|twin\s+tails|pigtails|braid|braids|braided\s+hair|single\s+braid|twin\s+braids|french\s+braid|crown\s+braid|hair\s+buns?|buns?|double\s+buns?|updo|half\s+updo|topknot|chignon|hair\s+down|hair\s+up|loose\s+hair|tied\s+hair|hair\s+tied(?:\s+up)?|drill\s+hair|hair\s+over\s+(?:one\s+)?shoulder|hair\s+bobbles|hair\s+rings)\s*$/i;
@@ -565,20 +592,60 @@ const hasKindText = (kind, text) => kind.text.test(String(text || '')) || kind.t
 function personSceneKinds(person) {
     return SCENE_KINDS.filter(kind => hasKindText(kind, person?.text) || hasKindTags(kind, person?.text) || hasKindTags(kind, person?.modelTag));
 }
-// 去掉一段长相里写这几类的分句（按中英文标点分）；去完空了就返回空。
+// 去掉一段长相里写这几类（衣着、发型）的那几个词，同一句里的皮肤、痣、发色、瞳色这些长相照留；
+// 「身穿白裙雪白皮肤眼下红痣」只去「身穿白裙」。英文按逗号、句号、and、with 拆开，只去写衣着／发型的那一截。
+// 去不干净的（衣着词和长相缠在一起认不出边界）才退回老办法：只留发色、瞳色、长短这几个词。
+const GARMENT_CN = '(?:连衣裙|百褶裙|长裙|短裙|纱裙|衣裙|裙子|裙|旗袍|和服|汉服|道袍|长袍|锦袍|外袍|衣袍|斗篷|披风|大氅|狐裘|外套|夹克|西装|制服|校服|衬衫|毛衣|卫衣|背心|马甲|裤子|长裤|短裤|上衣|下装|外衣|内衣|里衣|中衣|衣服|衣裳|衣衫|劲装|便装|常服|礼服|铠甲|盔甲|长衫|衫|(?<!同)袍(?!泽)子?|靴子?|鞋子?|袜子?|手套|围巾)';
+const GARMENT_MOD = '[一件袭身条双套的色白黑红蓝绿紫粉金银灰青素浅深淡月牙纱丝绸棉麻锦绣花碎长短薄厚宽松紧身连衣百褶墨赤朱绯碧玄鹅黄藕荷水]{0,8}';
+// 衣着词前面的颜色、长短这类修饰：只有前面明说了「穿、身着」，或者紧挨着句首、标点、「配」这类连接词时才一起去掉；
+// 不然只去衣料词和衣着本身（「肌肤雪白白裙」「眼睛是浅蓝色的长裙」里的雪白、浅蓝色、长不能被当成裙子的颜色吃掉）。
+// 紧挨在衣着前、没有动词也没有标点隔开的一个颜色字和长短（「黑发红裙」的红、「的长裙」的长）跟着衣着一起去掉，
+// 不然剩下的「红」会接到发色后面；前面是「浅、深、雪」这类的颜色字算长相（「肌肤雪白白裙」只去后一个白）。
+const GARMENT_ADJ = '(?<![浅深淡暗乌雪是为呈湛澄])(?:[白黑红蓝绿紫粉金银灰青墨赤朱绯碧玄]色?)?的?[长短]?';
+const GARMENT_MATERIAL = '[纱丝绸棉麻锦绣花碎连衣百褶]{0,4}';
+// 明说了「身穿、穿着」时，动词和衣着之间的修饰（「身穿精致白裙」的精致）都算衣着的。「穿过、穿越」不是穿衣服。
+const CLOTHING_SPAN_CN = new RegExp(`(?:(?:身穿|身着|披着|裹着|套着|换上了?|(?<![望看拆揭戳])穿(?![过越透插梭行心])(?:着|了|上)?)[^，,、。；;\\s眼瞳眸发肤痣]{0,8}?|(?<=^|[\\s，,、。；;：:配和与及])${GARMENT_MOD}|${GARMENT_ADJ})?${GARMENT_MATERIAL}${GARMENT_CN}`, 'g');
+const CLOTHING_WORDS_CN = /(?:着装|衣着|服饰)[^，,、。；;]{0,8}|赤裸|裸着|裸身|一丝不挂|未着寸缕/g;
+const HAIRSTYLE_SPAN_CN = new RegExp(`[高低双单长短松散一条根个束扎绾挽盘起着成的]{0,4}(?:${HAIRSTYLE_TEXT.source})`, 'g');
+function stripSceneSpans(part, kinds) {
+    let body = String(part);
+    for (const kind of kinds) {
+        // 去掉衣着后，紧挨在它前面还剩的一截颜色（「黑发深红长裙」的深红、「金发纯白长裙」的纯）也是衣着的，一起去掉；
+        // 只在这截颜色前面是句首、标点、「配、和」，或者已经带着颜色的发、眼（黑发、碧眼）时才去；
+        // 「眸色浅蓝白裙」「眼睛碧绿白裙」「头发乌黑长裙」「肌肤雪白白裙」里那截颜色属于长相，不动。
+        if (kind.name === 'clothing') body = body.replace(CLOTHING_SPAN_CN, '\u0001')
+            .replace(/(?<=^|[\s，,、。；;：:配和与及发眼眸瞳])(?:[浅深淡暗大纯月]?[白黑红蓝绿紫粉金银灰青墨赤朱绯碧玄]{1,2}色?|[浅深淡暗大纯月])的?\u0001/g, '')
+            .replace(/\u0001/g, '').replace(CLOTHING_WORDS_CN, '');
+        if (kind.name === 'hairstyle') body = body.replace(HAIRSTYLE_SPAN_CN, '');
+    }
+    // 英文：按逗号、句号、and、with 拆成小截，写衣着／发型的那截去掉。
+    if (/[a-z]{3}/i.test(body)) {
+        body = body.split(/,\s*|(?<=\.)\s*|\s+(?:and|with)\s+/i).map(piece => piece.trim()).filter(piece => {
+            if (!piece) return false;
+            const bare = piece.replace(/^(?:she|he|they|wears?|wearing|wore|dressed\s+in|in|a|an|the|her|his|their)\s+/gi, '').replace(/^(?:a|an|the|her|his|their)\s+/i, '');
+            return !kinds.some(kind => kind.tag.test(bare));
+        }).join(', ');
+    }
+    // 去完剩下的「的」「配」开头、孤零零的动词去掉。
+    return body.trim().replace(/^(?:的|配|和|与|及|并|且)+/, '').replace(/(?:常常?|总是|平时|平日|一般|多|爱|喜欢|习惯)?(?:穿着?|身穿|身着|披着|裹着|套着|换上了?)?(?:常常?|总是|平时|平日|一般|多)?$/, '').trim();
+}
 function withoutSceneText(text, kinds) {
     if (!kinds?.length) return String(text || '');
-    // 同一句里还写着发色、瞳色（「高马尾的黑发」「白裙配碧眼」）：不整句删，只留下发色、瞳色那几个词，长相不跟着丢。
+    // 同一句里还写着发色、瞳色（「高马尾的黑发」「白裙配碧眼」）：去不干净时只留下发色、瞳色那几个词，长相不跟着丢。
     const keepLooks = part => {
         const found = [...String(part).matchAll(HAIR_WORDS)].map(match => match[0]).concat([...String(part).matchAll(EYE_WORDS)].map(match => match[0]));
         // 只写了长短的（「高马尾的长发」）：长短也是长相，留着（发色里已经带着长短的不重复）。
         if (!found.some(word => /[长短]/.test(word))) found.push(...[...String(part).matchAll(/(?:(?:及腰|齐肩|及肩|过肩)的?)?[长短]发/g)].map(match => match[0]));
         return found.join('，');
     };
-    return String(text || '').split(/(?<=[。；;！!？?\n])|(?=[，,、])/).map(part => {
+    return String(text || '').split(/(?<=[。；;！!？?\n])|(?=[，,、])|(?<=\.)\s+/).map(part => {
         if (!kinds.some(kind => hasKindText(kind, part))) return part;
+        const lead = /^[，,、]/.test(part) ? (part[0] === ',' ? ', ' : part[0]) : '';
+        const tail = /[。；;！!？?\n]$/.test(part) ? part.slice(-1) : '';
+        const stripped = stripSceneSpans(part.replace(/^[，,、]/, '').replace(/[。；;！!？?\n]$/, ''), kinds);
+        if (!kinds.some(kind => hasKindText(kind, stripped))) return stripped && /[\p{L}\p{N}]/u.test(stripped) ? `${lead}${stripped}${tail}` : '';
         const looks = keepLooks(part);
-        return looks ? `${/^[，,、]/.test(part) ? '，' : ''}${looks}` : '';
+        return looks ? `${lead}${looks}` : '';
     }).join('')
         .replace(/^[，,、。；;\s]+/, '').replace(/([。；;！!？?\n])[，,、\s]+/g, '$1').replace(/[，,、]+(?=[。；;]|$)/g, '').trim();
 }
@@ -610,31 +677,154 @@ const COLOR = '(?:乌|淡|浅|深|暗|亮|雪|酒|玫瑰|天|湖|海|宝|靛|藏
 // 发色：「黑发」「乌黑长发」「黑色的头发」「一头银发」「发色偏深」；不算「发带、发夹、白发苍苍」。
 const HAIR = `(?:一头|一头乌黑的?)?${COLOR}的?(?:长|短|卷|直|微卷|及腰|齐肩)*(?:头)?发(?![带簪饰绳夹冠圈卡苍型际胶蜡])|${COLOR}长直|发色(?:为|是|呈|偏)?(?:${COLOR})?`;
 // 瞳色：「碧眼」「蓝色的眼睛」「深色瞳孔」「眼睛是蓝色的」；不算「眼镜」。
-const EYE = `${COLOR}的?(?:瞳孔?|眸子?|眼睛|眼眸|眼瞳|眼(?![镜罩神角皮影圈线袋妆泪眶]))|(?:眼睛|眼眸|瞳孔)(?:是|为|呈)${COLOR}的?|[瞳眸]色(?:为|是|呈)?(?:${COLOR})?`;
+const EYE = `${COLOR}的?[大圆细长]?(?:瞳孔?|眸子?|眼睛|眼眸|眼瞳|眼(?![镜罩神角皮影圈线袋妆泪眶睫]))|(?:眼睛|眼眸|瞳孔)(?:是|为|呈)${COLOR}的?|[瞳眸]色(?:为|是|呈)?(?:${COLOR})?`;
 const HAIR_WORDS = new RegExp(HAIR, 'g');
 const EYE_WORDS = new RegExp(EYE, 'g');
 const HAS_HAIR = new RegExp(HAIR);
 const HAS_EYE = new RegExp(EYE);
 // 这个人的长相已经从更靠前的来源定下来（建档、角色卡、世界书）：模型写的里头关于发色、瞳色的词去掉，衣着、动作照留；
 // 英文标签里「颜色＋hair／eyes」的也去掉（hair ornament、closed eyes 不动；带权重括号的整串不拆）。
-function stripModelLooks(person, { hair, eye }) {
-    if (!hair && !eye) return;
-    let rest = String(person.text || '');
-    if (hair) rest = rest.replace(HAIR_WORDS, '');
-    if (eye) rest = rest.replace(EYE_WORDS, '');
+// 「白里透红」这类整个算肤色；单个「白」「黑」后面紧跟别的字（「白里…」）时不拆半截。
+const SKIN_COLOR_CN = '(?:白里透[红粉]|白中透[红粉]|雪白|白皙|白净|黝黑|苍白|蜜色|麦色|小麦色|古铜色?|象牙白|冷白|暖白|偏白|偏黑|(?:白|黑)(?![里中透皙净]))色?';
+// 「皮肤十分黝黑」「肤色非常白」：中间夹着程度词也算。
+const MODEL_SKIN_WORDS = new RegExp(`(?:${SKIN_COLOR_CN}的?(?:皮肤|肌肤|肤色)|(?:皮肤|肌肤|肤色)(?:是|为|呈|偏|十分|非常|很|极|极其|略|略微|有些|有点|较|比较|格外|异常)*${SKIN_COLOR_CN}(?:得[^，,。；;]{0,6})?的?)`, 'g');
+// 头发长短直卷、刘海：前面的来源写了，兔子镜写的同一项去掉（「白色短发」在发色、长短都定了时整个去掉）。
+// 直发、卷发只认跟在发色、长短、「头」后面的（「一直发呆」「简直发疯」「卷发棒」不算）；「长发及腰」「发长及腰」整个去掉。
+const HAIR_REACH = '(?:及腰|齐腰|齐肩|及肩|过肩|齐耳|及耳)';
+// 「队长发令」「成长发育」「摇头直发抖」「脸色直发白」：发后面是动词、形容词的不是头发。
+const HAIR_NOT_AFTER = '[育令话言布表出动起现生作展达射抖白颤愣呆怔毛慌烫红青紫狠火怒笑]';
+// 「长发」「短发」后面接颜色字的多半是下一样东西（「白色短发青年」「长发红了脸」），只拦动词。
+const HAIR_NOT_AFTER_LEN = '[育令话言布表出动起现生作展达射抖颤愣呆怔毛慌烫狠火怒笑]';
+const MODEL_HAIRLEN_WORDS = new RegExp(`(?:一头)?(?:${HAIR_REACH}的?)?(?:(?<=^|[^\\u3400-\\u9fff]|[黑白银金红棕灰紫蓝粉绿褐赤青墨碧黄橙茶栗乌色头的腰肩耳她他着披])[长短](?:直|卷)?发(?!${HAIR_NOT_AFTER_LEN})|(?<=[黑白银金红棕灰紫蓝粉绿褐赤青墨碧黄橙茶栗乌色头])(?:直|卷|微卷)发(?!棒|器|夹|${HAIR_NOT_AFTER})|大波浪)(?:${HAIR_REACH})?|发长${HAIR_REACH}|[长短]直(?=的?[^，,、。；;\\s]{0,3}发)`, 'g');
+const MODEL_BANGS_WORDS = /(?:齐|空气|斜|中分|偏分|厚|薄|碎|八字)?刘海儿?/g;
+// 英文自然语言、下划线标签里的刘海和长短（swept_bangs、blunt bangs、long straight hair 里的 long straight）。
+// fringe 单独出现常是「边缘」（the fringe of the crowd）：只认前面带着刘海样式词的；bangs 都算。
+const EN_BANGS_WORDS = /(?:^|(?<=[^a-z]))(?:(?:(?:blunt|swept|side[-_\s]swept|straight|wispy|curtain|parted|long|short|thick|choppy|asymmetrical|hime[-_\s]cut)[-_\s]+)+(?:bangs|fringe)|bangs)(?![a-z])/gi;
+// 英文自然语言里的发色、瞳色词（black hair 里的 black、bright blue eyes 里的 bright blue），只去颜色，hair / eyes 留给别的项。
+// 后面的 hair 是头发本身（不是 hair salon、hair day、hair tie 这类东西）才算。
+const EN_HAIR_THING = '(?![a-z])(?![-_\\s]+(?:salon|day|dryer|tie|band|clip|brush|stylist|product|spray|pin|ornament|ribbon))';
+// 「black and white eyes of the statue」这种 and 连着的不拆。
+const EN_HAIR_COLOR_WORDS = new RegExp(`(?:^|(?<=[^a-z]))(?<!and[-_\\s]+)${TAG_COLOR}[-_\\s]+(?=(?:[a-z]+[-_\\s]+){0,2}hair${EN_HAIR_THING})`, 'gi');
+const EN_EYE_COLOR_WORDS = new RegExp(`(?:^|(?<=[^a-z]))(?<!and[-_\\s]+)${TAG_COLOR}[-_\\s]+(?!and\\b)(?=(?:[a-z]+[-_\\s]+){0,1}(?:eyes|pupils|irises)(?![a-z])(?![-_\\s]+of\\b))`, 'gi');
+const EN_HAIRLEN_WORDS = new RegExp(`(?:^|(?<=[^a-z]))(?:(?:very|absurdly)[-_\\s]+)?(?:long|short|medium|shoulder[-_\\s]length|waist[-_\\s]length)(?:[-_\\s]+(?:straight|wavy|curly))?(?=[-_\\s]+(?:[a-z]+[-_\\s]+)?hair${EN_HAIR_THING})`, 'gi');
+const MODEL_MARK_WORDS = /(?:[左右]?(?:眼角|眼下|眼尾|眉心|眉间|唇边|嘴角|下巴|脸颊|脸上|鼻尖|鼻梁|额头|颈侧|耳后|锁骨|手背|手腕)?(?:下|上|边|旁|处)?的?(?:有|长着)?(?:一?[颗道块枚点粒些条])?(?:小小的?|淡淡的?|细小的?|浅浅的?|小)?(?:泪痣|红痣|黑痣|朱砂痣|美人痣|痣|雀斑|胎记|疤痕|伤疤))/g;
+const MODEL_SKIN_TAG_WORDS = /\b(?:very\s+)?(?:pale|fair|dark|tan|tanned|white|light|olive|brown|black)[-_\s]+skin(?:ned)?\b[-_\s]*/i;
+const MODEL_MARK_TAG = /\b(?:mole|moles|beauty\s+mark|freckles?|birthmark)\b/i;
+// 只去发色（「黑色长发」去掉「黑色」留「长发」）；只剩一个「发」字的整个去掉。长短、直卷这些也是长相，留着给别的项。
+function stripHairColor(text) {
+    return String(text || '').replace(HAIR_WORDS, match => {
+        if (/^发色/.test(match)) return '';
+        const rest = match.replace(new RegExp(`^(?:一头(?:乌黑的?)?)?${COLOR}的?`), '');
+        return /^(?:头)?发$/.test(rest) ? '' : rest;
+    });
+}
+// 这个人的某几项长相已经从更靠前的来源定下来（建档、角色卡、千千结、世界书）：模型写的里头同一项的说法去掉，衣着、动作照留。
+// 发色只去颜色词（长短留着），瞳色去瞳色词；皮肤、痣疤、身材、脸去掉写这一项的那一小句（同一句里写着衣着的不动）。
+// 英文标签同样处理（hair ornament、closed eyes 不动；带权重括号的整串不拆）。fields 可以是 { hair, eye } 或一组项名。
+// 一段字里写某几项的那几个词去掉（发色、瞳色、长短、刘海、肤色、痣），别的照留。
+function stripFieldWords(text, set) {
+    let rest = String(text || '');
+    if (set.has('hair')) rest = stripHairColor(rest).replace(EN_HAIR_COLOR_WORDS, '');
+    if (set.has('eye')) rest = rest.replace(EN_EYE_COLOR_WORDS, '');
+    // 发色没定、只定了长短时：「白色短发」去掉长短留下「白色发」里的发色（留个「发」字，不让颜色悬空）。
+    if (set.has('hairlen')) rest = rest.replace(MODEL_HAIRLEN_WORDS, (match, at, whole) => (/发$/.test(match) && !set.has('hair') && /[色黑白银金红棕灰紫蓝粉绿褐赤青墨碧黄橙茶栗]$/.test(whole.slice(0, at)) ? '发' : ''));
+    if (set.has('bangs')) rest = rest.replace(MODEL_BANGS_WORDS, '').replace(EN_BANGS_WORDS, '');
+    if (set.has('hairlen')) rest = rest.replace(EN_HAIRLEN_WORDS, '');
+    if (set.has('eye')) rest = rest.replace(EYE_WORDS, '');
+    if (set.has('skin')) rest = rest.replace(MODEL_SKIN_WORDS, '');
+    if (set.has('mark')) rest = rest.replace(MODEL_MARK_WORDS, '');
+    return rest;
+}
+function stripModelLooks(person, fields) {
+    const set = fields instanceof Set ? fields : new Set(Object.entries(fields || {}).filter(([, on]) => on).map(([name]) => name));
+    if (!set.size) return;
+    // 皮肤、痣疤只去写这一项的那几个词（「黝黑皮肤」「左眼下一颗黑痣」），同一句里的动作、表情照留。
+    // 身材、脸常和动作写在一起（「高挑的身材倚在门边」「眉眼含笑」），不去。
+    // 英文去完词后留下的双空格、悬空的 and / with 一起收拾掉。
+    const rest = stripFieldWords(person.text, set).replace(/[ \t]{2,}/g, ' ')
+        .replace(/\b(?:and|with)\s*(?=[,.;]|$)/gi, '').replace(/(^|[,.;]\s*)(?:and|with)\b\s*/gi, '$1').replace(/\s+([,.;])/g, '$1').trim();
     person.text = rest.replace(/(^|[，,、。；;])\s*的/g, '$1').replace(/([，,、])\s*(?=[，,、。；;]|$)/g, '').replace(/^[，,、。；;\s]+/, '').trim();
     const tags = String(person.modelTag || '');
     if (tags && !/[{}()[\]]/.test(tags)) {
-        person.modelTag = tags.split(',').map(tag => tag.trim()).filter(tag => {
-            const traits = tagTraits(tag, true);
-            return !((hair && traits.includes('hair-color')) || (eye && traits.includes('eye-color')));
-        }).join(', ');
+        const claimed = new Set([set.has('hair') && 'hair-color', set.has('eye') && 'eye-color', set.has('hairlen') && 'hair-length', set.has('bangs') && 'bangs'].filter(Boolean));
+        person.modelTag = tags.split(',').map(tag => withoutClaimedLooks(tag.trim(), claimed))
+            .map(tag => (set.has('skin') ? tag.replace(MODEL_SKIN_TAG_WORDS, '').trim() : tag))
+            .filter(tag => tag && !/^skin[-_\s]+tone$/i.test(tag) && !(set.has('mark') && MODEL_MARK_TAG.test(tag))
+                && !(set.has('bangs') && isBangsTag(tag))).join(', ');
     }
 }
 // 英文标签串里写了发色／瞳色没有（建档角色的 tag）。
 function tagHasLooks(tags) {
     const parts = String(tags || '').split(',').map(part => part.trim()).filter(Boolean);
     return { hair: parts.some(part => tagTraits(part, true).includes('hair-color')), eye: parts.some(part => tagTraits(part, true).includes('eye-color')) };
+}
+
+// 长相按项补：发色、瞳色、皮肤、痣疤这类记号、身材、脸。认不出是哪一项的句子不算长相。
+// 来源的先后照旧（建档 → 角色卡／Persona → 千千结 → 世界书 → 模型写的），但不再「前面有一项就整个人不管」：
+// 前面写了的项以前面为准，前面没写的项由后面的来源补。角色卡只写了黑发时，世界书里的粉色眼睛、肤色、泪痣照样补得进来，
+// 模型写错的蓝眼睛也会被世界书的粉色眼睛顶掉。
+// 头发分成三项：发色、长短直卷、刘海。角色卡只写了「黑发」时，世界书里的「及腰长直发、齐刘海」照样补得进来。
+const LOOK_FIELDS = ['hair', 'hairlen', 'bangs', 'eye', 'skin', 'mark', 'build', 'face'];
+const HAIR_COLOR_EN = new RegExp(`\\b${TAG_COLOR}[-\\s_]+(?:[a-z]+[-\\s_]+)?hair\\b`, 'i');
+const LOOK_FIELD_TESTS = [
+    ['hair', text => HAS_HAIR.test(text) || HAIR_COLOR_EN.test(text)],
+    ['hairlen', text => /及腰|齐肩|及肩|过肩|[长短卷直]发|长直|\b(?:long|short|medium|shoulder[-\s_]length|wavy|curly|straight)[-\s_]+(?:[a-z]+[-\s_]+)?hair\b/i.test(text)],
+    ['bangs', text => /刘海|\b(?:bangs|fringe)\b/i.test(text)],
+    // 只认写了颜色的（「眼睛一亮」「眼眶红了」不算长相）。
+    ['eye', text => HAS_EYE.test(text) || /\b[a-z-]+\s+(?:eyes|pupils|irises)\b|\bheterochromia\b/i.test(text) || /(?:眼睛|眼眸|瞳孔?|眸子?)(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗乌漆]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥乌])/.test(text)],
+    ['skin', text => /皮肤|肌肤|肤色|肤白|白皙|黝黑|小麦色|\bskin\b|\b(?:pale|fair|tan|tanned|dark)[-\s]skinned\b/i.test(text)],
+    ['mark', text => /痣|疤|雀斑|胎记|纹身|刺青|伤痕|\b(?:mole|freckles?|scars?|tattoos?|birthmark|beauty\s+mark)\b/i.test(text)],
+    ['build', text => /身材|体型|身形|身高|个子|个头|高挑|娇小|纤瘦|健壮|魁梧|\b(?:tall|short\s+stature|petite|slender|slim|muscular|curvy|chubby)\b/i.test(text)],
+    // 只认写长相的说法（「脸红了」「皱眉」不算）。
+    ['face', text => /脸型|[瓜子鹅蛋圆方尖娃]脸|面容|面庞|五官|容貌|相貌|眉眼|眉目|柳叶眉|剑眉|浓眉|细眉|薄唇|丹唇|高鼻|鼻梁|\b(?:face|eyebrows|lips|jawline)\b/i.test(text)],
+];
+const lookFieldsOf = clause => LOOK_FIELD_TESTS.filter(([, test]) => test(String(clause || ''))).map(([name]) => name);
+const splitLookClauses = text => String(text || '').split(/(?<=[。；;！!？?\n])|[，,、]|(?<=\.)\s+/).map(part => part.trim()).filter(part => /[\p{L}\p{N}]/u.test(part));
+// 一段长相（或一串标签）写到了哪几项。纯衣着的句子不算「其他」长相。
+function lookFieldsOfText(text) {
+    const fields = new Set();
+    for (const clause of splitLookClauses(text)) {
+        const found = lookFieldsOf(clause);
+        found.forEach(field => fields.add(field));
+    }
+    return fields;
+}
+const looksComplete = person => LOOK_FIELDS.every(field => (person?.looksFields || []).includes(field));
+// 从一个来源的长相里只取这个人还缺的那几项，补到这个人身上；一项都不缺或这段一项也补不上时什么都不改，返回 false。
+function fillLooksFrom(person, looks, label) {
+    const covered = new Set(person.looksFields || []);
+    const added = new Set();
+    const keep = [];
+    for (const clause of splitLookClauses(looks)) {
+        const found = lookFieldsOf(clause);
+        // 认不出是哪一项的句子（「性格温柔」「平时爱看书」）不算长相，不补。
+        const fresh = found.filter(field => !covered.has(field));
+        // 纯衣着句：照旧作兜底衣着带上（这一面写了衣着时下面会去掉），不占哪一项。
+        if (!fresh.length && !(found.length === 0 && SCENE_KINDS.some(kind => hasKindText(kind, clause)) && !covered.has('clothing'))) continue;
+        let piece = clause;
+        // 同一句里既有已定下的发色／瞳色、又有新的项（「黑发粉眼」而发色前面已定）：只去掉已定的那几个词。
+        // 「黝黑肤色眼下泪痣」而肤色前面已定：去掉肤色那几个词，泪痣照补。
+        piece = stripFieldWords(piece, new Set(found.filter(field => covered.has(field))));
+        piece = piece.replace(/^[的，,、\s]+/, '').trim();
+        if (!piece) continue;
+        keep.push(piece);
+        fresh.forEach(field => added.add(field));
+        if (!found.length && !fresh.length) added.add('clothing');
+    }
+    if (!keep.length || ![...added].some(field => field !== 'clothing')) return false;
+    stripModelLooks(person, added);
+    const ownLooks = withoutSceneText(keep.join('，'), personSceneKinds(person));
+    if (ownLooks) person.text = [ownLooks, person.text].filter(Boolean).join(' ');
+    person.text = String(person.text || '').replace(/(^|[。；;！!？?\s])\s*[，,、]+\s*/g, '$1').replace(/\s{2,}/g, ' ').trim();
+    person.looksFields = [...new Set([...covered, ...added])];
+    const labels = String(person.looksSource || '').split('＋').filter(Boolean);
+    if (!labels.includes(label)) labels.push(label);
+    person.looksSource = labels.join('＋');
+    return true;
+}
+function newPersonFromLooks(name, looks, label) {
+    const person = { name, text: '', modelTag: '', looksFields: [] };
+    return fillLooksFrom(person, looks, label) ? person : null;
 }
 
 // 第二来源：角色卡（描述、性格）和 Persona 里写的长相。建档没有这个人、这一面又把长相写错时，从这里摘。
@@ -646,7 +836,7 @@ function frameCastNames(frame) {
 async function withCardAppearance(people, frame, tagsOnly) {
     if (tagsOnly) return people;
     const names = frameCastNames(frame);
-    const pending = names.filter(name => !people.find(person => person.name === name)?.looksSource);
+    const pending = names.filter(name => !looksComplete(people.find(person => person.name === name)));
     if (!pending.length) return people;
     let cast = '';
     let charName = '', personaName = '';
@@ -666,7 +856,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.5');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.11');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -674,11 +864,8 @@ async function withCardAppearance(people, frame, tagsOnly) {
         const looks = appearanceFromCast(cast, name, others);
         if (!looks) continue;
         const person = merged.find(item => item.name === name);
-        if (!person) { if (merged.length < 4) merged.push({ name, text: looks, modelTag: '', looksSource: '人设' }); continue; }
-        stripModelLooks(person, { hair: HAS_HAIR.test(looks), eye: HAS_EYE.test(looks) });
-        const ownLooks = withoutSceneText(looks, personSceneKinds(person));
-        person.text = [ownLooks, person.text].filter(Boolean).join(' ');
-        person.looksSource = '人设';
+        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, looks, '人设'); if (fresh) merged.push(fresh); continue; }
+        fillLooksFrom(person, looks, '人设');
     }
     return merged;
 }
@@ -720,7 +907,7 @@ function myriadEntryFor(list, name) {
 async function withMyriadAppearance(people, frame, tagsOnly) {
     if (tagsOnly) return people;
     const names = frameCastNames(frame);
-    const pending = names.filter(name => !people.find(person => person.name === name)?.looksSource);
+    const pending = names.filter(name => !looksComplete(people.find(person => person.name === name)));
     if (!pending.length) return people;
     const list = myriadPeopleLooks();
     if (!list.length) return people;
@@ -729,11 +916,8 @@ async function withMyriadAppearance(people, frame, tagsOnly) {
         const entry = myriadEntryFor(list, name);
         if (!entry) continue;
         const person = merged.find(item => item.name === name);
-        if (!person) { if (merged.length < 4) merged.push({ name, text: entry.looks, modelTag: '', looksSource: '千千结' }); continue; }
-        stripModelLooks(person, { hair: HAS_HAIR.test(entry.looks), eye: HAS_EYE.test(entry.looks) });
-        const ownLooks = withoutSceneText(entry.looks, personSceneKinds(person));
-        person.text = [ownLooks, person.text].filter(Boolean).join(' ');
-        person.looksSource = '千千结';
+        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, entry.looks, '千千结'); if (fresh) merged.push(fresh); continue; }
+        fillLooksFrom(person, entry.looks, '千千结');
     }
     return merged;
 }
@@ -748,7 +932,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.76.5').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.76.11').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -758,25 +942,22 @@ function readWorldCast(names) {
 async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     if (tagsOnly) return people;
     const names = frameCastNames(frame);
-    if (!names.length || names.every(name => people.find(person => person.name === name)?.looksSource)) return people;
+    if (!names.length || names.every(name => looksComplete(people.find(person => person.name === name)))) return people;
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.5');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.11');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
     try { const ctx = getContext(); others = [...new Set([...names, String(ctx?.name2 || '').trim(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean))]; } catch { /* 照旧 */ }
     for (const name of names) {
         const person = merged.find(item => item.name === name);
-        if (person?.looksSource) continue;
+        if (looksComplete(person)) continue;
         const looks = appearanceFromCast(cast, name, others);
         if (!looks) continue;
-        if (!person) { if (merged.length < 4) merged.push({ name, text: looks, modelTag: '', looksSource: '世界书' }); continue; }
-        stripModelLooks(person, { hair: HAS_HAIR.test(looks), eye: HAS_EYE.test(looks) });
-        const ownLooks = withoutSceneText(looks, personSceneKinds(person));
-        person.text = [ownLooks, person.text].filter(Boolean).join(' ');
-        person.looksSource = '世界书';
+        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, looks, '世界书'); if (fresh) merged.push(fresh); continue; }
+        fillLooksFrom(person, looks, '世界书');
     }
     return merged;
 }
@@ -805,11 +986,15 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         const next = { ...person };
         const looks = tagHasLooks(entry.tag);
         const nlLooks = { hair: HAS_HAIR.test(entry.nl || ''), eye: HAS_EYE.test(entry.nl || '') };
-        if (!tagsOnly) stripModelLooks(next, { hair: looks.hair || nlLooks.hair, eye: looks.eye || nlLooks.eye });
+        // 建档写到了哪几项：这几项以建档为准（兔子镜写的同一项去掉），没写的项（比如只写了发色）后面的角色卡、世界书照样补。
+        const fields = new Set([...lookFieldsOfText(entry.nl || ''), ...lookFieldsOfText(String(entry.tag || '').replace(/,/g, '，'))]);
+        if (looks.hair || nlLooks.hair) fields.add('hair');
+        if (looks.eye || nlLooks.eye) fields.add('eye');
+        if (!tagsOnly) stripModelLooks(next, fields);
         // 标签写法下建档只有中文自然语言（没有标签）：这一路什么都没给，不算「建档」来源，后面的角色卡、世界书照常补。
         if (tagsOnly && !String(entry.tag || '').trim()) return next;
         const kinds = personSceneKinds(person);
-        return { ...next, text: mergeAppearance(entry, next.text, tagsOnly, kinds), libraryTag: withoutSceneTags(entry.tag, kinds), fromLibrary: true, looksSource: '建档' };
+        return { ...next, text: mergeAppearance(entry, next.text, tagsOnly, kinds), libraryTag: withoutSceneTags(entry.tag, kinds), fromLibrary: true, looksSource: '建档', looksFields: [...fields] };
     });
     const ctx = getContext();
     const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
@@ -817,7 +1002,9 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         // 这个人已经在了（含模型加了后缀的写法）就不再补一条，免得同一个人发成两条。
         if (merged.length >= 4 || merged.some(person => person.name === name || looseNameMatch(person.name, name))) continue;
         if (!library.has(name) || !mentionedIn(prompt, name, [...library.keys(), ...ambiguous, ...merged.map(person => person.name)])) continue;
-        merged.push({ name, text: mergeAppearance(library.get(name), '', tagsOnly), libraryTag: String(library.get(name)?.tag || ''), fromLibrary: true, looksSource: '建档' });
+        const entry = library.get(name);
+        const fields = [...new Set([...lookFieldsOfText(entry?.nl || ''), ...lookFieldsOfText(String(entry?.tag || '').replace(/,/g, '，'))])];
+        merged.push({ name, text: mergeAppearance(entry, '', tagsOnly), libraryTag: String(entry?.tag || ''), fromLibrary: true, looksSource: '建档', looksFields: fields });
     }
     return merged.filter(person => person.text || person.libraryTag || person.modelTag);
 }
@@ -944,7 +1131,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             // 以前角色库配了就整串不用模型写的，这一幕的衣着也跟着丢了。
             const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
             // 每个人至少要有这种写法用得上的外貌：标签写法看标签，NAI 5 看自然语言或标签，空的人不发。
-            // 长相来源的先后：建档角色 → 角色卡／Persona → 世界书 → 模型自己写的。前面有的，后面不再管这个人。
+            // 长相来源的先后：建档角色 → 角色卡／Persona → 千千结 → 世界书 → 模型自己写的。按项补：前面写了的项以前面为准，没写的项后面补。
             // 设置里勾掉的外貌来源不用：兔子镜写的不要时，人名留着给后面几处按名字补长相，只清掉它写的外貌和衣着。
             const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, myriad: settings.imageLooksMyriad !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false };
             let cast = readCharacters(frame);

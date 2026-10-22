@@ -102,7 +102,7 @@ test('real maintenance menu routes narrow-width to dedicated action, not generic
     const panel={setAttribute(){},querySelector(){return null;},style:{},offsetHeight:400,
         addEventListener(type,fn){ if(type==='click') handler=fn; }};
     const root={isConnected:true}, button={isConnected:true,getBoundingClientRect:()=>({left:20,bottom:30})};
-    const context=vm.createContext({
+    const context=vm.createContext({ watchMaintenanceResultPanel: () => {}, MAINTENANCE_STATE_STAMP_ATTR: "stamp",
         document:{createElement:()=>panel,body:{appendChild(){}}},innerWidth:390,innerHeight:844,
         closeFeedbackCatMenu(){},closeMaintenanceRabbitMenu(){},
         MAINTENANCE_MENU_ATTR:'data-menu',hasRabbitMirrorInteractionResetSnapshot:()=>false,
@@ -121,7 +121,7 @@ test('real maintenance menu routes reveal-clip to dedicated action, not generic 
     const panel={setAttribute(){},querySelector(){return null;},style:{},offsetHeight:400,
         addEventListener(type,fn){ if(type==='click') handler=fn; }};
     const root={isConnected:true}, button={isConnected:true,getBoundingClientRect:()=>({left:20,bottom:30})};
-    const context=vm.createContext({
+    const context=vm.createContext({ watchMaintenanceResultPanel: () => {}, MAINTENANCE_STATE_STAMP_ATTR: "stamp",
         document:{createElement:()=>panel,body:{appendChild(){}}},innerWidth:390,innerHeight:844,
         closeFeedbackCatMenu(){},closeMaintenanceRabbitMenu(){},
         MAINTENANCE_MENU_ATTR:'data-menu',hasRabbitMirrorInteractionResetSnapshot:()=>false,

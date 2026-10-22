@@ -193,7 +193,7 @@ function parseImagePlanCandidates(text) {
     throw new TypeError('画面构思没有返回有效 JSON；请查看或重新构思，不会自动重试。');
 }
 
-export function parseImagePlan(text) {
+export function parseImagePlan(text, { promptFormat: requestedFormat = '' } = {}) {
     let value = text;
     if (typeof text === 'string') {
         value = parseImagePlanCandidates(text);
@@ -208,11 +208,15 @@ export function parseImagePlan(text) {
         : Array.isArray(value.characters) ? value.characters
             : typeof value.characters === 'object' ? Object.entries(value.characters).map(([name, item]) => (item && typeof item === 'object' && !Array.isArray(item) ? { name, ...item } : { name, tag: item })) : null;
     if (!Array.isArray(rawCharacters)) throw new TypeError('角色提示词必须是数组。');
+    // NAI 5 自然语言写法：人物的 nl 写全了、只是漏了英文标签时照样留着（不然这个人整个丢掉，外貌白写）；标签写法才非要 tag 不可。
+    // 按这次请求的写法判断（模型回报的 promptFormat 可能漏写）。
+    const tagsFormat = (requestedFormat || value.promptFormat) === 'nai45-tags';
     const parsedCharacters = rawCharacters.map(person => {
         const name = string(person?.name).trim();
         const tag = field(person?.tag);
-        if (!name || !tag) return null;
-        return { name, tag, nl: field(person.nl) };
+        const nl = field(person?.nl);
+        if (!name || !(tag || (!tagsFormat && nl))) return null;
+        return { name, tag, nl };
     }).filter(Boolean);
     return {
         prompt, nl: field(value.nl),
