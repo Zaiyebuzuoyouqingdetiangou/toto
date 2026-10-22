@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.74.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.74.1';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.74.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.74.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.74.1';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.74.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.74.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.74.1';
+import { getSettings } from './settings.js?rmv=1.74.2';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.74.2';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.74.2';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.74.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.74.2';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.74.2';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.74.2';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.74.2';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -43,7 +43,13 @@ export function adoptDrawNotes(root) {
     const PART = '[data-rm-draw-prompt],[data-rm-draw-tags],[data-rm-draw-char],[data-rm-draw-char-tags]';
     for (const notes of [...root.querySelectorAll('[data-rm-draw-notes]')]) {
         const number = String(notes.getAttribute('data-rm-draw-notes') || '1').trim() || '1';
-        const scope = notes.closest?.('details') || root;
+        // 模型有时把画面说明单独包进一个隐藏折叠（<details hidden><summary>生图元数据</summary>…）：
+        // 那一层里没有图框，要往外找到真正装着图框的那一面，不然说明搬不回去，图框只能拿标题凑提示词。
+        let scope = notes.closest?.('details') || root;
+        while (scope !== root && !scope.querySelector?.('[data-rm-draw-frame]')) {
+            const outer = scope.parentElement?.closest?.('details');
+            scope = outer && root.contains?.(outer) ? outer : root;
+        }
         const frames = [...scope.querySelectorAll('[data-rm-draw-frame]')];
         const empty = node => !node.querySelector('[data-rm-draw-prompt]');
         // 按编号找；模型把模板的 "1" 原样复制给了几个图框、编号对不上时，按先后给还没拿到说明的图框。
@@ -86,12 +92,12 @@ function hasModelPrompt(frame) {
     return String(text || '').replace(/\s+/g, ' ').trim().length >= 4;
 }
 
-// cleanTitle：凑提示词时标题只取标题字。存图的位置（键）仍按以前的取法算，免得已经画好的图找不到、又花一次额度重画；
-// 真正发给生图的那段用干净的标题。
+// legacyTitle：1.74.2 以前存图的键按整条标题条算（含插件挂上去的按钮字），只留着找回那时存下的图；
+// 现在的键和发给生图的提示词都只用干净的标题字。
 function legacyTitle(frame) {
     return String(frame.closest?.('details')?.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').replace(/^【?兔子镜[:：]\s*/, '').replace(/】$/, '').trim();
 }
-function readPrompt(frame, { cleanTitle = false, legacyCaption = false } = {}) {
+function readPrompt(frame, { cleanTitle = false, legacyCaption = false, legacyTitleText = false } = {}) {
     const node = frame.querySelector?.('[data-rm-draw-prompt]');
     let text = node ? node.textContent : '';
     if (!String(text).trim()) {
@@ -101,7 +107,9 @@ function readPrompt(frame, { cleanTitle = false, legacyCaption = false } = {}) {
     text = String(text || '').replace(/\s+/g, ' ').trim();
     // 图框在、画面描述却没写（模型漏写，或写到这里被截断了）：用这一面的标题和图框旁边写的字当画面，照样画。
     if (text.length < 4) {
-        const title = cleanTitle ? fallbackTitle(frame) : legacyTitle(frame);
+        // 标题一律只取标题字：标题条上之后才挂上的工具按钮、翻面计数会改变整条标题的文字，
+        // 以前按整条算键，挂按钮前后键不一样，同一个图框就会被当成没画过再画一次。
+        const title = legacyTitleText ? legacyTitle(frame) : fallbackTitle(frame);
         const caption = frameCaption(frame, { legacy: legacyCaption }).replace(/^前：|；后：|^后：/g, ' ').replace(/\s*\/\s*/g, '，').trim();
         const fallback = [title, caption].filter(Boolean).join('：').replace(/\s+/g, ' ').trim();
         return fallback.length >= 8 ? fallback.slice(0, 400) : '';
@@ -261,10 +269,11 @@ function savedKeyFor(key, claimed = null, legacyKey = '') {
     }
     return key;
 }
-// 没写画面说明、拿标题和旁边的字凑提示词的图框：1.74.1 以前相邻文字按 innerText 算，键可能不同。算一个旧键只用来找回。
+// 没写画面说明、拿标题和旁边的字凑提示词的图框：1.74.2 以前相邻文字按 innerText 算，键可能不同。算一个旧键只用来找回。
 function legacyKeyFor(root, frame) {
     if (hasModelPrompt(frame)) return '';
-    const legacy = readPrompt(frame, { legacyCaption: true });
+    // 1.74.2 以前：标题按整条标题条（含插件挂上的按钮字）、旁边文字按 innerText 算的键，只用来找回那时存下的图。
+    const legacy = readPrompt(frame, { legacyCaption: true, legacyTitleText: true });
     return legacy ? storageKey(root, frame, legacy) : '';
 }
 function readSavedAnyChat(key, claimed = null, legacyKey = '') {
@@ -589,7 +598,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.74.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.74.2');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -615,7 +624,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.74.1').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.74.2').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -629,7 +638,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.74.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.74.2');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1070,7 +1079,7 @@ export function listBuiltinImageFrames(root) {
         const prompt = readPrompt(frame);
         if (!prompt) continue;
         const key = storageKey(root, frame, prompt);
-        const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame));
+        const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
         const { list: versions, current } = saved.broken ? { list: [], current: -1 } : versionsOf(saved.record);
         list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken,
             busy: liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame)))) });
