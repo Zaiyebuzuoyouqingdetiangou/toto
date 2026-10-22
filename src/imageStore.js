@@ -59,6 +59,15 @@ function pruneCopied(store, swipe) {
     for (const [entry, value] of Object.entries(store)) if (value && typeof value === 'object' && value.swipe !== undefined && Number(value.swipe) !== swipe) { delete store[entry]; pruned = true; }
     return pruned;
 }
+// 这个键是当前聊天的、聊天却还没加载完整（消息上的插图记录读不到）：这时读到「没有」不算数，调用方要等一等再读。
+export function mirrorImageChatLoading(key) {
+    const ctx = liveContext();
+    // 消息已经到了、聊天信息还是空的才算「加载中」；没有消息的聊天（新开、测试环境）不等。
+    if (chatReady(ctx) || !Array.isArray(ctx?.chat) || !ctx.chat.length) return false;
+    const slot = slotOfKey(key);
+    const current = currentChatName(ctx);
+    return !!slot && !!current && stripChat(slot.chat) === current;
+}
 // 当前聊天里这个键对应的消息格子。create 时没有就建。键不是当前聊天、楼层没记上或消息不在时返回 null。
 function messageSlot(key, create = false) {
     const ctx = liveContext();
@@ -118,7 +127,7 @@ function requestChatSave(mes) {
         const chat = ctx.chat;
         const index = Number.isInteger(saveMes) && chat[saveMes] ? saveMes : chat.length - 1;
         if (index < 0) return;
-        import('./independentApi/persistence.js?rmv=1.78.1')
+        import('./independentApi/persistence.js?rmv=1.78.2')
             .then(module => module.requestSafeChatSave?.(ctx, index, chat[index]))
             .catch(() => { /* 存不上就等酒馆下次自己存 */ });
     }, 1500);

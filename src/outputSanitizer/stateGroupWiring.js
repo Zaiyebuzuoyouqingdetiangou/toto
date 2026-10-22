@@ -3,11 +3,18 @@
 //      旁边一排数目相同的可点的东西（按钮，或 cursor:pointer 的圆点、标签），或者一根滑杆：
 //      点第几个就只亮第几张；滑杆按值所在的那一段亮对应那张（0–360 六张就是每 60 一张）。
 //   2. 动画状态（.骰子.rolling{animation:…}）：旁边一个闲着的按钮，按一下让它们动一会儿（不常驻、不无限晃）。
+//   3. 一列可点的条目，其中一条带着高亮状态（歌单 .曲目.active、目录、选项卡）：点哪条亮哪条；
+//      旁边的「上一首／下一首」（❮ ❯）按顺序挪；显示「正在播放」的那行字跟着换成选中那条的名字。
+//   4. 开关属性（.播放器[data-playing="true"] 写了样式，元素上默认 data-playing="false"）：
+//      旁边一个闲着的播放／暂停按钮，按一下切换（▶ 和 ❚❚ 跟着换）。
 // 都只在能一一对上时才接，对不上不猜；接过的元素记在 WeakSet 里，复制出来的新节点重新接。
-import { innerButtonIsFree } from './orphanStateWiring.js?rmv=1.78.1';
+import { innerButtonIsFree } from './orphanStateWiring.js?rmv=1.78.2';
 
 const GROUP_ATTR = 'data-rm-state-group';
 const PULSE_ATTR = 'data-rm-pulse-trigger';
+const SELECT_ATTR = 'data-rm-select-item';
+const STEP_ATTR = 'data-rm-select-step';
+const FLAG_ATTR = 'data-rm-flag-toggle';
 const WIRED = new WeakSet();
 const PULSE_STATE = /(?:^|-)(?:rolling|spinning|rotating|tossing|shuffling)$/i;
 // 按钮的字得像「掷、摇、转、抽、洗」这类，别的按钮（下一步、提交）不拿来让东西动。
@@ -105,6 +112,146 @@ function wireExclusiveGroup(root, base, state, skip) {
     return wired;
 }
 
+// ——— 3. 一列条目里亮着一条 ———
+const PREV_TEXT = /^(?:[❮‹«◀◁⏮←<]|上一[首曲页张个条]?|前一[首曲页张个条]?|prev(?:ious)?|back)$/i;
+const NEXT_TEXT = /^(?:[❯›»▷⏭→>]|下一[首曲页张个条]?|后一[首曲页张个条]?|next|forward)$/i;
+const PREV_NAME = /(?:^|[-_])prev(?:ious)?(?:$|[-_])|Prev(?:ious)?\b/;
+const NEXT_NAME = /(?:^|[-_])next(?:$|[-_])|Next\b/;
+function nameOf(node) { return `${node.id || ''} ${[...node.classList].join(' ')} ${node.getAttribute('aria-label') || ''}`; }
+function stepDirection(node) {
+    const text = String(node.textContent || '').replace(/\s+/g, '');
+    if (PREV_TEXT.test(text) || PREV_NAME.test(nameOf(node))) return -1;
+    if (NEXT_TEXT.test(text) || NEXT_NAME.test(nameOf(node))) return 1;
+    return 0;
+}
+// 条目的名字：条目里类名带 name／title 的那块字；没有就不跟着换「正在播放」。
+function itemName(item) {
+    const named = [...item.querySelectorAll('*')].find(node => [...node.classList].some(name => /(?:^|-)(?:name|title)$/i.test(name)));
+    return String(named?.textContent || '').trim();
+}
+function wireSelectionList(root, base, state, skip) {
+    let items;
+    try { items = [...root.querySelectorAll(selectorFor(base))]; } catch { return 0; }
+    if (items.length < 2 || items.length > 30 || items.some(item => WIRED.has(item) || skip(item))) return 0;
+    const parent = items[0].parentElement;
+    if (!items.every(item => item.parentElement === parent)) return 0;
+    const lit = items.filter(item => item.classList.contains(state));
+    if (lit.length !== 1) return 0;
+    // 状态类只是高亮：摘掉以后还看得见（会藏起来的是第 1 类「只亮一张」，不归这里）。
+    if (items.some(item => hiddenWithout(item, state) || !shown(item))) return 0;
+    if (!items.every(item => clickable(item) && innerButtonIsFree(item) && !item.querySelector('button, a, input, select, textarea, [role="button"]'))) return 0;
+    let current = items.indexOf(lit[0]);
+    // 「正在播放」那行：条目外面、字里含着亮着那条的名字、字不长的那一块（取最里层）。
+    const startName = itemName(lit[0]);
+    let display = null;
+    if (startName) {
+        const candidates = [...root.querySelectorAll('*')].filter(node => !items.some(item => item.contains(node) || node.contains(item))
+            && !node.closest('summary, style, script, [data-rabbit-mirror-tool-entry-host]')
+            && String(node.textContent || '').includes(startName) && String(node.textContent || '').trim().length <= startName.length + 12
+            && ![...node.children].some(child => String(child.textContent || '').includes(startName)));
+        if (candidates.length === 1) display = candidates[0];
+    }
+    const startText = display ? String(display.textContent || '') : '';
+    const select = index => {
+        current = (index + items.length) % items.length;
+        items.forEach((item, at) => item.classList.toggle(state, at === current));
+        if (display) {
+            const name = itemName(items[current]);
+            if (name) {
+                let text = startText.replace(startName, name);
+                // 「1. 名字」这类前面的序号也跟着换。
+                const number = /^(\s*)(\d+)(?=\s*[.、:：\s])/.exec(startText);
+                if (number && Number(number[2]) === items.indexOf(lit[0]) + 1) text = text.replace(/^(\s*)\d+/, `$1${current + 1}`);
+                display.textContent = text;
+            }
+        }
+    };
+    items.forEach((item, index) => {
+        item.setAttribute(SELECT_ATTR, state);
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        const pick = event => {
+            if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault?.();
+            select(index);
+        };
+        item.addEventListener('click', pick);
+        item.addEventListener('keydown', pick);
+    });
+    // 上一首／下一首：这一面里闲着的、各只有一个。
+    const steppers = [...root.querySelectorAll('button, [role="button"], *')].filter(node => !items.some(item => item.contains(node))
+        && !node.closest('summary, [data-rabbit-mirror-tool-entry-host]') && (node.matches('button, [role="button"]') || clickable(node))
+        && innerButtonIsFree(node) && !node.querySelector('button, [role="button"]') && stepDirection(node) !== 0);
+    const prev = steppers.filter(node => stepDirection(node) < 0);
+    const next = steppers.filter(node => stepDirection(node) > 0);
+    for (const [list, delta] of [[prev, -1], [next, 1]]) {
+        if (list.length !== 1) continue;
+        const button = list[0];
+        button.setAttribute(STEP_ATTR, String(delta));
+        if (!button.matches('button')) { button.setAttribute('role', 'button'); button.setAttribute('tabindex', '0'); }
+        const move = event => {
+            if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault?.();
+            select(current + delta);
+        };
+        button.addEventListener('click', move);
+        button.addEventListener('keydown', move);
+    }
+    items.forEach(item => WIRED.add(item));
+    return 1;
+}
+
+// ——— 4. 开关属性 ———
+const PLAY_TEXT = /^(?:[▶►▷⏯⏵⏸❚‖|]+|❚❚|播放|暂停|play|pause)$/i;
+const PLAY_NAME = /play|pause|toggle/i;
+function flagRules(root) {
+    const flags = new Map();
+    for (const style of root.querySelectorAll('style')) {
+        const text = String(style.textContent || '');
+        for (const match of text.matchAll(/\[\s*(data-[\w-]+)\s*=\s*["']?(true|false)["']?\s*\]/gi)) {
+            const name = match[1].toLowerCase();
+            if (/^data-(?:rm|rabbit-mirror)-/.test(name)) continue;
+            flags.set(name, true);
+        }
+    }
+    return flags;
+}
+function wireFlagToggles(root, skip) {
+    let wired = 0;
+    for (const name of flagRules(root).keys()) {
+        let hosts;
+        try { hosts = [...root.querySelectorAll(`[${name}]`)].filter(node => /^(?:true|false)$/i.test(node.getAttribute(name) || '')); } catch { continue; }
+        if (hosts.length !== 1 || WIRED.has(hosts[0]) || skip(hosts[0])) continue;
+        const host = hosts[0];
+        const buttons = [...host.querySelectorAll('button, [role="button"], *')].filter(node => (node.matches('button, [role="button"]') || clickable(node))
+            && !node.querySelector('button, [role="button"]') && innerButtonIsFree(node)
+            && (PLAY_TEXT.test(String(node.textContent || '').replace(/\s+/g, '')) || PLAY_NAME.test(nameOf(node)))
+            && !node.hasAttribute(STEP_ATTR) && !node.hasAttribute(SELECT_ATTR));
+        if (buttons.length !== 1) continue;
+        const button = buttons[0];
+        // 名字得对得上：属性是 playing／play 这类，按钮就得是播放键；别的开关属性（open、on）按钮名字里也得有。
+        const word = name.replace(/^data-/, '').replace(/-/g, '');
+        if (!/play/i.test(word) && !new RegExp(word, 'i').test(nameOf(button))) continue;
+        button.setAttribute(FLAG_ATTR, name);
+        if (!button.matches('button')) { button.setAttribute('role', 'button'); button.setAttribute('tabindex', '0'); }
+        const symbol = String(button.textContent || '').trim();
+        const flip = event => {
+            if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault?.();
+            const on = String(host.getAttribute(name)).toLowerCase() !== 'true';
+            host.setAttribute(name, on ? 'true' : 'false');
+            // 按钮上只有一个播放／暂停符号时跟着换。
+            if (/^[▶►▷⏵]$/.test(symbol)) button.textContent = on ? '❚❚' : symbol;
+            else if (/^(?:⏸|❚❚)$/.test(symbol)) button.textContent = on ? '▶' : symbol;
+        };
+        button.addEventListener('click', flip);
+        button.addEventListener('keydown', flip);
+        WIRED.add(host);
+        wired += 1;
+    }
+    return wired;
+}
+
 function hasAnimationRule(root, base, state) {
     const compound = selectorFor(base) + '.' + CSS.escape(state);
     for (const style of root.querySelectorAll('style')) {
@@ -175,10 +322,12 @@ export function wireStateGroups(root, skip = () => false) {
     for (const [base, states] of pairs) {
         for (const state of states) {
             try {
-                wired += PULSE_STATE.test(state) ? wirePulse(root, base, state, skip) : wireExclusiveGroup(root, base, state, skip);
+                wired += PULSE_STATE.test(state) ? wirePulse(root, base, state, skip)
+                    : (wireExclusiveGroup(root, base, state, skip) || wireSelectionList(root, base, state, skip));
             } catch { /* 对不上就不接 */ }
         }
     }
+    try { wired += wireFlagToggles(root, skip); } catch { /* 对不上就不接 */ }
     if (!wired) FAILED.set(root, key); else FAILED.delete(root);
     return wired;
 }

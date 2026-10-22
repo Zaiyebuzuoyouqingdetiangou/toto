@@ -1,5 +1,6 @@
 // Bind authored content to local behavior state; never invent feedback or execute expressions.
 const results = new WeakMap();
+const chooserStates = new WeakMap();
 const DISPLAY = new Set(['', 'block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid',
     'flow-root', 'contents', 'list-item', 'table', 'inline-table', 'table-row', 'table-cell', 'table-caption',
     'table-row-group', 'table-header-group', 'table-footer-group', 'table-column', 'table-column-group',
@@ -176,6 +177,21 @@ export function releaseBehaviorShow(node) {
     return touched;
 }
 
+// 显示节点里装着选它自己的那个按钮（三张卡片各写 data-rm-show="自己的键"，卡片里又有选这个键的按钮）：
+// 它是选项，不是结果。按「选中才显示」藏起来，选了一张，别的卡连同按钮一起没了，再也选不回来。
+// 这种卡片一直显示，选中与否只照常同步状态（选中的那张挂 data-rm-active，模型的样式按它高亮）。
+function selfChooser(node, group, positive) {
+    if (!positive.length || !node.querySelectorAll) return false;
+    for (const control of node.querySelectorAll('[data-rm-pick], [data-rm-toggle]')) {
+        const owner = control.closest('[data-rm-ui]');
+        if (owner && owner !== group) continue;
+        const raw = String(control.getAttribute(control.hasAttribute('data-rm-pick') ? 'data-rm-pick' : 'data-rm-toggle') || '').trim();
+        const key = control.hasAttribute('data-rm-pick') ? raw : (!raw || /^(?:true|yes)$/i.test(raw) ? 'on' : raw);
+        if (key && positive.includes(key)) return true;
+    }
+    return false;
+}
+
 export function updateBehaviorShows(group, keys = new Set(), onChange = null, released = null) {
     let count = 0;
     for (const node of ownBehaviorShows(group)) {
@@ -186,6 +202,17 @@ export function updateBehaviorShows(group, keys = new Set(), onChange = null, re
         const negative = tokens.filter(token => token.startsWith('!')).map(token => token.slice(1)).filter(Boolean);
         const active = (!positive.length || positive.some(token => keys.has(token))) && negative.every(token => !keys.has(token));
         const saved = results.get(node) || remember(node);
+        if (selfChooser(node, group, positive)) {
+            visibility(node, saved, true);
+            // 选中的那张挂 data-rm-active（交还时由 clearForcedActive 撤掉）；没选中的撤掉，存档里带来的旧记号也撤。
+            if (active) { node.setAttribute('data-rm-active', 'true'); node.setAttribute(FORCED_ACTIVE, 'true'); }
+            else { node.removeAttribute('data-rm-active'); node.removeAttribute(FORCED_ACTIVE); }
+            const was = chooserStates.get(node);
+            chooserStates.set(node, active);
+            if (onChange && was !== active) onChange(node, active);
+            count++;
+            continue;
+        }
         const before = node.getAttribute('data-rm-result-active');
         visibility(node, saved, active, true);
         if (onChange && before !== String(active)) onChange(node, active);

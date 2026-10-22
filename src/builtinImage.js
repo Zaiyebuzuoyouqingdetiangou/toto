@@ -1,12 +1,12 @@
-import { getSettings } from './settings.js?rmv=1.78.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.78.1';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.78.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.78.1';
-import { isFreshDrawSlot } from './freshDrawSlots.js?rmv=1.78.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.1';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.78.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.78.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.78.1';
+import { getSettings } from './settings.js?rmv=1.78.2';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.78.2';
+import { imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.78.2';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.78.2';
+import { isFreshDrawSlot } from './freshDrawSlots.js?rmv=1.78.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.2';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.78.2';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.78.2';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.78.2';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -461,6 +461,23 @@ function faceFromEarlierSession(frame) {
     if (!msg || typeof msg !== 'object' || msg.is_user) return false;
     const generatedAt = Math.max(timeOf(msg.gen_started), timeOf(msg.gen_finished));
     return generatedAt > 0 && generatedAt < PAGE_OPENED_AT;
+}
+// 聊天还没加载完整时读不到消息上的插图记录：等它加载好再读一次（最多等 15 秒），不当成没画过。
+const CHAT_LOAD_WAIT_MS = 15000;
+const waitingForChat = new WeakSet();
+function retryWhenChatLoaded(target, key, run) {
+    if (waitingForChat.has(target)) return true;
+    if (!mirrorImageChatLoading(key)) return false;
+    waitingForChat.add(target);
+    const started = Date.now();
+    const tick = () => {
+        if (!target.isConnected) { waitingForChat.delete(target); return; }
+        if (mirrorImageChatLoading(key) && Date.now() - started < CHAT_LOAD_WAIT_MS) { setTimeout(tick, 300); return; }
+        waitingForChat.delete(target);
+        run();
+    };
+    setTimeout(tick, 300);
+    return true;
 }
 const AUTO_DRAW_WINDOW_MS = 10 * 60 * 1000;
 const AUTO_DRAW_LIMIT = 2;
@@ -928,7 +945,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.2');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -1004,7 +1021,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.78.1'), import('./independentApi/connection.js?rmv=1.78.1')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.78.2'), import('./independentApi/connection.js?rmv=1.78.2')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1019,7 +1036,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.2');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1141,7 +1158,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         // 「跳过的标签」也管千千结档案里的文字。
         let cleanRef = value => value;
-        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.78.1')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.78.2')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
@@ -1316,6 +1333,7 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);
     const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
+    if (!saved.record && !saved.broken && !manual && retryWhenChatLoaded(frame, key, () => { void fillFrame(root, frame); })) return;
     if (saved.broken) {
         note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
         return;
@@ -1464,6 +1482,7 @@ export function restoreSavedBuiltinImages(root) {
                 saved = readSaved(base.join(':'));
             }
         }
+        if (!saved.record && retryWhenChatLoaded(frame, storageKey(root, frame, prompt), () => { if (root.isConnected) restoreSavedBuiltinImages(root); })) continue;
         if (!saved.record) {
             // 找不到存下的图时，不留一个破图标在那里。
             for (const broken of frame.querySelectorAll?.('img[data-rm-draw-result]:not([src])') || []) broken.remove();

@@ -141,6 +141,25 @@ await mountInline(16, '正文里的面：新回复里的雨巷');
 await page.waitForTimeout(200);
 assert.equal(await calls(), 7); checks++;
 
+// 10 聊天信息还没加载完整：消息上存着的图先读不到，等加载好再读，放回原图，不画也不提示
+await page.evaluate(async query => {
+    const { hashText } = await import('/src/independentApi/runtime.js?' + query);
+    const prompt = '加载中的画面：屋檐滴水';
+    window.__ctx.chat[10].extra = { rabbitMirrorImages: { [`0:${hashText(prompt)}`]: { version: 1, current: { url: '/user/images/saved.png', path: '/user/images/saved.png', generatedAt: '2026-01-01T00:00:00.000Z' }, history: [], swipe: 0 } } };
+    window.__savedMeta = window.__ctx.chatMetadata;
+    window.__ctx.chatMetadata = {};
+    document.body.innerHTML = `<div id="chat"><div class="mes" mesid="10"><div data-rabbit-mirror-external-source="true" data-rm-owner-chat="chat:c" data-rm-owner-mesid="10" data-rm-owner-swipe="0"><details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="10" data-rabbit-mirror-owner-swipe="0"><summary>旧面</summary>
+      <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>${prompt}</p></figure></details></div></div></div>`;
+    images.fillBuiltinImageFrames(document.querySelector('details'));
+    await new Promise(resolve => setTimeout(resolve, 500));
+    window.__midStatus = document.querySelector('[data-rm-draw-status]')?.textContent || '';
+    window.__ctx.chatMetadata = window.__savedMeta;
+}, query);
+await page.waitForTimeout(800);
+assert.equal(await page.evaluate(() => window.__midStatus), ''); checks++;
+assert.equal(await calls(), 7); checks++;
+assert.match(await page.evaluate(() => document.querySelector('img[data-rm-draw-result]')?.getAttribute('src') || ''), /saved\.png/); checks++;
+
 assert.deepEqual(pageErrors, []); checks++;
 await browser.close();
 server.close();
