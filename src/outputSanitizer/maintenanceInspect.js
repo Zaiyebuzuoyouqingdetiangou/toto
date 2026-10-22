@@ -1,21 +1,21 @@
 // Split from outputSanitizer.js — maintenanceInspect.
-import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.76.4';
-import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.76.4';
-import { recordRepairSample } from './repairSamples.js?rmv=1.76.4';
-import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.76.4';
-import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.76.4';
-import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.76.4';
+import { RADIO_BRANCH_COUNT_ATTR, findRadioBranchCandidates } from './radioBranchRepair.js?rmv=1.76.5';
+import { runMaintenanceGenericProbe, describeGenericProbe } from './maintenanceGenericProbe.js?rmv=1.76.5';
+import { recordRepairSample } from './repairSamples.js?rmv=1.76.5';
+import { cancelLabeledCheckedTransitionVerification, invalidateMaintenanceLabeledCheckedProbe } from './fallbackRescue.js?rmv=1.76.5';
+import { LABELED_CHECKED_VERIFY_LAST_ATTR } from './checkedStateRescue.js?rmv=1.76.5';
+import { findUnmappedNavigationButtons } from './choiceRescue.js?rmv=1.76.5';
 
-import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.76.4';
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.76.4';
-import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.76.4';
-import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.76.4';
-import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.76.4';
-import { getCurrentChatKey } from '../storage.js?rmv=1.76.4';
-import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.76.4';
-import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.76.4';
-import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.76.4';
-import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.76.4';
+import { nativePopoverFallbackCount, inspectNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.76.5';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.76.5';
+import { BEHAVIOR_RELAY_ATTR, relayDeadBehaviorGroups } from './behaviorRelay.js?rmv=1.76.5';
+import { BEHAVIOR_REVERSE_ATTR, reverseRelayDeadHandwrittenControls } from './behaviorReverseRelay.js?rmv=1.76.5';
+import { cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.76.5';
+import { getCurrentChatKey } from '../storage.js?rmv=1.76.5';
+import { bindRabbitMirrorAvatarRoot, restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.76.5';
+import { auditVisibleLanguageBalanceText } from '../feedbackCat.js?rmv=1.76.5';
+import { getRabbitMirrorGenerationSnapshot } from '../generationGuard.js?rmv=1.76.5';
+import { analyzeStylelessControlKinds, collectBoundedElementDescendants, countMeaningfulStateVisualRules } from '../presentationQuality.js?rmv=1.76.5';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -30,7 +30,7 @@ import {
     isInsideChatMessage,
     isRabbitMirrorDetails,
     isMaintenanceAutoPatrolEnabled,
-} from './runtime.js?rmv=1.76.4';
+} from './runtime.js?rmv=1.76.5';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     CHANNEL_DIAL_CYCLE_COUNT_ATTR,
@@ -66,8 +66,8 @@ import {
     parseMissingCheckedSubjectClassRules,
     resolveTargetsForCheckedRule,
     restoreIndependentNativeCheckedInteraction,
-} from './checkedStateRescue.js?rmv=1.76.4';
-import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.76.4';
+} from './checkedStateRescue.js?rmv=1.76.5';
+import { getClassTokens, isCollapsedDimensionValue, normalizeStylePropertyName } from './renderedStateRescue.js?rmv=1.76.5';
 import {
     RAW_RADIO_RESET_RESCUE_ATTR,
     RAW_SELF_MUTATION_RESCUE_ATTR,
@@ -81,7 +81,7 @@ import {
     getRawAssistantMessageForRenderedRoot,
     installRawMessageRadioResetProgramRescue,
     normalizeInteractionMatchText,
-} from './scriptedInteractionRescue.js?rmv=1.76.4';
+} from './scriptedInteractionRescue.js?rmv=1.76.5';
 import {
     REVERSIBLE_RADIO_ROOT_ATTR,
     TOUCH_HOVER_ATTR,
@@ -99,14 +99,14 @@ import {
     repairMarkdownCorruptedCssComments,
     repairNestedDetailsPopupClipping,
     scheduleMaintenanceLabeledCheckedProbe,
-} from './fallbackRescue.js?rmv=1.76.4';
+} from './fallbackRescue.js?rmv=1.76.5';
 import {
     RADIO_GROUP_ROOT_ATTR,
     activateRabbitMirrorInteractionRescue,
     inspectSanitizedRadioGroupLoss,
     rearmRabbitMirrorSerializedInteractionRoot,
     scopeRabbitMirrorInteractionIds,
-} from './idsAndRearm.js?rmv=1.76.4';
+} from './idsAndRearm.js?rmv=1.76.5';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FEEDBACK_CAT_MENU_ATTR,
@@ -169,7 +169,7 @@ import {
     MAINTENANCE_STATE_ATTR,
     MAINTENANCE_REASON_ATTR,
     buildRabbitMirrorSkeletonPair,
-} from './diagnostics.js?rmv=1.76.4';
+} from './diagnostics.js?rmv=1.76.5';
 import {
     findDisabledOnlyChoiceGroupCandidates,
     findFillInChoiceCandidates,
@@ -184,7 +184,7 @@ import {
     installStaticChoiceSelectionFallback,
     installStructuredStaticDisclosureFallback,
     rehydrateRabbitMirrorMaintenanceRepairs,
-} from './choiceRescue.js?rmv=1.76.4';
+} from './choiceRescue.js?rmv=1.76.5';
 import {
     FENCED_BLOCK_RE,
     RABBIT_MIRROR_SANITIZER_STYLE_DROP_ATTR,
@@ -203,7 +203,7 @@ import {
     validateRabbitMirrorMarkupLexicalBudget,
     wrapNakedHtmlAsToto,
     wrapTrailingNakedHtml,
-} from './markup.js?rmv=1.76.4';
+} from './markup.js?rmv=1.76.5';
 import {
     getRabbitMirrorFacePosition,
     independentMaintenanceHost,
@@ -218,13 +218,13 @@ import {
     maintenanceMobileLayoutRect,
     maintenanceMobileLayoutTextLength,
     shouldRunMaintenanceMobileLayoutRescue,
-} from './layoutRescue.js?rmv=1.76.4';
+} from './layoutRescue.js?rmv=1.76.5';
 import {
     containRabbitMirrorTitleToolFloat,
     installMaintenanceRabbitForRoot,
     rabbitMirrorTextPresentation,
     refreshRabbitMirrorToolsInScope,
-} from './toolsChrome.js?rmv=1.76.4';
+} from './toolsChrome.js?rmv=1.76.5';
 import {
     TRANSIENT_RERENDER_REASONING_ENVELOPE_RE,
     followMaintenanceRepairRecipes,
@@ -236,7 +236,7 @@ import {
     maintenanceRepairTimers,
     messageContainsReasoningEnvelope,
     messageUsesDistinctDisplaySource,
-} from './lifecycle.js?rmv=1.76.4';
+} from './lifecycle.js?rmv=1.76.5';
 
 let rabbitMirrorInteractionResetInstanceCounter = 0;
 
@@ -2933,8 +2933,33 @@ function maintenanceRepairRunIsCurrent(repairRun) {
 }
 
 
-export function finishMaintenanceRepairRun(repairRun) {
+// 维修中途因为目标对不上、找不到镜面这类原因提前结束时，有的出口没改兔子按钮的状态，
+// 按钮一直停在「正在维修」，看起来就是点了毫无反应。收尾时统一检查：还停在「正在维修」的，改成说明已中止。
+// 独立 API 的面维修时会换成新节点，原来那个按钮已经不在页面上，所以也按这一轮维修的归属去找现在的按钮。
+function maintenanceButtonsStuckInRun(repairRun) {
+    const stuck = new Set();
+    // 独立 API 还在生成的面，按钮本来就显示「正在生成中」，不算卡住。
+    const isChecking = button => button?.isConnected && button.getAttribute?.(MAINTENANCE_STATE_ATTR) === MAINTENANCE_STATES.checking
+        && !button.hasAttribute?.('data-rabbit-mirror-external-waiting');
+    if (isChecking(repairRun.button)) stuck.add(repairRun.button);
+    let candidates = [];
+    try { candidates = [...(globalThis.document?.querySelectorAll?.(`[${MAINTENANCE_RABBIT_ATTR}][${MAINTENANCE_STATE_ATTR}="${MAINTENANCE_STATES.checking}"]`) || [])]; } catch { candidates = []; }
+    for (const button of candidates) {
+        if (stuck.has(button) || !isChecking(button)) continue;
+        const roots = [button.closest?.('details'), button.closest?.('toto'), button.closest?.('[data-rabbit-mirror-external-source="true"]')].filter(Boolean);
+        try {
+            if (roots.some(root => maintenanceRepairOriginKey(captureMaintenanceRepairOrigin(root)) === repairRun.key)) stuck.add(button);
+        } catch { /* 认不出归属就不动 */ }
+    }
+    return [...stuck];
+}
+
+
+export function finishMaintenanceRepairRun(repairRun, { sweepStuck = true } = {}) {
     if (!repairRun || maintenanceRepairRunTokens.get(repairRun.key) !== repairRun.token) return false;
+    for (const button of sweepStuck ? maintenanceButtonsStuckInRun(repairRun) : []) {
+        try { failMaintenanceRabbit(button, '维修已中止：当前兔子镜在维修中途变了或没对上；请再点一次维修，仍不行请生成全链路诊断'); } catch { /* 改不了状态就算了 */ }
+    }
     maintenanceRepairActiveRuns.delete(repairRun.key);
     maintenanceRepairRunRecords.delete(repairRun.key);
     for (const [timer, key] of maintenanceRepairTimers.entries()) {
@@ -2975,7 +3000,8 @@ function scheduleMaintenanceRepairCallback(repairRun, delay, callback, button = 
 export function cancelMaintenanceRepairRun(repairRun, reason = '维修已因当前目标变化取消', { notify = true } = {}) {
     if (!repairRun || maintenanceRepairRunTokens.get(repairRun.key) !== repairRun.token) return false;
     if (notify && repairRun.button?.isConnected) failMaintenanceRabbit(repairRun.button, `❌ ${reason}`);
-    return finishMaintenanceRepairRun(repairRun);
+    // 调用方说了不提示（比如切聊天时整批取消），收尾也不去改按钮。
+    return finishMaintenanceRepairRun(repairRun, { sweepStuck: notify });
 }
 
 
@@ -3243,6 +3269,9 @@ function captureMaintenancePreRepairSnapshot(root) {
         rearmRabbitMirrorSerializedInteractionRoot(workingNode);
         originalNode.replaceWith(workingNode);
         if (wasOpen) workingNode.setAttribute('open', ''); else workingNode.removeAttribute('open');
+        // 复制出来的新节点带着「已经修过」的记号，监听却没跟过来；和另外两处换节点一样，按记号把维修接过的交互接回去
+        //（填空选择、静态分段展开、静态选择这类），免得被当成已经接好而跳过，原本能点的反而点不动。
+        try { rehydrateRabbitMirrorMaintenanceRepairs(workingNode, { cloned: true }); } catch (error) { console.debug('[RabbitMirror] maintenance clone rehydrate skipped:', error); }
         try { refreshRabbitMirrorToolsInScope?.(workingNode); } catch {}
         maintenancePreRepairSnapshots.set(key, {
             node: snapshotNode,
@@ -3638,7 +3667,11 @@ function runMaintenanceAutomaticRepairPlan(root, button, repairRun) {
         return false;
     }
     const initialInspection = inspectMaintenanceRabbit(root);
-    const initialFindings = initialInspection.findings || [];
+    // 自动巡逻实测出「按了没反应」的控件时，静态检查不一定看得出来；把巡逻结论也算进维修计划，
+    // 免得巡逻刚说有控件没反应，点自动维修又说没发现问题。
+    const patrolDeadBefore = maintenancePatrolDeadCount(root);
+    const initialFindings = [...(initialInspection.findings || [])];
+    if (patrolDeadBefore > 0) initialFindings.push(maintenancePatrolDeadFinding(patrolDeadBefore));
     const initialPlan = maintenanceRepairModesForFindings(initialFindings);
     if (!initialPlan.length) {
         const state = initialInspection.state === MAINTENANCE_STATES.unknown
@@ -3689,10 +3722,28 @@ function runMaintenanceAutomaticRepairPlan(root, button, repairRun) {
             return;
         }
         const afterInspection = inspectMaintenanceRabbit(liveRoot);
+        // 巡逻测出过没反应的控件：修完在隐藏副本里再实测一遍，还有没反应的就算「仍有问题」，都好了才算修好。
+        if (patrolDeadBefore > 0) {
+            let deadNow = patrolDeadBefore;
+            try {
+                const probe = runMaintenanceGenericProbe(liveRoot, { budget: AUTO_PROBE_BUDGET_MS });
+                if (probe) deadNow = (probe.dead || []).length + (probe.feedbackOnly || []).length;
+            } catch (error) { console.debug('[RabbitMirror] post-repair probe failed:', error); }
+            if (deadNow > 0) {
+                setMaintenancePatrolDeadCount(liveRoot, deadNow);
+                afterInspection.findings = [...(afterInspection.findings || []), maintenancePatrolDeadFinding(deadNow)];
+            } else {
+                setMaintenancePatrolDeadCount(liveRoot, 0);
+            }
+        }
         // 先用维修前（和维修过程中发现）的问题去比，再把修后的问题记进去；以前先记再比，「新出现的问题」永远是空的。
         const comparison = compareMaintenanceFindings([...discoveredFindings.values()], afterInspection.findings || []);
         for (const finding of afterInspection.findings || []) discoveredFindings.set(maintenanceFindingKey(finding), finding);
         aggregate.findingsAfter = maintenanceFindingSnapshot(afterInspection.findings || []);
+        // 巡逻那条「按了没反应」：这次真有维修模块动过手、修完实测也好了，才算修好；
+        // 什么都没修、只是这次没测出来（上次结论过期或测得不稳），不算「已验证修复」。
+        const executedAny = (aggregate.executed || []).some(entry => entry?.id !== 'interaction-id-scope' && Number(entry?.count) > 0);
+        if (!executedAny) comparison.resolved = comparison.resolved.filter(item => item?.id !== 'patrol-dead-controls');
         aggregate.verification = {
             resolved: maintenanceFindingSnapshot(comparison.resolved),
             remaining: maintenanceFindingSnapshot(comparison.remaining),
@@ -4029,6 +4080,27 @@ function hostLooksStreaming(root) {
     } catch { return false; }
 }
 const AUTO_PROBE_BUDGET_MS = 500;
+// 巡逻实测出的没反应控件个数，留在这一面上给自动维修用（不含任何文字）。
+// 只记在内存里（不写进页面属性），免得随存档带回去、过期了还一直要求修交互。
+const maintenancePatrolDeadCounts = new WeakMap();
+// 巡逻和自动维修拿到的可能一个是外层 toto、一个是 details，统一按这一面的 details 记。
+function maintenancePatrolDeadKey(root) {
+    if (!root) return null;
+    if (root.matches?.('details')) return root;
+    return root.querySelector?.(':scope > details') || root.querySelector?.('details') || root;
+}
+function maintenancePatrolDeadCount(root) {
+    const key = maintenancePatrolDeadKey(root);
+    return key ? Math.max(0, Number(maintenancePatrolDeadCounts.get(key)) || 0) : 0;
+}
+function setMaintenancePatrolDeadCount(root, count) {
+    const key = maintenancePatrolDeadKey(root);
+    if (!key) return;
+    if (count > 0) maintenancePatrolDeadCounts.set(key, count); else maintenancePatrolDeadCounts.delete(key);
+}
+function maintenancePatrolDeadFinding(count) {
+    return { id: 'patrol-dead-controls', stage: 'interaction', label: `巡逻实测有 ${count} 个控件按了没反应`, mode: 'interaction', confidence: 'high', evidence: `dead=${count}` };
+}
 // 插件自己的面（生成失败、等待中这类占位，按钮是「找回旧兔子镜／重新生成／挨打猫」）不是模型写的，不巡逻、不记样本。
 function isPluginPlaceholderFace(root) {
     return Boolean(root?.classList?.contains('rabbit-mirror-external-placeholder') || root?.hasAttribute?.('data-rabbit-mirror-placeholder')
@@ -4056,6 +4128,7 @@ function scheduleMaintenanceAutoProbe(root, button, attempt = 0) {
         root.setAttribute(AUTO_PROBE_ATTR, probe ? 'done' : 'failed');
         if (!probe || !originStillCurrent()) return;
         const dead = [...(probe.dead || []), ...(probe.feedbackOnly || [])];
+        setMaintenancePatrolDeadCount(root, dead.length);
         if (!dead.length) return;
         const line = describeGenericProbe(probe);
         const recorded = rememberRepairSample(root, 'auto', line, dead);
@@ -4252,7 +4325,7 @@ export async function runMaintenanceNarrowFaceRepair(root, button) {
         if (rejectOversizedMaintenanceRepair(root, button, '窄面电击')) return false;
         if (!maintenanceRepairRunIsCurrent(repairRun)) return false;
         setMaintenanceRabbitState(button, MAINTENANCE_STATES.checking, '⚡ 正在重新测量并恢复这面兔子镜的宽度');
-        const adapter = await import('../independentApi.js?rmv=1.76.4');
+        const adapter = await import('../independentApi.js?rmv=1.76.5');
         // Loading the adapter is the sole async boundary. Never apply a delayed
         // click to a new chat, Swipe, source revision, face or replacement node.
         if (!root.isConnected || !details.isConnected || !button.isConnected
