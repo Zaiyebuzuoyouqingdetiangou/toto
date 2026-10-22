@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.76.16';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.16';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.16';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.16';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.16';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.16';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.16';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.16';
+import { getSettings } from './settings.js?rmv=1.76.17';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.17';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.17';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.17';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.17';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.17';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.17';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.17';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -58,15 +58,40 @@ export function adoptDrawNotes(root) {
         if (!frame) { const nth = frames[Number(number) - 1]; frame = (nth && empty(nth) ? nth : null) || frames.find(empty) || null; }
         // 说明段落有时被模型多包了一层：找后代，不只找直接子节点。
         const parts = [...notes.querySelectorAll(PART)].filter(node => !node.parentElement?.closest?.(PART) || node.parentElement === notes);
+        // 模型把画面说明包进一个看得见的折叠（<details><summary>画面说明与画风配置</summary><div data-rm-draw-notes hidden>…）：
+        // 说明搬走后这个折叠只剩一行标题、点开什么都没有，留在卡片外面像多出来的一块，一并收掉。
+        const shell = notes.parentElement?.closest?.('details') || null;
         if (frame && parts.length) {
             for (const part of parts) part.hidden = true;
             frame.prepend(...parts);
             moved += 1;
             notes.remove();
-        } else if (!parts.length) notes.remove();
+            pruneEmptiedNotesShell(shell, root);
+        } else if (!parts.length) { notes.remove(); pruneEmptiedNotesShell(shell, root); }
         else notes.hidden = true;
     }
     return moved;
+}
+
+function pruneEmptiedNotesShell(start, root) {
+    let shell = start;
+    // 一层层往外收：内层折叠收掉后，外层若也只剩一行标题，同样收掉。
+    while (shell && shell !== root && shell.parentNode && !shell.contains(root)) {
+        // 兔子镜这一面自己（有标题条、外壳标记）不收。
+        if (shell.hasAttribute('data-rabbit-mirror-css-scope') || shell.hasAttribute('data-rabbit-mirror-external-details') || shell.querySelector(':scope > summary[data-rm-title-chrome]')) return;
+        const MEDIA = '[data-rm-draw-frame],[data-rm-draw-notes],img,video,canvas,svg,audio,iframe,input,button,textarea,select,object,embed';
+        for (const child of shell.childNodes) {
+            if (child.nodeType === 3) { if (child.textContent.trim()) return; continue; }
+            if (child.nodeType !== 1) continue;
+            if (child.tagName === 'SUMMARY') continue;
+            if (/^(STYLE|SCRIPT)$/.test(child.tagName)) continue;
+            if (child.matches?.(MEDIA) || child.querySelector?.(MEDIA)) return;
+            if ((child.textContent || '').trim()) return;
+        }
+        const outer = shell.parentElement?.closest?.('details') || null;
+        shell.remove();
+        shell = outer;
+    }
 }
 
 // 标题只取标题字（插件在标题条上加的工具按钮、翻面计数不算）。
@@ -856,7 +881,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.16');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.17');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -932,7 +957,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.76.16').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.76.17').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -946,7 +971,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.16');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.17');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
