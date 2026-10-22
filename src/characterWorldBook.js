@@ -3,7 +3,9 @@ function text(value) { return typeof value === 'string' ? value : ''; }
 // 世界书条目标题里的分类词：不当人名用。
 const TITLE_NOISE = /^(?:角色|人物|人设|设定|主角|配角|男主|女主|NPC|npc|外貌|外观|长相|形象|资料|档案|简介|介绍|背景|世界观|关系|性格|服装|衣着|条目|常驻|蓝灯|绿灯|其他|补充|详细|基础|基本|地点|地图|规则|组织|势力|剧情|物品|道具|时间|事件)+$/;
 // 写了长相的条目才是人物外貌资料。
-const APPEARANCE_WORDS = /发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|身高|外貌|长相|容貌|五官|肤色|hair|eyes/i;
+// 皮肤、眼睛、痣疤、身材、脸这些单独成句的（「皮肤雪白」「眼睛浅粉」「眼下一颗泪痣」）也算。
+// 「脸红了」「眼睛一亮」「那道疤是小时候留下的」这类剧情句不算：眼睛要带颜色，脸只认面容、五官这类说法。
+const APPEARANCE_WORDS = /发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|眼睛(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥])|色的?眼睛|身高|身材|体型|身形|外貌|长相|容貌|相貌|五官|面容|肤色|皮肤|肌肤|白皙|痣|雀斑|胎记|纹身|刺青|hair|eyes|skin|mole|freckle|tattoo|birthmark/i;
 
 function currentCharacter(ctx) {
     return ctx?.characters?.[ctx.characterId] || ctx?.character || null;
@@ -167,7 +169,8 @@ export async function readCharacterWorldBookContext(ctx, {
     }
     // 还超出预算时：每条都留开头一段，不让排在后面的人物整条被截掉。
     // 按转义后的实际长度截；条目太多、每条连 200 字都分不到时，只留前面几条。
-    if (onlyMentioned && rows.length > 1 && rows.reduce((sum, item) => sum + item.row.length + 1, 0) > maxChars) {
+    // 只有一条也要按条截（截成完整的一行 JSON）：不然落到最后整段硬截，截在 JSON 中间，后面摘长相时这一条解析不出来、拿到空的。
+    if (onlyMentioned && rows.length >= 1 && rows.reduce((sum, item) => sum + item.row.length + 1, 0) > maxChars) {
         const keep = Math.max(1, Math.min(rows.length, Math.floor(maxChars / 220)));
         rows.splice(keep);
         const share = Math.floor(maxChars / rows.length) - 1;
@@ -224,7 +227,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     const titleIsWho = row => text(row.title).trim() === who || text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
     const pick = window => {
         const sentences = window.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean);
-        return sentences.filter(part => APPEARANCE_WORDS.test(part)).slice(0, 3).join('').slice(0, 200);
+        return sentences.filter(part => APPEARANCE_WORDS.test(part)).join('').slice(0, 600);
     };
     // 别人的名字出现在哪里就截到哪里；窗口一开头就是别人（这一句在讲别人）截成空串，调用方跳过这一句接着找。
     const cutAtOthers = window => {
@@ -233,7 +236,15 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         return window.slice(0, end);
     };
     const ownRows = rows.filter(titleIsWho);
+    // 标题就是这个人的条目：长相常分散在几处（开头写发色眼睛，后面另起一段写身材、痣），几处都收，去重后合起来，最多 600 字。
+    const collected = [];
+    const collect = found => {
+        for (const sentence of found.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean)) {
+            if (!collected.includes(sentence) && collected.join('').length + sentence.length <= 600) collected.push(sentence);
+        }
+    };
     for (const row of ownRows) {
+        collected.splice(0);
         // 标题就是这个人的条目（角色卡、Persona 也走这里）：长相常写在几百字的身份、背景后面，
         // 从写长相的地方往后摘，不只看开头。第一处写长相的句子是在讲别人（「乙：红发…」）时，接着找下一处。
         const content = row.content;
@@ -246,8 +257,10 @@ export function appearanceFromCast(castText, name, otherNames = []) {
             lastStart = start;
             tries += 1;
             const found = pick(cutAtOthers(content.slice(start, start + 360)));
-            if (found) return found;
+            if (found) collect(found);
         }
+        // 几本书里都有这个人的条目时，只用第一条摘得到长相的，不把两本书写法不同的长相拼在一起。
+        if (collected.length) return collected.join('');
     }
     // 名字后面紧跟标点、空白，或者「身穿、有一头、是、长着、戴着」这类直接接长相的字才算（「阿岩的妹妹」「阿岩岩」不算）。
     const boundary = /^(?:$|[\s：:，,、。；;】)）」』\-—·（(]|身|有|是|长|生|戴|穿|一头|头)/;
