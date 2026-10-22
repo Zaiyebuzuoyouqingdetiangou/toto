@@ -1,4 +1,4 @@
-import { INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT } from '../data/independentBehaviorPatch.js?rmv=1.77.0';
+import { INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT } from '../data/independentBehaviorPatch.js?rmv=1.77.1';
 
 export const BEHAVIOR_RULE_MAX_CHARS = 20000;
 export const DEFAULT_BEHAVIOR_RULE_TEXT = String(INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT || '').trim();

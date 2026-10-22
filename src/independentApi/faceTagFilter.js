@@ -84,11 +84,64 @@ function startsLine(node) {
     return true;
 }
 
+// 卡片外面照抄正文状态栏的一行（[玩家: 某某] | [状态: 某某] | [地点: 某某]、[系统评语: ……]）：
+// 提示词已经说了不许照抄正文的状态栏，模型还是常写在卡片外面。只认「这一面最外层」那几块（直接挂在折叠下，
+// 或挂在包着整面的自造外壳 <context> 这类里面），里面只有字、没有卡片结构，而且至少两段「[名: 值]」——才拿掉。
+const STATUS_SEGMENT = /\[[^\[\]\n]{1,24}[:：][^\[\]\n]{0,300}\]/g;
+function looksLikeStatusBar(text) {
+    const segments = String(text || '').match(STATUS_SEGMENT) || [];
+    if (segments.length < 2) return false;
+    // 字基本都在这几段方括号里（不是正文里偶尔用方括号）。分子分母都不算空白。
+    const covered = segments.join('').replace(/\s+/g, '').length;
+    return covered >= String(text).replace(/[\s|｜/]+/g, '').length * 0.7;
+}
+// 模型自己设计的元素（带 class、style、id、data-* 的）不当成照抄的状态栏。
+const designed = node => node.nodeType === 1 && [...node.attributes].some(attr => /^(?:class|style|id|data-)/.test(attr.name));
+// 一段「裸」的东西：文字、换行、不带设计属性的行内元素和自造标签（<status bar>）。
+const plainPiece = node => node.nodeType === 3 || (node.nodeType === 1 && node.localName !== 'summary' && node.localName !== 'style'
+    && !designed(node) && !node.matches?.(STRUCTURE) && !node.querySelector?.(STRUCTURE));
+function stripCopiedStatusBars(root) {
+    let changed = false;
+    root.normalize?.();
+    const faces = [...root.querySelectorAll('details')].filter(face => !face.parentElement?.closest?.('details'));
+    for (const face of faces) {
+        // 这一面得有真正的卡片：删掉这段以后剩下的正文（不算标题）还得有一大块。只有一段段方括号对白的面（剧本体）不删。
+        const faceText = [...face.childNodes].filter(node => !(node.nodeType === 1 && node.localName === 'summary')).reduce((sum, node) => sum + String(node.textContent || '').replace(/\s+/g, '').length, 0);
+        const layers = [face, ...[...face.children].filter(child => Object.prototype.toString.call(child) === '[object HTMLUnknownElement]' && child.querySelector(STRUCTURE))];
+        for (const layer of layers) {
+            // 把这一层里挨在一起的裸片段连成一段（隔着 <br>、换行的几行算一段），整段像状态栏才删，连 <br> 一起。
+            const runs = [];
+            let run = [];
+            for (const node of [...layer.childNodes]) {
+                if (plainPiece(node)) run.push(node);
+                else { if (run.length) runs.push(run); run = []; }
+            }
+            if (run.length) runs.push(run);
+            for (const pieces of runs) {
+                const text = pieces.map(node => node.textContent || '').join('\n');
+                if (!looksLikeStatusBar(text)) continue;
+                const own = String(text).replace(/\s+/g, '').length;
+                if (faceText - own < Math.max(30, own * 0.5)) continue;
+                pieces.forEach(node => node.remove());
+                changed = true;
+            }
+        }
+    }
+    return changed;
+}
+
 // sourceForClosing：模型原文（净化之前）。浏览器会给没关上的标签自动补关标签，只有原文里数得出来它关没关。
 export function stripExcludedTagsFromFaceOutput(value = '', excludedTags = new Set(), doc = globalThis.document, sourceForClosing = null) {
     const source = String(value ?? '');
     const names = [...(excludedTags || [])].map(name => String(name).toLowerCase()).filter(name => name && !KNOWN_TAGS.has(name));
-    if (!names.length || !source.includes('<') || !doc?.createElement) return source;
+    if (!source.includes('<') || !doc?.createElement) return source;
+    if (!names.length) {
+        // 没有跳过标签：只收卡片外照抄来的状态栏（先按去掉标签的字粗看一眼有没有两段「[名: 值]」）。
+        if ((source.replace(/<[^>]*>/g, ' ').match(STATUS_SEGMENT) || []).length < 2) return source;
+        const template = doc.createElement('template');
+        template.innerHTML = source;
+        return stripCopiedStatusBars(template.content) ? template.innerHTML : source;
+    }
     // 原文里每个跳过标签按出现顺序配对：第 k 个开标签有没有关上，对应 DOM 里同名的第 k 个元素。
     // 样式、脚本、注释里的不算；自闭合写法（<bgm/>）浏览器照样当开标签，记成没关上。
     const original = String(sourceForClosing ?? source)
@@ -176,5 +229,6 @@ export function stripExcludedTagsFromFaceOutput(value = '', excludedTags = new S
         const next = filterText(node.nodeValue, names, startsLine(node));
         if (next !== node.nodeValue) { node.nodeValue = next; changed = true; }
     }
+    if (stripCopiedStatusBars(root)) changed = true;
     return changed ? template.innerHTML : source;
 }

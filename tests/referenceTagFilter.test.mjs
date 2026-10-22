@@ -134,3 +134,15 @@ test('memory world book entries are filtered before the budget cuts them', async
     assert.doesNotMatch(material.text, /秘密/);
     assert.match(material.text, /第2天/);
 });
+
+test('world book entries that teach the main model a status-bar format are recognised', () => {
+    const isFormat = new Function(`${source.match(/^const OUTPUT_FORMAT_WORDS_RE=.*$/m)[0]}\n${source.match(/^const ST_MACRO_NAMES=.*$/m)[0]}\n${fn('isTemplatePlaceholder')}\n${fn('isOutputFormatInstruction')}\nreturn isOutputFormatInstruction;`)();
+    assert.equal(isFormat('<status bar>\n日期:{{日期}}\n- Each tag on its own line\n</status bar>'), true);
+    assert.equal(isFormat('Output format:\n[地点: 某处] [时间: 夜]'), true);
+    assert.equal(isFormat('【阿雪】黑色长发，浅粉色眼睛，标签：冷淡、寡言。'), false);
+    assert.equal(isFormat('某城是一座古都，城中有十二坊。'), false);
+    assert.equal(isFormat('{{char}}是{{user}}的师兄，{{char}}常在某城出没。'), false);
+    assert.equal(isFormat('每轮回复末尾附上：[日期: {{日期}}] | [地点: {{地点}}]'), true);
+    for (const plain of ['城里有一家叫 Status Bar 的酒馆，老板是阿松。', '终端会以 output format 为 JSON 返回结果。', '{{description}} 与 {{personality}} 都写在卡里，{{var::mood}} 影响 {{var::hp}}。', '{{#if x}}阿雪{{/if}}{{else}}阿岩', '{{char_version}} {{user_name}} 某城。']) assert.equal(isFormat(plain), false, plain);
+    assert.match(fn('globalWorldInfoContextView'), /filter\(item=>!isOutputFormatInstruction\(item\)\)/);
+});

@@ -85,7 +85,7 @@ function requestChatSave(ctx, key) {
         let index = mesOfKey(key);
         if (!Number.isInteger(index) || !chat[index]) index = chat.length - 1;
         if (index < 0) return;
-        import('./independentApi/persistence.js?rmv=1.77.0')
+        import('./independentApi/persistence.js?rmv=1.77.1')
             .then(module => module.requestSafeChatSave?.(ctx, index, chat[index]))
             .catch(() => { /* 存不上就等酒馆下次自己存 */ });
     }, 1500);

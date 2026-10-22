@@ -64,6 +64,11 @@ try {
             attrMention: run('<details><summary>t</summary><div data-tip="<status>">x</div><status><div class="bar">好感度 80</div></status></details>'),
             svgSame: run('<details><summary>t</summary><svg><status/></svg><status><div class="bar">好感度 80</div></status><p>正文</p></details>'),
             unclosedCode: run('<details><summary>t</summary><p>用 <code>x 写</p><status><div class="bar">好感度 80</div></status><p>正文</p></details>'),
+            statusBar2: strip('<details><summary>t</summary><div class="card"><p>卡片里 [甲: 一] | [乙: 二] 照留，后面是卡片里一大段正文，写着阿雪和阿岩在某城的事。</p></div><status bar="">[玩家: 阿雪] | [状态: 某某] | [地点: 某城]<br>[系统评语: 一句话。]</status><div data-rm-draw-notes="2" hidden><p data-rm-draw-prompt="2">x</p></div></details>', new Set()),
+            statusText: strip('<details><summary>t</summary><div class="card"><p>正文一大段，阿雪推开门走进某城的茶馆，坐在窗边慢慢喝茶，等着阿岩。</p></div>\n[玩家: 阿雪] | [地点: 某城]<br>[系统评语: 一句话。]\n</details>', new Set()),
+            dialogue: strip('<details><summary>小剧场</summary>[阿雪: 你来了] [阿岩: 嗯，路上堵车]<br>[阿雪: 先坐]<br>[阿岩: 好]</details>', new Set()),
+            designedLine: strip('<details><summary>t</summary><span class="scene">[场景: 茶馆] [时间: 傍晚]</span><div class="card"><p>正文一大段，阿雪推开门走进某城的茶馆，坐在窗边慢慢喝茶，等着阿岩。</p></div></details>', new Set()),
+            bracketProse: strip('<details><summary>t</summary><div class="card"><p>正文</p></div><note>她在信里写着 [日期: 三月] 这几个字，然后把信折好放回去。</note></details>', new Set()),
         };
     });
     assert.equal(out.statusBar, '<details><summary>t</summary><div class="card">卡</div>\n</details>');
@@ -101,6 +106,11 @@ try {
     assert.equal(out.svgSame, '<details><summary>t</summary><svg><status></status></svg><p>正文</p></details>');
     assert.doesNotMatch(out.unclosedCode, /好感度/);
     assert.match(out.unclosedCode, /正文/);
+    assert.equal(out.statusBar2, '<details><summary>t</summary><div class="card"><p>卡片里 [甲: 一] | [乙: 二] 照留，后面是卡片里一大段正文，写着阿雪和阿岩在某城的事。</p></div><div data-rm-draw-notes="2" hidden=""><p data-rm-draw-prompt="2">x</p></div></details>');
+    assert.equal(out.statusText, '<details><summary>t</summary><div class="card"><p>正文一大段，阿雪推开门走进某城的茶馆，坐在窗边慢慢喝茶，等着阿岩。</p></div></details>');
+    assert.match(out.dialogue, /阿岩: 好/);
+    assert.match(out.designedLine, /场景: 茶馆/);
+    assert.match(out.bracketProse, /她在信里写着/);
     assert.deepEqual(errors, []);
     console.log('faceTagFilter ok');
 } finally {
