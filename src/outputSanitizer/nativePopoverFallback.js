@@ -161,8 +161,39 @@ function installNativePopoverDisplay(root) {
     }, true);
 }
 
+// 弹窗里点了一个单选项（读档选档位、选一个角色、选一条线）：选完收起弹窗，让人看到选了以后的变化。
+// 弹窗常写成盖满整面的一层，不收起就把变化挡得严严实实。复选框（可以多选）不收。
+const pickCloseRoots = new WeakSet();
+function pickedControl(event) {
+    const node = event.target;
+    const label = node?.closest?.('label');
+    const input = node?.matches?.('input') ? node : label ? (label.control || label.querySelector('input')) : null;
+    if (input) return input.type === 'radio' ? input : null;
+    return node?.closest?.('[data-rm-pick]') || null;
+}
+function installPopoverPickClose(root) {
+    if (pickCloseRoots.has(root) || !root.querySelector('[popover]')) return;
+    pickCloseRoots.add(root);
+    root.addEventListener('click', event => {
+        const popup = event.target?.closest?.('[popover]');
+        const control = popup && root.contains(popup) ? pickedControl(event) : null;
+        if (!control) return;
+        // 选项本身（或它所在的那组）在弹窗外面：选的结果显示在弹窗外面，才收。弹窗里自己的分页、测验不收。
+        const owner = control.matches('input') ? control : control.closest('[data-rm-ui]');
+        if (!owner || popup.contains(owner)) return;
+        setTimeout(() => {
+            let open = false;
+            try { open = popup.matches(':popover-open'); } catch { open = false; }
+            if (open && typeof popup.hidePopover === 'function') { try { popup.hidePopover(); } catch { /* 收不起就留着 */ } return; }
+            const binding = roots.get(root), state = binding?.targets.get(popup);
+            if (state?.open) closeBranch(binding, state, false);
+        }, 120);
+    });
+}
+
 export function installNativePopoverFallback(root) {
     if (!root?.querySelectorAll) return 0;
+    try { installPopoverPickClose(root); } catch { /* 接不上就照旧 */ }
     try { undoFallbackForNativePopover(root); } catch { /* 撤不掉就照旧 */ }
     try { installNativePopoverDisplay(root); } catch { /* 补不上就照旧 */ }
     let binding = roots.get(root);
