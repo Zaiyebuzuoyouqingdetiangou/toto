@@ -1,29 +1,29 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.76.7';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.76.7';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.76.7';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.76.7';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.76.8';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.76.8';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.76.8';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.76.8';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.76.7';
-import { installPressFeedback } from './pressFeedback.js?rmv=1.76.7';
-import { installReadabilityPolish } from './readabilityPolish.js?rmv=1.76.7';
-import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=1.76.7';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.76.8';
+import { installPressFeedback } from './pressFeedback.js?rmv=1.76.8';
+import { installReadabilityPolish } from './readabilityPolish.js?rmv=1.76.8';
+import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=1.76.8';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.76.7';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.76.7';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.76.7';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.76.7';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.7';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.76.7';
-import { getCurrentChatKey } from '../storage.js?rmv=1.76.7';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.76.7';
-import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.76.7';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.76.8';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.76.8';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.76.8';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.76.8';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.8';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.76.8';
+import { getCurrentChatKey } from '../storage.js?rmv=1.76.8';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.76.8';
+import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.76.8';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.76.7';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.76.7';
+} from '../theaterFavorites.js?rmv=1.76.8';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.76.8';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -32,8 +32,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.76.7';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.7';
+} from '../feedbackCat.js?rmv=1.76.8';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.8';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -55,7 +55,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.76.7';
+} from '../blacklist.js?rmv=1.76.8';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -79,11 +79,11 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.76.7';
-import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=1.76.7';
-import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.7';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.7';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.76.7';
+} from './runtime.js?rmv=1.76.8';
+import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=1.76.8';
+import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.8';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.8';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.76.8';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -93,6 +93,7 @@ import {
     MAINTENANCE_REASON_ATTR,
     MAINTENANCE_STATES,
     MAINTENANCE_STATE_ATTR,
+    MAINTENANCE_STATE_STAMP_ATTR,
     RECIPE_MENU_ATTR,
     RESAY_ATTR,
     bindRevealedInteractionMemory,
@@ -106,8 +107,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.76.7';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.76.7';
+} from './diagnostics.js?rmv=1.76.8';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.76.8';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -127,19 +128,20 @@ import {
     runMaintenanceRevealClipRepair,
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
-} from './maintenanceInspect.js?rmv=1.76.7';
+    getRenderedMessageElement,
+} from './maintenanceInspect.js?rmv=1.76.8';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.76.7';
+} from './layoutRescue.js?rmv=1.76.8';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.76.7';
+} from './lifecycle.js?rmv=1.76.8';
 
 installMirrorUpdateMenuHook();
 
@@ -195,20 +197,32 @@ function maintenanceResultContext(root, knownIndex = getMessageIndexFromMirrorNo
         selected: message?.swipes?.[swipe] };
 }
 
+// 结果面板对应的那一面还是原来那一面吗（聊天、楼层、Swipe、正文、独立 API 的面都没变）；变了就关面板。
+function maintenancePanelFaceStillCurrent(feedback) {
+    const context = maintenanceResultContext(feedback.root, feedback.context.index);
+    if (Object.keys(feedback.context).some(key => feedback.context[key] !== context[key])) return false;
+    if (feedback.face?.source === 'independent' && (!feedback.face.host.isConnected
+        || String(feedback.face.host.dataset?.rmKey || '') !== feedback.ownerKey
+        || String(feedback.face.host.dataset?.rmSourceHash || '') !== feedback.sourceHash)) return false;
+    return true;
+}
+
 export function updateMaintenanceRabbitMenuState(button, state, reason) {
     const feedback = maintenanceResultPanel;
     if (!feedback?.panel?.isConnected || !button) return;
-    const context = maintenanceResultContext(feedback.root, feedback.context.index);
-    if (Object.keys(feedback.context).some(key => feedback.context[key] !== context[key])) {
+    if (!maintenancePanelFaceStillCurrent(feedback)) {
         closeMaintenanceRabbitMenu();
         return;
     }
-    if (feedback.face?.source === 'independent' && (!feedback.face.host.isConnected
-        || String(feedback.face.host.dataset?.rmKey || '') !== feedback.ownerKey
-        || String(feedback.face.host.dataset?.rmSourceHash || '') !== feedback.sourceHash)) {
-        closeMaintenanceRabbitMenu();
-        return;
-    }
+    if (!maintenanceButtonBelongsToPanel(feedback, button)) return;
+    const recommendation = getRabbitMirrorMaintenanceRecommendation(state, reason);
+    feedback.status.textContent = mergeMaintenanceProblemAndRecommendation(maintenanceMenuProblemText(state, reason), recommendation);
+    if (recommendation) feedback.status.setAttribute('data-rm-recommended-action', 'detected');
+    feedback.status.setAttribute('data-rm-maintenance-result-state', state);
+}
+
+// 这个兔子按钮是不是结果面板那一面的（维修换了节点、按钮是新的也算）。
+function maintenanceButtonBelongsToPanel(feedback, button) {
     let belongs = button === feedback.button || feedback.root.contains?.(button);
     if (!belongs && feedback.face?.source === 'independent') {
         const face = getRabbitMirrorFacePosition(button);
@@ -225,11 +239,7 @@ export function updateMaintenanceRabbitMenuState(button, state, reason) {
         belongs = !!identity && owner?.getAttribute(MAINTENANCE_MIRROR_IDENTITY_ATTR) === identity
             && getMessageIndexFromMirrorNode(owner) === feedback.context.index;
     }
-    if (!belongs) return;
-    const recommendation = getRabbitMirrorMaintenanceRecommendation(state, reason);
-    feedback.status.textContent = mergeMaintenanceProblemAndRecommendation(maintenanceMenuProblemText(state, reason), recommendation);
-    if (recommendation) feedback.status.setAttribute('data-rm-recommended-action', 'detected');
-    feedback.status.setAttribute('data-rm-maintenance-result-state', state);
+    return !!belongs;
 }
 
 function keepMaintenanceResultPanel(panel, root, button) {
@@ -248,6 +258,54 @@ function keepMaintenanceResultPanel(panel, root, button) {
     maintenanceResultPanel = { panel, status, root, button, face, context: maintenanceResultContext(root),
         ownerKey: String(face?.host?.dataset?.rmKey || ''),
         sourceHash: String(face?.host?.dataset?.rmSourceHash || '') };
+}
+
+
+// 维修结果面板一直停在「正在处理当前镜面…」：有的维修入口提前退出（这面正在别的维修里、镜面刚变过、窄面电击没展开）时
+// 不改兔子按钮的状态，面板就永远等不到结果。点下去以后隔一会儿看一眼：按钮不在维修中、面板还在等，就把按钮现在的结论写上；
+// 按钮的结论和点之前一模一样（这次根本没执行），写明这次没有执行。
+const MAINTENANCE_PANEL_WAITING = '正在处理当前镜面…';
+// 按的是哪个按钮：维修换了节点时原来的按钮已经不在页面上，去找这一面现在的兔子按钮。
+function liveMaintenancePanelButton(feedback, button) {
+    if (button?.isConnected) return button;
+    // 只在这一面所在的地方找（独立 API 的外置框，或这一层消息），不扫整页。
+    const scope = (feedback.face?.source === 'independent' ? feedback.face.host : null)
+        || (Number.isInteger(feedback.context?.index) && feedback.context.index >= 0 ? getRenderedMessageElement(feedback.context.index) : null);
+    if (!scope?.querySelectorAll) return null;
+    for (const candidate of scope.querySelectorAll(`[${MAINTENANCE_RABBIT_ATTR}]`)) {
+        try { if (maintenanceButtonBelongsToPanel(feedback, candidate)) return candidate; } catch { /* 下一个 */ }
+    }
+    return null;
+}
+// 按钮状态每改一次，戳记加一（setMaintenanceRabbitState 写的）；点之后戳记一次都没变，就是这次根本没执行。
+function settleMaintenanceResultPanel(button, stampBefore) {
+    const feedback = maintenanceResultPanel;
+    if (!feedback?.status?.isConnected || feedback.button !== button) return true;
+    if (feedback.status.textContent !== MAINTENANCE_PANEL_WAITING) return true;
+    if (!maintenancePanelFaceStillCurrent(feedback)) { closeMaintenanceRabbitMenu(); return true; }
+    const live = liveMaintenancePanelButton(feedback, button);
+    if (!live) return false;
+    const stamp = Number(live.getAttribute(MAINTENANCE_STATE_STAMP_ATTR)) || 0;
+    const state = live.getAttribute(MAINTENANCE_STATE_ATTR) || MAINTENANCE_STATES.idle;
+    if (live === button && stamp === stampBefore) {
+        feedback.status.textContent = '这次没有执行：这面兔子镜可能正在别的维修里，或者刚刚变过（换了 Swipe、正文更新、没展开）。请稍等一下再点一次；仍不行请生成全链路诊断。';
+        feedback.status.setAttribute('data-rm-maintenance-result-state', MAINTENANCE_STATES.unknown);
+        return true;
+    }
+    if (state === MAINTENANCE_STATES.checking) return false;
+    const reason = live.getAttribute(MAINTENANCE_REASON_ATTR) || '';
+    feedback.status.textContent = mergeMaintenanceProblemAndRecommendation(maintenanceMenuProblemText(state, reason), '');
+    feedback.status.setAttribute('data-rm-maintenance-result-state', state);
+    return true;
+}
+function watchMaintenanceResultPanel(button, stampBefore) {
+    const delays = [1500, 6000, 20000, 60000, 180000];
+    const tick = index => setTimeout(() => {
+        let done = true;
+        try { done = settleMaintenanceResultPanel(button, stampBefore); } catch { done = true; }
+        if (!done && index + 1 < delays.length) tick(index + 1);
+    }, delays[index] - (index ? delays[index - 1] : 0));
+    tick(0);
 }
 
 
@@ -682,7 +740,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.76.7';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.76.8';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -1902,6 +1960,7 @@ function showMaintenanceRabbitMenu(root, button) {
         if (action === 'close') { closeMaintenanceRabbitMenu(); return; }
         if (['interaction', 'auto', 'patrol', 'text', 'source', 'style', 'all', 'narrow-width', 'reveal-clip'].includes(action)) {
             keepMaintenanceResultPanel(panel, root, button);
+            watchMaintenanceResultPanel(button, Number(button?.getAttribute?.(MAINTENANCE_STATE_STAMP_ATTR)) || 0);
         } else closeMaintenanceRabbitMenu();
         if (!root?.isConnected || !button?.isConnected) {
             failMaintenanceRabbit(button, '当前镜面已经更新，请重新打开维修兔');
@@ -2481,7 +2540,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.76.7').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.76.8').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2790,19 +2849,19 @@ function installUnifiedMirrorTools(root) {
     if (!summary) return;
     if (isTheaterFavoriteSurface(root)) {
         stripTheaterFavoriteTitleChrome(root);
-        void import('../materialTexture.js?rmv=1.76.7').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
-        void import('../pixelSprites.js?rmv=1.76.7').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
+        void import('../materialTexture.js?rmv=1.76.8').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+        void import('../pixelSprites.js?rmv=1.76.8').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
         void loadMirrorImageModule().then(module => { if (root.isConnected) return module.mountMirrorImage(root); }).catch(() => {});
         // 收藏里只把当时画好、存在本机的内置生图放回去，从不发生图请求。
         if (root.querySelector?.('[data-rm-draw-frame]')) {
-            void import('../builtinImage.js?rmv=1.76.7').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
+            void import('../builtinImage.js?rmv=1.76.8').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
         }
         return;
     }
     // 材质纹理（实验性）：开着就把模型写了描述的地方铺上；关着就撤掉。
-    void import('../materialTexture.js?rmv=1.76.7').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+    void import('../materialTexture.js?rmv=1.76.8').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
     // 字母像素画：模型用字母写的小人、小猫，画成像素方块。
-    void import('../pixelSprites.js?rmv=1.76.7').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
+    void import('../pixelSprites.js?rmv=1.76.8').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
     if (roleColorFaces(root).length) {
@@ -2821,7 +2880,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '🔄 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✍️ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.76.7').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.76.8').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2844,11 +2903,11 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-snapshot', label: '📷 快拍', run: () => {
-        void import('../theaterSnapshot.js?rmv=1.76.7').then(module => module.openTheaterSnapshot())
+        void import('../theaterSnapshot.js?rmv=1.76.8').then(module => module.openTheaterSnapshot())
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '快拍无法打开。')));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.76.7').then(module =>
+        void import('../independentApi.js?rmv=1.76.8').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2863,7 +2922,7 @@ function installUnifiedMirrorTools(root) {
     if (root.querySelector?.('[data-rm-draw-frame]')) {
         // 开着内置生图：补画缺的图；关着：只把本机已存的图放回去，不请求生图。
         const drawNew = getSettings().builtinImageEnabled === true;
-        void import('../builtinImage.js?rmv=1.76.7').then(module => {
+        void import('../builtinImage.js?rmv=1.76.8').then(module => {
             if (!root.isConnected) return;
             if (drawNew) module.fillBuiltinImageFrames(root);
             else module.restoreSavedBuiltinImages(root);

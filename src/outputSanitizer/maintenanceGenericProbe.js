@@ -2,12 +2,12 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.7';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.7';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.76.7';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.76.7';
-import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.76.7';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.76.7';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.8';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.8';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.76.8';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.76.8';
+import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.76.8';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.76.8';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -311,7 +311,8 @@ export function describeGenericProbe(result) {
     if (!result.tested) return '';
     const still = Array.isArray(result.feedbackOnly) ? result.feedbackOnly : [];
     const stillText = still.length ? `；另有 ${still.length} 个按下后只有按钮自己变了、区域里的内容没变化：${[...new Set(still)].slice(0, 5).map(name => `「${name}」`).join('')}${still.length > 5 ? '…' : ''}` : '';
-    if (!result.dead.length) return `实测：副本里操作了 ${result.tested} 个控件，${still.length ? '画面有变化' : '画面都有变化'}${stillText}`;
+    const notes = `${result.uncertain ? `；${result.uncertain} 个控件只能用指针操作，测不准` : ''}${result.truncated ? '（时间有限，未测完）' : ''}`;
+    if (!result.dead.length) return `实测：副本里操作了 ${result.tested} 个控件，${still.length ? '画面有变化' : '画面都有变化'}${stillText}${notes}`;
     const names = [...new Set(result.dead)].slice(0, 5).map(name => `「${name}」`).join('');
-    return `实测：${result.tested} 个控件里有 ${result.dead.length} 个操作后画面没有变化：${names}${result.dead.length > 5 ? '…' : ''}${stillText}${result.truncated ? '（时间有限，未测完）' : ''}`;
+    return `实测：${result.tested} 个控件里有 ${result.dead.length} 个操作后画面没有变化：${names}${result.dead.length > 5 ? '…' : ''}${stillText}${notes}`;
 }
