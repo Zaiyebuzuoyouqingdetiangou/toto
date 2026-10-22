@@ -161,6 +161,28 @@ const u = await draw(`<p data-rm-draw-char="阿岩" hidden>披着一头长发，
 assert.match(((u.request.characters || [])[0] || {}).tag, /ponytail/, '只写了长短、散发冷意：不算写了发型'); checks++;
 await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes, white robe, boots', nl: '赤褐色头发，榛色眼睛，穿白色长袍' }] }); });
 
+// 千千结的人物档案：排在角色卡之后、世界书之前；按名字或别名认人
+await page.evaluate(() => {
+    window.STBaiBaiImage.getCharacters = () => ({ characters: [] });
+    globalThis.qqj_v3_public_bridge_v1 = { getPeopleSnapshot: () => ({ status: 'ready', people: { status: 'ready', items: [
+        { entityId: 'e1', displayName: '阿松', aliases: ['松儿'], profile: { name: '阿松', hair: '灰色短发', eyes: '琥珀色眼睛', clothingStyle: '常穿蓝布衫' } },
+        { entityId: 'e2', displayName: '阿雪', aliases: [], profile: { name: '阿雪', hair: '紫色长发' } },
+    ] } }) };
+});
+const mk = await draw(`<p data-rm-draw-char="松儿" hidden>黑发少年，披着斗篷</p><p data-rm-draw-char="阿雪" hidden>棕色短发的少女</p>`);
+const mkp = name => (mk.request.characters || []).find(item => item.name === name) || {};
+assert.match(mkp('松儿').nl, /灰色短发/, '别名认人'); checks++;
+assert.doesNotMatch(mkp('松儿').nl, /黑发|蓝布衫/, '模型写的发色去掉；写了衣着，档里的衣着不发'); checks++;
+assert.match(mkp('松儿').nl, /斗篷/); checks++;
+assert.match(mkp('阿雪').nl, /黑色长直发/, '角色卡排在千千结前面'); checks++;
+assert.doesNotMatch(mkp('阿雪').nl, /紫色长发/); checks++;
+assert.equal(mk.sources?.['松儿'], '千千结'); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksMyriad: false }); });
+const mk2 = await draw(`<p data-rm-draw-char="松儿" hidden>黑发少年</p>`);
+assert.doesNotMatch(JSON.stringify(mk2.request.characters || []), /灰色短发/, '勾掉千千结就不用'); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksMyriad: true }); delete globalThis.qqj_v3_public_bridge_v1;
+    window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes, white robe, boots', nl: '赤褐色头发，榛色眼睛，穿白色长袍' }] }); });
+
 // 设置里勾掉外貌来源：不用建档、不用兔子镜写的
 await page.evaluate(async query => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksLibrary: false }); }, query);
 const h = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);

@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.75.2';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.75.2';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.76.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.76.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.75.2';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.75.2';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.75.2';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.75.2';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.76.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.76.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.76.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.76.0';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -295,6 +295,7 @@ export const defaultSettings = Object.freeze({
     // 内置生图的人物外貌从哪几处取（不开生图 LLM 时全按这里；开了时建档和兔子镜写的这两项也按这里）。默认都用。
     imageLooksLibrary: true,
     imageLooksCard: true,
+    imageLooksMyriad: true,
     imageLooksWorldBook: true,
     imageLooksModel: true,
     imageCompositionMode: 'scene',
@@ -466,7 +467,7 @@ export function getSettings() {
     settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
-    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksWorldBook', 'imageLooksModel']) settings[key] = settings[key] !== false;
+    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel']) settings[key] = settings[key] !== false;
     settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;
@@ -665,7 +666,7 @@ export function updateSettings(patch) {
     if (Object.prototype.hasOwnProperty.call(safePatch, 'facePagerPosition')) safePatch.facePagerPosition = safePatch.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'writingStyle')) safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentReadCharacterWorldBook')) safePatch.independentReadCharacterWorldBook = safePatch.independentReadCharacterWorldBook === true;
-    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksWorldBook', 'imageLooksModel']) {
+    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageCompositionMode')) safePatch.imageCompositionMode = safePatch.imageCompositionMode === 'auto' ? 'auto' : 'scene';

@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.75.2';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.75.2';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.75.2';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.75.2';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.75.2';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.75.2';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.75.2';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.75.2';
+import { getSettings } from './settings.js?rmv=1.76.0';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.0';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.0';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.0';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.0';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.0';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.0';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -643,7 +643,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.2');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.0');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -660,6 +660,53 @@ async function withCardAppearance(people, frame, tagsOnly) {
     return merged;
 }
 
+// 第三来源：千千结（ST-MyriadKnots）当前聊天的人物档案。它给的只读接口 qqj_v3_public_bridge_v1.getPeopleSnapshot()
+// 不发请求、不调模型；没装、没加载好时拿到空的，照常往后走世界书。只认名字或别名对得上的人。
+const MYRIAD_LOOK_FIELDS = ['hair', 'eyes', 'face', 'build', 'height', 'distinctiveFeatures', 'clothingStyle', 'appearance'];
+export function myriadPeopleLooks() {
+    const bridge = globalThis.qqj_v3_public_bridge_v1;
+    if (!bridge || typeof bridge.getPeopleSnapshot !== 'function') return [];
+    let snapshot;
+    try { snapshot = bridge.getPeopleSnapshot(); } catch { return []; }
+    const items = Array.isArray(snapshot?.people?.items) ? snapshot.people.items : [];
+    return items.map(item => {
+        const profile = item?.profile && typeof item.profile === 'object' ? item.profile : {};
+        const name = String(profile.name || item?.displayName || item?.entityDisplayName || '').trim();
+        const aliases = [...new Set([...(Array.isArray(item?.aliases) ? item.aliases : []), ...String(profile.aliases || '').split(/[、,，;；\n]/)]
+            .map(alias => String(alias || '').trim()).filter(alias => alias && alias !== name))];
+        const looks = MYRIAD_LOOK_FIELDS.map(key => String(profile[key] || '').replace(/\s+/g, ' ').trim()).filter(Boolean).join('，').slice(0, 600);
+        return { name, aliases, looks };
+    }).filter(person => person.name && person.looks);
+}
+function myriadEntryFor(list, name) {
+    const exact = list.filter(person => person.name === name || person.aliases.includes(name));
+    if (exact.length === 1) return exact[0];
+    if (exact.length > 1) return null;
+    // 模型给名字加了后缀（「甲（少女）」）：唯一包含／被包含的那个。
+    const loose = list.filter(person => [person.name, ...person.aliases].some(key => key.length >= 2 && name.length >= 2 && (name.includes(key) || key.includes(name))));
+    return loose.length === 1 ? loose[0] : null;
+}
+async function withMyriadAppearance(people, frame, tagsOnly) {
+    if (tagsOnly) return people;
+    const names = frameCastNames(frame);
+    const pending = names.filter(name => !people.find(person => person.name === name)?.looksSource);
+    if (!pending.length) return people;
+    const list = myriadPeopleLooks();
+    if (!list.length) return people;
+    const merged = people.map(person => ({ ...person }));
+    for (const name of pending) {
+        const entry = myriadEntryFor(list, name);
+        if (!entry) continue;
+        const person = merged.find(item => item.name === name);
+        if (!person) { if (merged.length < 4) merged.push({ name, text: entry.looks, modelTag: '', looksSource: '千千结' }); continue; }
+        stripModelLooks(person, { hair: HAS_HAIR.test(entry.looks), eye: HAS_EYE.test(entry.looks) });
+        const ownLooks = withoutSceneText(entry.looks, personSceneKinds(person));
+        person.text = [ownLooks, person.text].filter(Boolean).join(' ');
+        person.looksSource = '千千结';
+    }
+    return merged;
+}
+
 const worldCastCache = new Map();
 // 同一张卡、同一批人名 60 秒内共用一次读取（几张图同时画时不重复读）。读取不跟某一张图的取消走，免得取消一张连累别的图；
 // 每张图自己的取消在 withWorldBookAppearance 里单独看。
@@ -670,7 +717,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.75.2').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.76.0').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -684,7 +731,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.2');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.0');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -781,7 +828,17 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         if (!target?.plan) throw planningFailure();
         const focus = readPrompt(frame, { cleanTitle: true });
         const looksSettings = getSettings();
-        const publicCharacters = looksSettings.imageLooksLibrary !== false ? await imageCharacters(target.floor) : [];
+        const publicCharacters = looksSettings.imageLooksLibrary !== false ? [...(await imageCharacters(target.floor) || [])] : [];
+        // 千千结的人物档案排在建档之后：建档里已经有的人不再给第二份。
+        if (looksSettings.imageLooksMyriad !== false) {
+            const have = new Set(publicCharacters.map(person => String(person?.name || '').trim()));
+            // 这一面只写了别名（「松儿」）时，用这一面写的那个叫法，生图 LLM 那边按名字对这一面的字。
+            const faceText = `${frame?.closest?.('details')?.textContent || ''} ${readCharacters(frame).map(person => person.name).join(' ')}`;
+            for (const person of myriadPeopleLooks()) {
+                const name = [person.name, ...person.aliases].find(key => faceText.includes(key)) || person.name;
+                if (!have.has(person.name) && !have.has(name) && publicCharacters.length < 24) publicCharacters.push({ name, tag: '', nl: person.looks, source: '千千结' });
+            }
+        }
         if (!isCurrent()) throw staleImageRequest();
         // 图框里模型写好的出场人物外貌和当时衣着一并单独给生图 LLM，不让它从别处另找衣着、场景。
         const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
@@ -839,11 +896,12 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             // 每个人至少要有这种写法用得上的外貌：标签写法看标签，NAI 5 看自然语言或标签，空的人不发。
             // 长相来源的先后：建档角色 → 角色卡／Persona → 世界书 → 模型自己写的。前面有的，后面不再管这个人。
             // 设置里勾掉的外貌来源不用：兔子镜写的不要时，人名留着给后面几处按名字补长相，只清掉它写的外貌和衣着。
-            const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false };
+            const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, myriad: settings.imageLooksMyriad !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false };
             let cast = readCharacters(frame);
             if (!use.model) cast = cast.map(person => ({ ...person, text: '', modelTag: '' }));
             if (use.library) cast = await withLibraryAppearance(cast, prompt, frame, tagsOnly);
             if (use.card) cast = await withCardAppearance(cast, frame, tagsOnly);
+            if (use.myriad) cast = await withMyriadAppearance(cast, frame, tagsOnly);
             if (use.world) cast = await withWorldBookAppearance(cast, frame, tagsOnly, options.signal || null);
             const people = cast
                 .filter(person => tagsOnly ? String(person.text || '').trim() : String(person.text || '').trim() || tagOf(person));
