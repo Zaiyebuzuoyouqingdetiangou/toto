@@ -35,7 +35,7 @@ function blockTextWithoutStatus(node) {
 
 // 块里那个按钮得是「闲着的」：看得见、能点、没有别的用处。
 // 别的修复已经接过线的（data-rabbit-mirror-*）不要；只被「点了没反应」兜底标过的、或已经替别的面板当触发处的可以。
-function innerButtonIsFree(el) {
+export function innerButtonIsFree(el) {
     if (typeof el.checkVisibility === 'function' && !el.checkVisibility({ visibilityProperty: true, opacityProperty: false })) return false;
     if (!el.getClientRects?.().length) return false;
     try { if (el.ownerDocument?.defaultView?.getComputedStyle?.(el)?.visibility === 'hidden') return false; } catch { /* 拿不到样式就不管 */ }
