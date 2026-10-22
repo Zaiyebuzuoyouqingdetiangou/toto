@@ -6,7 +6,7 @@ const TITLE_NOISE = /^(?:角色|人物|人设|设定|主角|配角|男主|女主
 // 皮肤、眼睛、痣疤、身材、脸这些单独成句的（「皮肤雪白」「眼睛浅粉」「眼下一颗泪痣」）也算。
 // 「脸红了」「眼睛一亮」「那道疤是小时候留下的」这类剧情句不算：眼睛要带颜色，脸只认面容、五官这类说法。
 // 「碧眼」这类只认不会是剧情的颜色（「白眼一翻」「红眼了」「黑眼圈」不算）；「眉眼弯弯地笑」「方脸的掌柜」这类不收。
-const APPEARANCE_WORDS = /[金银蓝碧绿紫琥翠灰褐]眼(?![圈镜神眶角])|鹅蛋脸|瓜子脸|鼻梁高|高鼻梁|发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|眼睛(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥])|色的?眼睛|身高|身材|体型|身形|外貌|长相|容貌|相貌|五官|面容|肤色|皮肤|肌肤|白皙|痣|雀斑|胎记|纹身|刺青|hair|eyes|skin|complexion|mole|freckle|tattoo|birthmark/i;
+const APPEARANCE_WORDS = /[金银蓝碧绿紫琥翠灰褐]眼(?![圈镜神眶角])|鹅蛋脸|瓜子脸|鼻梁高|高鼻梁|发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|眼睛(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗乌漆]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥乌])|色的?[大圆细长]?眼睛|身高|身材|体型|身形|外貌|长相|容貌|相貌|五官|面容|肤色|皮肤|肌肤|白皙|痣|疤痕|伤疤|雀斑|胎记|纹身|刺青|hair|eyes|skin|complexion|mole|freckle|tattoo|birthmark/i;
 
 function currentCharacter(ctx) {
     return ctx?.characters?.[ctx.characterId] || ctx?.character || null;
@@ -239,6 +239,57 @@ function englishSentenceStart(content, at) {
     while ((match = re.exec(head))) { start = match.index + match[0].length; if (!match[0].length) re.lastIndex += 1; }
     return start;
 }
+// 英文条目里讲别人的那几句：一句以另一个人名开头（Bob is… / Bob has…），以及紧接着用 He / She / His / Her 开头的句子，是在讲他；
+// 别的句子（没写人名、也不是代词开头的）照旧算这个人。这些句子不算这个人的长相（「先写 Alice，再写 Bob，His skin… a red mole」不能补给 Alice）。
+// 只认「大写词＋is / has / was / wears…」这种明说主语的，长相词（Silver hair、Freckles）、地名后面接 is 的也可能被认成人名，
+// 但它只影响这一句和紧跟的代词句，不会一路吞到底。
+const EN_PRONOUN_START = /^["'“‘(]?(?:he|she|they|his|her|hers|their|him|them)\b/i;
+const EN_NOT_NAME = /^(?:The|A|An|This|That|These|Those|There|Here|It|Its|When|While|After|Before|As|At|In|On|Of|With|And|But|Or|So|If|Then|Her|His|Their|She|He|They|Dr|Mr|Mrs|Ms|Sir|Lady|Lord|Long|Short|Silver|Black|White|Red|Blue|Green|Pale|Dark|Light|Golden|Brown|Pink|Purple|Freckles|Skin|Hair|Eyes)$/;
+const EN_RELATION = /\b(?:her|his|their)\s+(?:brother|sister|friend|neighbou?r|father|mother|dad|mom|husband|wife|lover|rival|cousin|son|daughter|master|servant|teacher|student|boss|partner|uncle|aunt)\b/i;
+function englishSentencesAboutOthers(content, who) {
+    const result = new Set();
+    const text = String(content || '');
+    if (!/[A-Za-z]{3}/.test(text)) return result;
+    const target = String(who || '').trim().toLowerCase();
+    // 条目里写的是英文名、和标题的人名对不上（标题「阿雪」，正文「Alice is…」）：第一个明说主语、又不是「她的哥哥」这类关系句的人名算她自己。
+    let alias = target && text.toLowerCase().includes(target) ? '' : null;
+    let subject = 'self';
+    const relatives = new Set();
+    // 代词分男女：她自己用 she/her 时，在讲别人（他）以后又出现 She / Her 开头的句子，是回到她自己。
+    // 她的性别从她自己那几句里的代词、或者「Bob is her friend」这种关系句里的 her / his 看出来。
+    const genderOf = value => (/^["'“‘(]?(?:she|her|hers)\b/i.test(value) ? 'f' : /^["'“‘(]?(?:he|his|him)\b/i.test(value) ? 'm' : '');
+    let selfGender = '', otherGender = '';
+    for (const raw of text.split(SENTENCE_SPLIT)) {
+        const sentence = raw.trim();
+        if (!sentence) continue;
+        const first = sentence.match(/^["'“‘(]?([A-Z][a-z]+)\b/)?.[1] || '';
+        const named = !!first && !EN_NOT_NAME.test(first)
+            && new RegExp(`^["'“‘(]?${first}(?:'s)?\\s+(?:is|was|has|had|wears|wore|looks|stands|sits|seems|appears)\\b`).test(sentence);
+        // 在「X is her brother」里出现过的人名是别人，之后也不拿来当她自己。
+        if (named && EN_RELATION.test(sentence)) relatives.add(first);
+        if (named && alias === null && !relatives.has(first)) alias = first;
+        const relation = sentence.match(/\b(her|his)\s+(?:brother|sister|friend|neighbou?r|father|mother|dad|mom|husband|wife|lover|rival|cousin|son|daughter|master|servant|teacher|student|boss|partner|uncle|aunt)\b/i);
+        if (named && relation && !selfGender) selfGender = /^her$/i.test(relation[1]) ? 'f' : 'm';
+        const pronoun = genderOf(sentence);
+        if ((target && sentence.toLowerCase().includes(target)) || (alias && first === alias)) subject = 'self';
+        else if (named) {
+            subject = 'other';
+            // 「Carol is her sister」：别人的性别从关系词看（sister、mother… 是她，brother、father… 是他）。
+            otherGender = /\b(?:sister|mother|mom|wife|daughter|aunt|girlfriend|niece|grandmother|queen|princess|lady)\b/i.test(sentence) ? 'f'
+                : /\b(?:brother|father|dad|husband|son|uncle|boyfriend|nephew|grandfather|king|prince|lord)\b/i.test(sentence) ? 'm' : '';
+        }
+        else if (!EN_PRONOUN_START.test(sentence)) subject = 'self';
+        else if (subject === 'other' && pronoun) {
+            // 只有知道别人的性别、而且和这个代词不一样时才算回到她自己；别人性别不明时宁可不算她的（少摘一句，不串人）。
+            if (selfGender && pronoun === selfGender && otherGender && otherGender !== pronoun) subject = 'self';
+            else if (!otherGender) otherGender = pronoun;
+        }
+        if (subject === 'self' && pronoun && !selfGender) selfGender = pronoun;
+        if (subject === 'other') result.add(sentence);
+    }
+    return result;
+}
+
 // 中文句子直接接上；英文句子之间留一个空格。
 function joinSentences(list) {
     return list.reduce((out, part) => (out && /[A-Za-z0-9.,!?"'”’)]$/.test(out) && /^["'“‘(]?[A-Za-z]/.test(part) ? `${out} ${part}` : out + part), '');
@@ -253,10 +304,11 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         try { const row = JSON.parse(line); if (row && typeof row.content === 'string') rows.push(row); } catch { /* 截断标记之类 */ }
     }
     const titleIsWho = row => text(row.title).trim() === who || text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
+    let foreign = new Set();
     const pick = window => {
         // 英文按句号、问号、叹号加空格分句，不然一整段英文算一句，超过 600 字时末尾的肤色、痣被截掉。
         const sentences = window.split(SENTENCE_SPLIT).map(part => part.trim()).filter(Boolean);
-        return joinSentences(sentences.filter(part => APPEARANCE_WORDS.test(part))).slice(0, 600);
+        return joinSentences(sentences.filter(part => APPEARANCE_WORDS.test(part) && !foreign.has(part))).slice(0, 600);
     };
     // 别人的名字出现在哪里就截到哪里；窗口一开头就是别人（这一句在讲别人）截成空串，调用方跳过这一句接着找。
     const cutAtOthers = window => {
@@ -277,6 +329,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         // 标题就是这个人的条目（角色卡、Persona 也走这里）：长相常写在几百字的身份、背景后面，
         // 从写长相的地方往后摘，不只看开头。第一处写长相的句子是在讲别人（「乙：红发…」）时，接着找下一处。
         const content = row.content;
+        foreign = englishSentencesAboutOthers(content, who);
         const words = new RegExp(APPEARANCE_WORDS.source, APPEARANCE_WORDS.flags.includes('g') ? APPEARANCE_WORDS.flags : `${APPEARANCE_WORDS.flags}g`);
         let match, tries = 0, lastStart = -1;
         while ((match = words.exec(content)) && tries < 8) {
@@ -298,6 +351,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     for (const row of rows) {
         if (ownRows.includes(row)) continue;
         const content = row.content;
+        foreign = englishSentencesAboutOthers(content, who);
         let tries = 0;
         for (let at = content.indexOf(who); at >= 0 && tries < 6; at = content.indexOf(who, at + who.length)) {
             if (!boundary.test(content.slice(at + who.length, at + who.length + 1))) continue;

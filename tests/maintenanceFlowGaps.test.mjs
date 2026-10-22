@@ -74,3 +74,19 @@ test('result panel no longer belongs to the face after its version is switched (
     host.dataset.rmFaceRemountEpoch = '3';
     assert.equal(context.check(feedback), false);
 });
+
+test('a probe that could not run (no sandbox, or threw) never reads as healthy', () => {
+    const patrol = between(inspect, 'export function patrolMaintenanceRabbit(', 'function findLiveMaintenanceRoot(');
+    assert.match(patrol, /if \(!probe && result\.state === MAINTENANCE_STATES\.healthy\)/);
+    assert.match(patrol, /实测控件时出错，这次没能实测/);
+    const plan = between(inspect, 'function runMaintenanceAutomaticRepairPlan(', 'const initialPlan = maintenanceRepairModesForFindings(initialFindings);');
+    assert.match(plan, /if \(!probe\) ownProbeNote = /);
+    assert.match(plan, /ownProbeNote = '实测控件时出错/);
+});
+
+test('generation completion bumps the remount count before swapping the face', () => {
+    const mount = readFileSync(new URL('../src/independentApi/mount.js', import.meta.url), 'utf8');
+    const at = mount.indexOf('const hostBeforeSwap=liveHost;');
+    assert.ok(at > 0 && at < mount.indexOf('const replacedOne=', at));
+    assert.ok(mount.indexOf('rmFaceRemountEpoch', at) < mount.indexOf('const replacedOne=', at));
+});

@@ -128,6 +128,54 @@ test('round three: hair length and bangs conflicts, skin priority inside a kept 
     assert.match(englishLooks, /mole/);
 });
 
+test('round four: English sentences about another person, standalone eye and scar wording, English bangs and hair conflicts', () => {
+    const cast = JSON.stringify({ book: 'b', title: '阿雪', content: 'Alice is a quiet girl. She has silver hair. Bob is her neighbour. His skin is dark and he has a red mole under his eye. Alice has pale skin.' });
+    const looks = appearanceFromCast(cast, '阿雪');
+    assert.match(looks, /silver hair/);
+    assert.match(looks, /pale skin/);
+    assert.doesNotMatch(looks, /His skin|red mole/);
+
+    const zh = JSON.stringify({ book: '书', title: '阿竹', content: '阿竹是药铺学徒。眼睛乌黑。一双蓝色的大眼睛。左眼下有一条疤痕。' });
+    const zhLooks = appearanceFromCast(zh, '阿竹');
+    for (const word of ['眼睛乌黑', '蓝色的大眼睛', '疤痕']) assert.match(zhLooks, new RegExp(word));
+
+    // 长相词、地名开头的句子不当成别人；「她的哥哥」那句的人名不当成她自己。
+    const cases = [
+        ['Alice', 'Alice is a girl. Silver hair falls to her waist. Silver eyes glow.', /Silver hair.*Silver eyes/],
+        ['Alice', 'Alice is a student. Freckles dot her nose. Freckles are cute. She has red eyes.', /red eyes/],
+        ['Alice', 'Alice lives in Tokyo. Tokyo is big. Long black hair and green eyes.', /Long black hair/],
+        ['阿雪', 'Bob is her brother. Bob has red hair. Snow has silver hair and pale skin.', /silver hair/],
+    ];
+    for (const [title, content, expected] of cases) assert.match(appearanceFromCast(JSON.stringify({ book: 'b', title, content }), title), expected, content);
+    assert.doesNotMatch(appearanceFromCast(JSON.stringify({ book: 'b', title: '阿雪', content: 'Bob is her brother. Bob has red hair. Snow has silver hair and pale skin.' }), '阿雪'), /red hair/);
+    // 别人性别不明时（her friend），紧跟的 She 宁可不算她的；别人用过 He 以后，She 才回到她自己。
+    assert.match(appearanceFromCast(JSON.stringify({ book: 'b', title: 'Alice', content: 'Alice is a girl. Bob is her friend. He is tall. She has blue eyes.' }), 'Alice'), /blue eyes/);
+    const mixed = appearanceFromCast(JSON.stringify({ book: 'b', title: 'Alice', content: 'Alice is a girl. Bob is her friend. His hair is red. Her eyes are blue.' }), 'Alice');
+    assert.match(mixed, /Her eyes are blue/);
+    assert.doesNotMatch(mixed, /His hair/);
+    const sister = appearanceFromCast(JSON.stringify({ book: 'b', title: 'Alice', content: 'Alice is a girl. Carol is her sister. She has red hair. Alice has blue eyes.' }), 'Alice');
+    assert.doesNotMatch(sister, /red hair/);
+    assert.match(sister, /blue eyes/);
+    const fringeTags = { name: '阿岩', text: '', modelTag: 'fringe dress, fringe trim, swept bangs, blue eyes' };
+    fillLooksFrom(fringeTags, '齐刘海。', '人设');
+    assert.equal(fringeTags.modelTag, 'fringe dress, fringe trim, blue eyes');
+
+    // 英文去冲突不误伤别的话。
+    const prose = { name: '阿松', text: 'She visits the dark hair salon. black and white eyes of the statue. It was a long hair day. she sat on the fringe of the crowd. long hair and blunt bangs, smiling', modelTag: '' };
+    fillLooksFrom(prose, '银色长发，齐刘海，金色眼睛。', '人设');
+    for (const phrase of ['dark hair salon', 'black and white eyes', 'long hair day', 'fringe of the crowd', 'smiling']) assert.match(prose.text, new RegExp(phrase));
+    assert.doesNotMatch(prose.text, /blunt bangs|  |, ,|and,/);
+    const lashes = { name: '阿竹', text: '黑色的长眼睫毛', modelTag: '' };
+    fillLooksFrom(lashes, '金色眼睛。', '人设');
+    assert.match(lashes.text, /长眼睫毛/);
+    assert.equal(mergeTagLists('blunt bangs, long hair', 'swept_bangs, short hair, smile'), 'blunt bangs, long hair, smile');
+    const english = { name: '阿岩', text: 'short black hair with swept_bangs, bright blue eyes, smiling', modelTag: 'swept_bangs, short hair' };
+    fillLooksFrom(english, '银色及腰长发，齐刘海，金色眼睛。', '人设');
+    assert.doesNotMatch(english.text, /short|black|swept|bangs|blue/);
+    assert.match(english.text, /smiling/);
+    assert.equal(english.modelTag, '');
+});
+
 test('looks are filled per field: card hair only does not stop the world book filling eyes, skin and mole', () => {
     const person = { name: '阿雪', text: '蓝色眼睛，穿着红衣在雪中回眸', modelTag: 'blue eyes, red dress' };
     fillLooksFrom(person, '黑发。', '人设');
