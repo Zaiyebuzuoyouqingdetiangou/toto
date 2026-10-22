@@ -4,7 +4,7 @@
 //      点第几个就只亮第几张；滑杆按值所在的那一段亮对应那张（0–360 六张就是每 60 一张）。
 //   2. 动画状态（.骰子.rolling{animation:…}）：旁边一个闲着的按钮，按一下让它们动一会儿（不常驻、不无限晃）。
 // 都只在能一一对上时才接，对不上不猜；接过的元素记在 WeakSet 里，复制出来的新节点重新接。
-import { innerButtonIsFree } from './orphanStateWiring.js?rmv=1.78.0';
+import { innerButtonIsFree } from './orphanStateWiring.js?rmv=1.78.1';
 
 const GROUP_ATTR = 'data-rm-state-group';
 const PULSE_ATTR = 'data-rm-pulse-trigger';
