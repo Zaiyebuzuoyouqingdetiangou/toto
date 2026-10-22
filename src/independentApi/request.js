@@ -565,7 +565,10 @@ function wrapMissingMirrorShell(inner,openTag=''){
  const titled=body.match(/<(h[1-4])\b[^>]*>([\s\S]*?)<\/\1>/i)?.[2]
   || body.match(/<([a-z0-9]+)\b[^>]*\bclass\s*=\s*["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i)?.[2]
   || '';
- const title=[...plain(titled).replace(/^[^\p{L}\p{N}]+/u,'')].slice(0,14).join('').trim()||'小剧场';
+ // 标题只取一个短名字，不抄整句正文：本体标题开头是【名字】的取括号里那段；否则取到第一个标点为止，最多 14 个字。
+ const bracketed=String(titled||'').replace(/<[^>]+>/g,'').trim().match(/^[【\[]([^】\]]{2,20})[】\]]/)?.[1]||'';
+ const headline=plain(bracketed||titled).replace(/^[^\p{L}\p{N}]+/u,'').split(/[，。！？；：,.!?;:…—~～（(「『“"]/)[0].trim();
+ const title=[...headline].slice(0,14).join('').trim()||'小剧场';
  // 净化时 css 作用域挂在 <toto> 上（因为没有 details）；取出内部时要把它搬到补上的 details 上，不然样式全对不上。
  const scope=String(openTag||'').match(/\bdata-rabbit-mirror-css-scope\s*=\s*["']([^"']+)["']/i)?.[1]||'';
  const scopeAttr=scope?` data-rabbit-mirror-css-scope="${escapeLongText(scope)}"`:'';

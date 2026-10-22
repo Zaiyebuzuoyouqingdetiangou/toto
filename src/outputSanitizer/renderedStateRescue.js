@@ -1337,9 +1337,8 @@ function isRenderedButtonAdjacentHiddenTarget(element, button) {
 }
 
 
-export function findRenderedButtonAdjacentHiddenTarget(button) {
-    if (isBehaviorInteractionOwned(button) || button?.hasAttribute?.('popovertarget') || button?.hasAttribute?.('commandfor')) return null;
-    let node = button?.nextElementSibling || null;
+function findButtonAdjacentHiddenAfter(start, button) {
+    let node = start?.nextElementSibling || null;
     for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
         if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
         if (isRenderedButtonAdjacentHiddenTarget(node, button)) return node;
@@ -1350,6 +1349,48 @@ export function findRenderedButtonAdjacentHiddenTarget(button) {
         if (text.length > 12) break;
     }
     return null;
+}
+
+export function findRenderedButtonAdjacentHiddenTarget(button) {
+    if (isBehaviorInteractionOwned(button) || button?.hasAttribute?.('popovertarget') || button?.hasAttribute?.('commandfor')) return null;
+    const direct = findButtonAdjacentHiddenAfter(button, button);
+    if (direct) return direct;
+    // 按钮单独包在一行操作区里（<div class="操作"><button>查看结果</button></div>），结果紧跟在这一行后面：
+    // 往外最多走两层，每层都只装着这一个按钮时，按那一层后面的内容找。
+    let host = button;
+    const ownText = String(button?.textContent || '').replace(/\s+/g, '');
+    for (let level = 0; level < 2; level += 1) {
+        const parent = host?.parentElement;
+        if (!parent || parent.matches?.('details, summary, label, [data-rm-ui], [data-rabbit-mirror-tool-entry-host]')) break;
+        const others = [...parent.children].filter(child => child !== host && !/^(?:style|script|template)$/i.test(child.tagName || ''));
+        if (others.length || String(parent.textContent || '').replace(/\s+/g, '') !== ownText) break;
+        host = parent;
+        const target = findButtonAdjacentHiddenAfter(host, button);
+        if (target) return target;
+    }
+    return null;
+}
+
+// 结果里「重新测试／再来一次」这类按钮：收起结果，把这一面里已经选的选项清掉，可以重新做。
+const BUTTON_ADJACENT_RESET_ATTR = 'data-rabbit-mirror-button-adjacent-reset';
+const BUTTON_ADJACENT_RESET_TEXT = /^(?:重新[^，。]{0,4}|重来|再[测做来玩][^，。]{0,3}|重置|重做|reset|retry|restart|try again)$/i;
+function wireButtonAdjacentReset(root, entry) {
+    for (const reset of entry.target.querySelectorAll('button')) {
+        if (reset.hasAttribute(BUTTON_ADJACENT_RESET_ATTR) || isBehaviorInteractionOwned(reset)
+            || reset.hasAttribute('popovertarget') || reset.hasAttribute('commandfor') || reset.hasAttribute('onclick')) continue;
+        if (!BUTTON_ADJACENT_RESET_TEXT.test(String(reset.textContent || '').replace(/\s+/g, ' ').trim())) continue;
+        reset.setAttribute(BUTTON_ADJACENT_RESET_ATTR, 'true');
+        reset.addEventListener('click', event => {
+            event.preventDefault();
+            applyRenderedButtonAdjacentHiddenEntry(entry, false);
+            for (const input of root.querySelectorAll('input[type="radio"], input[type="checkbox"]')) {
+                if (!input.checked || input.closest('summary, [data-rabbit-mirror-tool-entry-host]')) continue;
+                input.checked = false;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }, false);
+    }
 }
 
 
@@ -1480,6 +1521,7 @@ export function installRenderedButtonAdjacentHiddenRescue(root) {
             }
         }, false);
         applyRenderedButtonAdjacentHiddenEntry(entry, false);
+        try { wireButtonAdjacentReset(root, entry); } catch { /* 接不上就只留查看结果 */ }
     }
 
     if (state.entries.size) root.dataset.rabbitMirrorButtonAdjacentHiddenFallback = 'true';
