@@ -81,6 +81,53 @@ test('follow-up cases: verb with modifiers, hair length after hair colour, confl
     assert.equal(marks.modelTag, 'female, smile');
 });
 
+test('round three: hair length and bangs conflicts, skin priority inside a kept clause, adverb skin, standalone looks words, English paragraphs', () => {
+    const hair = { name: '阿雪', text: '白色短发，空气刘海，站在窗边', modelTag: 'white hair, short hair, blunt bangs' };
+    fillLooksFrom(hair, '黑色长发，齐刘海。', '人设');
+    assert.doesNotMatch(hair.text, /短发|白色|空气刘海/);
+    assert.match(hair.text, /黑色长发/);
+    assert.match(hair.text, /站在窗边/);
+    assert.equal(hair.modelTag, '');
+
+    const lenOnly = { name: '阿岩', text: '白色短发', modelTag: '' };
+    fillLooksFrom(lenOnly, '及腰长发。', '人设');
+    assert.match(lenOnly.text, /白色发/);
+    assert.doesNotMatch(lenOnly.text, /短发/);
+
+    const skin = { name: '阿竹', text: '皮肤十分黝黑，笑着', modelTag: '' };
+    fillLooksFrom(skin, '皮肤雪白。', '人设');
+    fillLooksFrom(skin, '黝黑肤色眼下一颗泪痣。', '世界书');
+    assert.doesNotMatch(skin.text, /黝黑/);
+    assert.match(skin.text, /泪痣/);
+    assert.match(skin.text, /笑着/);
+
+    // 长短、刘海、肤色的词去得干净，不吃掉「一直发呆」这类正文。
+    const prose = { name: '阿竹', text: '她一直发呆，简直发疯，拿着卷发棒，一头长发及腰，刘海儿遮眼，肤色白里透红', modelTag: '' };
+    fillLooksFrom(prose, '短发，齐刘海，皮肤雪白。', '人设');
+    for (const word of ['一直发呆', '简直发疯', '卷发棒']) assert.match(prose.text, new RegExp(word));
+    const verbs = { name: '阿松', text: '成长发育，队长发令，班长发话，他摇头直发抖，脸色直发白，黑色短发', modelTag: '' };
+    fillLooksFrom(verbs, '及腰长发。', '人设');
+    for (const word of ['成长发育', '队长发令', '班长发话', '摇头直发抖', '脸色直发白']) assert.match(verbs.text, new RegExp(word));
+    assert.doesNotMatch(verbs.text, /短发/);
+    const len = { name: '阿雪', text: '她长发披肩，白色短发青年，黑色长发红了脸', modelTag: '' };
+    fillLooksFrom(len, '齐肩短发。', '人设');
+    assert.doesNotMatch(len.text, /长发|短发青|色短发/);
+    assert.doesNotMatch(prose.text, /一头|及腰|儿遮眼|里透红|白里/);
+
+    const plot = JSON.stringify({ book: '书', title: '阿岩', content: '阿岩白眼一翻。她红眼了。黑眼圈很重。眉眼弯弯地笑。方脸的掌柜说。He pressed his lips together. Dr. Smith has red hair.' });
+    const plotLooks = appearanceFromCast(plot, '阿岩');
+    assert.doesNotMatch(plotLooks, /白眼|红眼|黑眼圈|眉眼|方脸|lips/);
+    assert.match(plotLooks, /Dr\. Smith has red hair\./);
+
+    const cast = JSON.stringify({ book: '书', title: '阿松', content: '阿松是镖局的二当家。碧眼。鹅蛋脸。高鼻梁。' });
+    const looks = appearanceFromCast(cast, '阿松');
+    for (const word of ['碧眼', '鹅蛋脸', '高鼻梁']) assert.match(looks, new RegExp(word));
+    const english = JSON.stringify({ book: 'b', title: '阿雪', content: `${'She grew up by the sea and learned to sail. '.repeat(12)}She has black hair. Her skin is pale. A small mole sits under her left eye.` });
+    const englishLooks = appearanceFromCast(english, '阿雪');
+    assert.match(englishLooks, /pale/);
+    assert.match(englishLooks, /mole/);
+});
+
 test('looks are filled per field: card hair only does not stop the world book filling eyes, skin and mole', () => {
     const person = { name: '阿雪', text: '蓝色眼睛，穿着红衣在雪中回眸', modelTag: 'blue eyes, red dress' };
     fillLooksFrom(person, '黑发。', '人设');
@@ -153,6 +200,9 @@ test('one oversized world-book entry is trimmed to a valid JSON row, so its look
     const far = '阿松，' + '身世'.repeat(2500) + '。阿松的眼睛是琥珀色，左眼下一颗泪痣。' + '往事'.repeat(2500);
     const farCast = await readCharacterWorldBookContext({ characterId: 0, characters: [{ name: '甲', data: { character_book: { name: '书', entries: [{ content: far, enabled: true, comment: '阿松', keys: ['阿松'] }] } } }] }, { focusText: '阿松', onlyMentioned: true, maxChars: 4000 });
     assert.match(appearanceFromCast(farCast.text, '阿松'), /琥珀色/);
+    // 只有人物标题、没设关键词的长条目也一样。
+    const noKeys = await readCharacterWorldBookContext({ characterId: 0, characters: [{ name: '甲', data: { character_book: { name: '书', entries: [{ content: far, enabled: true, comment: '阿松' }] } } }] }, { focusText: '阿松', onlyMentioned: true, maxChars: 4000 });
+    assert.match(appearanceFromCast(noKeys.text, '阿松'), /琥珀色/);
 });
 
 test('image LLM plan keeps a person with natural-language looks but no English tag (NAI 5 only)', () => {

@@ -5,7 +5,8 @@ const TITLE_NOISE = /^(?:角色|人物|人设|设定|主角|配角|男主|女主
 // 写了长相的条目才是人物外貌资料。
 // 皮肤、眼睛、痣疤、身材、脸这些单独成句的（「皮肤雪白」「眼睛浅粉」「眼下一颗泪痣」）也算。
 // 「脸红了」「眼睛一亮」「那道疤是小时候留下的」这类剧情句不算：眼睛要带颜色，脸只认面容、五官这类说法。
-const APPEARANCE_WORDS = /发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|眼睛(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥])|色的?眼睛|身高|身材|体型|身形|外貌|长相|容貌|相貌|五官|面容|肤色|皮肤|肌肤|白皙|痣|雀斑|胎记|纹身|刺青|hair|eyes|skin|mole|freckle|tattoo|birthmark/i;
+// 「碧眼」这类只认不会是剧情的颜色（「白眼一翻」「红眼了」「黑眼圈」不算）；「眉眼弯弯地笑」「方脸的掌柜」这类不收。
+const APPEARANCE_WORDS = /[金银蓝碧绿紫琥翠灰褐]眼(?![圈镜神眶角])|鹅蛋脸|瓜子脸|鼻梁高|高鼻梁|发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|眼睛(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥])|色的?眼睛|身高|身材|体型|身形|外貌|长相|容貌|相貌|五官|面容|肤色|皮肤|肌肤|白皙|痣|雀斑|胎记|纹身|刺青|hair|eyes|skin|complexion|mole|freckle|tattoo|birthmark/i;
 
 function currentCharacter(ctx) {
     return ctx?.characters?.[ctx.characterId] || ctx?.character || null;
@@ -96,7 +97,8 @@ export async function readCharacterWorldBookContext(ctx, {
         hitKeys.forEach(key => anchors.add(key));
         mentioned.hits = [...hitKeys];
         let score = hitKeys.length;
-        if (title && title.length <= 20 && focus.includes(title)) { score += 1; anchors.add(title); }
+        // 标题就是这个人名的也记进这一条自己的命中（长条目按预算截取时，这一条才认得出是这个人自己的条目）。
+        if (title && title.length <= 20 && focus.includes(title)) { score += 1; anchors.add(title); mentioned.hits.push(title); }
         // 人物条目常常没写关键词（常驻条目），或标题写成「【人物】阿雪」「阿雪·外貌」：
         // 把标题按符号拆开，拆出来的人名在这一轮出现过也算提到。「人物、设定、外貌」这类分类词不算。
         else if (title && !score) {
@@ -227,6 +229,21 @@ export async function readCharacterWorldBookContext(ctx, {
  * 再在别的条目里找这个名字（名字后面紧跟标点、空白或结尾才算，「阿岩岩」「阿岩的妹妹」不算），往后摘写着长相的句子，
  * 摘到下一段（空行、下一个【小标题】）或同一画面里另一个人的名字为止。最多三句、两百字；找不到返回空串。
  */
+// 分句：中文按句末标点；英文按「. ! ?（后面可跟引号括号）＋空格＋大写或引号」，Dr. Mr. 这类缩写不算句末。
+const SENTENCE_SPLIT = /(?<=[。；;！!？?\n])|(?<!\b(?:Dr|Mr|Mrs|Ms|St|Jr|Sr|Prof|Mt|vs|etc)\.)(?<=[.!?]["'”’)]?)\s+(?=["'“‘(]?[A-Z])/;
+// at 所在的英文句子从哪里开始（同 SENTENCE_SPLIT 的规则，Dr. 这类缩写不算句末）；没有就是 0。
+function englishSentenceStart(content, at) {
+    const re = new RegExp(SENTENCE_SPLIT.source.replace(/^\(\?<=\[[^\]]*\]\)\|/, ''), 'g');
+    const head = content.slice(0, at);
+    let start = 0, match;
+    while ((match = re.exec(head))) { start = match.index + match[0].length; if (!match[0].length) re.lastIndex += 1; }
+    return start;
+}
+// 中文句子直接接上；英文句子之间留一个空格。
+function joinSentences(list) {
+    return list.reduce((out, part) => (out && /[A-Za-z0-9.,!?"'”’)]$/.test(out) && /^["'“‘(]?[A-Za-z]/.test(part) ? `${out} ${part}` : out + part), '');
+}
+
 export function appearanceFromCast(castText, name, otherNames = []) {
     const who = text(name).trim();
     if (!who || who.length < 2) return '';
@@ -237,8 +254,9 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     }
     const titleIsWho = row => text(row.title).trim() === who || text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
     const pick = window => {
-        const sentences = window.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean);
-        return sentences.filter(part => APPEARANCE_WORDS.test(part)).join('').slice(0, 600);
+        // 英文按句号、问号、叹号加空格分句，不然一整段英文算一句，超过 600 字时末尾的肤色、痣被截掉。
+        const sentences = window.split(SENTENCE_SPLIT).map(part => part.trim()).filter(Boolean);
+        return joinSentences(sentences.filter(part => APPEARANCE_WORDS.test(part))).slice(0, 600);
     };
     // 别人的名字出现在哪里就截到哪里；窗口一开头就是别人（这一句在讲别人）截成空串，调用方跳过这一句接着找。
     const cutAtOthers = window => {
@@ -250,7 +268,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     // 标题就是这个人的条目：长相常分散在几处（开头写发色眼睛，后面另起一段写身材、痣），几处都收，去重后合起来，最多 600 字。
     const collected = [];
     const collect = found => {
-        for (const sentence of found.split(/(?<=[。；;！!？?\n])/).map(part => part.trim()).filter(Boolean)) {
+        for (const sentence of found.split(SENTENCE_SPLIT).map(part => part.trim()).filter(Boolean)) {
             if (!collected.includes(sentence) && collected.join('').length + sentence.length <= 600) collected.push(sentence);
         }
     };
@@ -263,7 +281,9 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         let match, tries = 0, lastStart = -1;
         while ((match = words.exec(content)) && tries < 8) {
             const at = match.index;
-            const start = Math.max(0, content.lastIndexOf('\n', at), Math.max(content.lastIndexOf('。', at), content.lastIndexOf('；', at)) + 1);
+            // 英文句子的开头（上一个「. 」「! 」「? 」之后）也算句首，不然整段英文都从开头摘，后面的长相摘不到。
+            const start = Math.max(0, content.lastIndexOf('\n', at), Math.max(content.lastIndexOf('。', at), content.lastIndexOf('；', at)) + 1,
+                englishSentenceStart(content, at));
             if (start === lastStart) continue;
             lastStart = start;
             tries += 1;
@@ -271,7 +291,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
             if (found) collect(found);
         }
         // 几本书里都有这个人的条目时，只用第一条摘得到长相的，不把两本书写法不同的长相拼在一起。
-        if (collected.length) return collected.join('');
+        if (collected.length) return joinSentences(collected);
     }
     // 名字后面紧跟标点、空白，或者「身穿、有一头、是、长着、戴着」这类直接接长相的字才算（「阿岩的妹妹」「阿岩岩」不算）。
     const boundary = /^(?:$|[\s：:，,、。；;】)）」』\-—·（(]|身|有|是|长|生|戴|穿|一头|头)/;
