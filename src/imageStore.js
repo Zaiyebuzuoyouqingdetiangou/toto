@@ -1,9 +1,11 @@
 const PREFIX = 'rabbitMirror:image:v1:';
-// 插图存档以前只存在本机（localStorage）：App 更新或重装、清理网站数据、本机存储满了，记录就没了，
-// 重新打开聊天时每一面都当成没画过、再花一次额度重画。现在同一份记录也写进当前聊天的聊天文件（聊天信息里的这一格），
-// 本机这份当缓存：本机读不到时从聊天文件读回来，本机写不进去（满了）时只要聊天文件这份写上了就不算没存。
-// 聊天文件里只放看图要的（地址、时间、种子、提示词），整张图的 data: 不放，免得聊天文件变得很大。
-const CHAT_META_KEY = 'rabbitMirrorImages';
+// 插图记录存在它所在的那条消息上（消息的附加数据里，跟着那一个 swipe 走），跟聊天记录一起存进聊天文件：
+// 删楼层、删 swipe、开分支、群聊都跟着消息走；App 更新、清理数据、换设备都不丢；也不占本机存储。
+// 只记看图要的（图片地址、时间、种子、提示词），整张图的 data: 不放进聊天记录。
+// 本机存储只在这几种时候还用：图只有 data:（没能存成文件）、键还没记上楼层、或不是当前聊天（收藏夹另带一份）。
+const EXTRA_KEY = 'rabbitMirrorImages';
+// 1.77.0 放在聊天信息里的那一格：读到就搬到对应的消息上。
+const LEGACY_META_KEY = 'rabbitMirrorImages';
 
 function storageKey(key, kind) {
     if (typeof key !== 'string' || !key) throw new TypeError('图片必须绑定到明确的聊天与镜面。');
@@ -14,48 +16,82 @@ function liveContext() {
     try { return globalThis.SillyTavern?.getContext?.() || null; } catch { return null; }
 }
 function stripChat(value) { return String(value ?? '').replace(/^chat:/, ''); }
-// 键里记的是哪个聊天：内置生图 builtin:聊天:楼层:swipe:序号:哈希；手动生图是 JSON 数组 [聊天, 楼层, swipe, …]。
-function chatOfKey(key) {
-    const text = String(key || '');
-    if (text.startsWith('builtin:')) return parseBuiltinImageKey(text)?.chat ?? '';
-    if (text.startsWith('[')) { try { const parts = JSON.parse(text); return Array.isArray(parts) ? String(parts[0] ?? '') : ''; } catch { return ''; } }
-    return '';
-}
-function mesOfKey(key) {
-    const text = String(key || '');
-    if (text.startsWith('builtin:')) return Number(parseBuiltinImageKey(text)?.mes);
-    if (text.startsWith('[')) { try { return Number(JSON.parse(text)[1]); } catch { return NaN; } }
-    return NaN;
-}
-// 聊天加载完整、聊天信息已经是这条聊天自己的（群聊加载中途会先放一个空对象，等消息画完才换成真的）。
-function metadataReady(ctx) {
+function currentChatName(ctx) { return stripChat(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? ''); }
+// 聊天加载完整（群聊加载中途会先放一个空的聊天信息，那时不读不写）。
+function chatReady(ctx) {
     const metadata = ctx?.chatMetadata;
     if (!metadata || typeof metadata !== 'object' || !Array.isArray(ctx?.chat) || !ctx.chat.length) return false;
-    return Object.keys(metadata).some(name => name !== CHAT_META_KEY);
+    return Object.keys(metadata).some(name => name !== LEGACY_META_KEY);
 }
-// 当前聊天文件里的插图格子（读、删用：这个格子本来就属于当前聊天文件，分支、改名带过来的旧名字键也照读）。
-function chatMetaStore() {
-    const ctx = liveContext();
-    if (!metadataReady(ctx)) return null;
-    const store = ctx.chatMetadata[CHAT_META_KEY];
-    return store && typeof store === 'object' && !Array.isArray(store) ? { store, ctx } : null;
-}
-// 当前聊天的插图格子（写用）；键不是当前聊天的（收藏夹里别的聊天的面）返回 null，照旧只用本机这份。
-function chatImageStore(key, create = false) {
-    const ctx = liveContext();
-    const metadata = ctx?.chatMetadata;
-    if (!metadataReady(ctx)) return null;
-    const current = stripChat(ctx.getCurrentChatId?.() ?? ctx.chatId ?? '');
-    if (!current || stripChat(chatOfKey(key)) !== current) return null;
-    let store = metadata[CHAT_META_KEY];
-    if (!store || typeof store !== 'object' || Array.isArray(store)) {
-        if (!create) return null;
-        store = {};
-        metadata[CHAT_META_KEY] = store;
+// 键 → 哪个聊天、哪一层、哪个 swipe、消息里那一格的名字。
+// 内置生图 builtin:聊天:楼层:swipe:序号:哈希；手动生图是 JSON 数组 [聊天, 楼层, swipe, …]。
+function slotOfKey(key) {
+    const text = String(key || '');
+    if (text.startsWith('builtin:')) {
+        const parsed = parseBuiltinImageKey(text);
+        if (!parsed) return null;
+        return { chat: parsed.chat, mes: parsed.mes, swipe: parsed.swipe, entry: `${parsed.index}:${parsed.hash}` };
     }
-    return { store, ctx };
+    if (text.startsWith('[')) {
+        try {
+            const parts = JSON.parse(text);
+            if (!Array.isArray(parts)) return null;
+            return { chat: String(parts[0] ?? ''), mes: String(parts[1] ?? ''), swipe: String(parts[2] ?? ''), entry: `manual:${JSON.stringify(parts.slice(3))}` };
+        } catch { return null; }
+    }
+    return null;
 }
-// 聊天文件里那份：去掉有地址时多余的 data: 副本；只有 data: 的整张图不放（太大），这时返回 null。
+// 那个 swipe 的附加数据：正显示着的 swipe 用消息本身的；别的 swipe 用它自己存着的那份（切过去时酒馆会换上）。
+// 只写一处：正显示着的 swipe 写消息本身（酒馆切走时会存回那个 swipe）；别的 swipe 写它自己那份。
+function swipeExtras(msg, swipe) {
+    const current = Number.isInteger(msg.swipe_id) ? msg.swipe_id : 0;
+    if (swipe === current) return [msg.extra && typeof msg.extra === 'object' ? msg.extra : null];
+    const info = Array.isArray(msg.swipe_info) ? msg.swipe_info[swipe] : null;
+    return [info && typeof info === 'object' && info.extra && typeof info.extra === 'object' ? info.extra : null];
+}
+// 每条记录记着自己是哪个 swipe 的：右滑出新 swipe 时酒馆会把上一个 swipe 的附加数据整份抄过去，
+// 抄过来的那些不是这个 swipe 的图，读的时候不认，写的时候顺手清掉。
+function ownEntry(value, swipe) {
+    return !!value && typeof value === 'object' && (value.swipe === undefined || Number(value.swipe) === swipe);
+}
+function pruneCopied(store, swipe) {
+    let pruned = false;
+    for (const [entry, value] of Object.entries(store)) if (value && typeof value === 'object' && value.swipe !== undefined && Number(value.swipe) !== swipe) { delete store[entry]; pruned = true; }
+    return pruned;
+}
+// 当前聊天里这个键对应的消息格子。create 时没有就建。键不是当前聊天、楼层没记上或消息不在时返回 null。
+function messageSlot(key, create = false) {
+    const ctx = liveContext();
+    if (!chatReady(ctx)) return null;
+    const slot = slotOfKey(key);
+    if (!slot || !/^\d+$/.test(slot.mes) || !/^\d+$/.test(slot.swipe)) return null;
+    const current = currentChatName(ctx);
+    if (!current || stripChat(slot.chat) !== current) return null;
+    const mes = Number(slot.mes), swipe = Number(slot.swipe);
+    const msg = ctx.chat[mes];
+    if (!msg || typeof msg !== 'object') return null;
+    const currentSwipe = Number.isInteger(msg.swipe_id) ? msg.swipe_id : 0;
+    const hasInfo = Array.isArray(msg.swipe_info) && msg.swipe_info[swipe] && typeof msg.swipe_info[swipe] === 'object';
+    if (swipe !== currentSwipe && !hasInfo) return null;
+    if (create) {
+        if (swipe === currentSwipe && (!msg.extra || typeof msg.extra !== 'object')) msg.extra = {};
+        if (swipe !== currentSwipe && (!msg.swipe_info[swipe].extra || typeof msg.swipe_info[swipe].extra !== 'object')) msg.swipe_info[swipe].extra = {};
+    }
+    const extras = swipeExtras(msg, swipe).filter(Boolean);
+    const stores = [];
+    for (const extra of extras) {
+        let store = extra[EXTRA_KEY];
+        if (!store || typeof store !== 'object' || Array.isArray(store)) {
+            if (!create) continue;
+            store = {};
+            extra[EXTRA_KEY] = store;
+        }
+        stores.push(store);
+    }
+    if (!stores.length) return null;
+    return { ctx, mes, msg, swipe, entry: slot.entry, stores };
+}
+// 聊天记录里那份：去掉有地址时多余的 data: 副本；只有 data: 的整张图不放（太大），这时返回 null。
 function chatCopy(value) {
     if (!value || typeof value !== 'object') return null;
     const light = entry => {
@@ -69,125 +105,233 @@ function chatCopy(value) {
     if (!current) return null;
     return { version: 1, current, history: (Array.isArray(value.history) ? value.history : []).map(light).filter(Boolean) };
 }
-// 请酒馆找个安全的时候把聊天文件存一次（不在生成、还是这条聊天、聊天加载完整时）。几次合成一次。
+// 请酒馆找个安全的时候把聊天存一次（不在生成、还是这条聊天、聊天加载完整时）。几次合成一次，到点时取当时的聊天。
 let saveTimer = 0;
-let saveKey = '';
-function requestChatSave(ctx, key) {
-    saveKey = key;
+let saveMes = -1;
+function requestChatSave(mes) {
+    saveMes = mes;
     if (saveTimer) return;
     saveTimer = setTimeout(() => {
         saveTimer = 0;
-        // 到点时取当时的聊天（中途换了聊天就存换过去的那条；它的聊天信息里有这次写的东西才存）。
-        const live = liveContext();
-        if (!metadataReady(live) || !live.chatMetadata[CHAT_META_KEY]) return;
-        ctx = live; key = saveKey;
+        const ctx = liveContext();
+        if (!chatReady(ctx)) return;
         const chat = ctx.chat;
-        let index = mesOfKey(key);
-        if (!Number.isInteger(index) || !chat[index]) index = chat.length - 1;
+        const index = Number.isInteger(saveMes) && chat[saveMes] ? saveMes : chat.length - 1;
         if (index < 0) return;
-        import('./independentApi/persistence.js?rmv=1.77.1')
+        import('./independentApi/persistence.js?rmv=1.78.0')
             .then(module => module.requestSafeChatSave?.(ctx, index, chat[index]))
             .catch(() => { /* 存不上就等酒馆下次自己存 */ });
     }, 1500);
 }
-function writeChatImage(key, value) {
+function writeMessageImage(key, value) {
     const copy = chatCopy(value);
     if (!copy) {
-        // 这次是只有 data: 的图（不放进聊天文件）：聊天文件里同一个键的旧图删掉，免得以后读回旧的那张。
-        const existing = chatMetaStore();
-        if (existing && Object.prototype.hasOwnProperty.call(existing.store, key)) { delete existing.store[key]; requestChatSave(existing.ctx, key); }
+        // 这次是只有 data: 的图（不放进聊天记录）：消息上同一格的旧图删掉，免得以后读回旧的那张。
+        const existing = messageSlot(key);
+        if (existing && existing.stores.some(store => Object.prototype.hasOwnProperty.call(store, existing.entry))) {
+            existing.stores.forEach(store => { delete store[existing.entry]; });
+            requestChatSave(existing.mes);
+        }
         return false;
     }
-    const target = chatImageStore(key, true);
+    const target = messageSlot(key, true);
     if (!target) return false;
-    target.store[key] = copy;
-    requestChatSave(target.ctx, key);
+    target.stores.forEach(store => { pruneCopied(store, target.swipe); store[target.entry] = { ...structuredCloneSafe(copy), swipe: target.swipe }; });
+    keyNamesGen += 1;
+    requestChatSave(target.mes);
     return true;
 }
-function readChatImage(key) {
-    const target = chatMetaStore();
-    const value = target?.store?.[key];
+function structuredCloneSafe(value) {
+    try { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); } catch { return JSON.parse(JSON.stringify(value)); }
+}
+function readMessageImage(key) {
+    const target = messageSlot(key);
+    if (!target) return null;
+    for (const store of target.stores) {
+        const value = store[target.entry];
+        if (ownEntry(value, target.swipe)) { const { swipe, ...record } = value; return record; }
+    }
+    return null;
+}
+function removeMessageImage(key) {
+    const target = messageSlot(key);
+    if (!target) return;
+    let removed = false;
+    for (const store of target.stores) if (Object.prototype.hasOwnProperty.call(store, target.entry)) { delete store[target.entry]; removed = true; }
+    if (removed) { keyNamesGen += 1; requestChatSave(target.mes); }
+}
+// 收藏夹里别的聊天的面：收藏时把那一面的插图记录一并存进收藏，打开收藏时登记在这里（只在这次打开页面里有效）。
+const borrowed = new Map();
+function borrowKey(chat, mes, swipe) { return `${stripChat(chat)}|${mes}|${swipe}`; }
+export function lendMirrorImages(chat, mes, swipe, entries) {
+    if (!entries || typeof entries !== 'object') return;
+    borrowed.set(borrowKey(chat, mes, swipe), entries);
+    if (borrowed.size > 200) borrowed.delete(borrowed.keys().next().value);
+}
+function readBorrowed(key) {
+    const slot = slotOfKey(key);
+    if (!slot) return null;
+    const value = borrowed.get(borrowKey(slot.chat, slot.mes, slot.swipe))?.[slot.entry];
     return value && typeof value === 'object' ? value : null;
 }
-function removeChatImage(key) {
-    const target = chatMetaStore();
-    if (target && Object.prototype.hasOwnProperty.call(target.store, key)) { delete target.store[key]; requestChatSave(target.ctx, key); }
+// 收藏一面时：这一面在当前聊天里的插图记录（只要看图要的那份），存进收藏。
+// 收藏里只带看图要的（地址、时间、尺寸方式、渠道），不带提示词；整份不超过 32KB。
+function favoriteLight(value) {
+    const light = entry => entry && typeof entry === 'object' ? Object.fromEntries(Object.entries({
+        url: entry.url, path: entry.path, generatedAt: entry.generatedAt, builtinImageFit: entry.builtinImageFit, provider: entry.provider,
+    }).filter(([, item]) => item !== undefined && item !== null && item !== '')) : null;
+    const current = light(value?.current);
+    return current && (current.path || current.url) && !String(current.path || current.url).startsWith('data:') ? { version: 1, current, history: [] } : null;
 }
-// 这个聊天以前只存在本机的插图：打开聊天后第一次读写时，一并抄进聊天文件（只抄聊天文件里还没有的）。
-const backfilled = new WeakSet();
-function backfillChatImages() {
+export function mirrorImagesForSlot(mes, swipe, chatKey = '') {
     const ctx = liveContext();
-    const metadata = ctx?.chatMetadata;
-    const storage = globalThis.localStorage;
-    if (!metadataReady(ctx) || backfilled.has(metadata) || !storage) return;
-    if (!stripChat(ctx.getCurrentChatId?.() ?? ctx.chatId ?? '')) return;
-    backfilled.add(metadata);
-    const head = `${PREFIX}images:`;
-    let copied = 0, sample = '';
-    try {
-        for (let i = 0; i < storage.length; i += 1) {
-            const name = storage.key(i);
-            if (!name?.startsWith(head)) continue;
-            const key = name.slice(head.length);
-            const target = chatImageStore(key, true);
-            if (!target || target.store[key]) continue;
-            let value = null;
-            try { value = JSON.parse(storage.getItem(name)); } catch { value = null; }
-            const copy = chatCopy(value);
-            if (!copy) continue;
-            target.store[key] = copy;
-            copied += 1; sample = key;
+    if (!chatReady(ctx)) return null;
+    const current = currentChatName(ctx);
+    if (chatKey && stripChat(chatKey) !== current) return null;
+    const msg = ctx.chat?.[Number(mes)];
+    if (!msg) return null;
+    const out = {};
+    for (const extra of swipeExtras(msg, Number(swipe)).filter(Boolean)) {
+        const store = extra[EXTRA_KEY];
+        if (store && typeof store === 'object') for (const [entry, value] of Object.entries(store)) {
+            if (out[entry] || !ownEntry(value, Number(swipe))) continue;
+            const light = favoriteLight(value);
+            if (light) out[entry] = light;
         }
-    } catch { /* 读不到就算了 */ }
-    if (copied) requestChatSave(ctx, sample);
+    }
+    // 本机里还没搬过去的旧记录也带上。
+    for (const name of localImageNames()) {
+        const slot = slotOfKey(name.slice(`${PREFIX}images:`.length));
+        if (!slot || stripChat(slot.chat) !== current || slot.mes !== String(mes) || slot.swipe !== String(swipe) || out[slot.entry]) continue;
+        try { const light = favoriteLight(JSON.parse(globalThis.localStorage.getItem(name))); if (light) out[slot.entry] = light; } catch { /* 读不到就不带 */ }
+    }
+    if (!Object.keys(out).length) return null;
+    while (JSON.stringify(out).length > 32768 && Object.keys(out).length) delete out[Object.keys(out).pop()];
+    return Object.keys(out).length ? out : null;
 }
-// 存档里所有插图的键：本机的和当前聊天文件里的。
+function localImageNames() {
+    const head = `${PREFIX}images:`;
+    const names = [];
+    const storage = globalThis.localStorage;
+    try { if (storage) for (let i = 0; i < storage.length; i += 1) { const name = storage.key(i); if (name?.startsWith(head)) names.push(name); } } catch { /* 读不到就当没有 */ }
+    return names;
+}
+// 以前存在本机、或 1.77.0 放在聊天信息里的插图记录：打开聊天后第一次读写时，搬到对应的消息上（消息上已经有的不覆盖）。
+// 本机那份先留着（聊天存盘之前它是唯一的一份），以后不再往本机写新的。
+const migratedChats = new WeakSet();
+function migrateIntoMessages() {
+    const ctx = liveContext();
+    if (!chatReady(ctx) || migratedChats.has(ctx.chatMetadata) || !currentChatName(ctx)) return;
+    migratedChats.add(ctx.chatMetadata);
+    let moved = 0, lastMes = -1;
+    const adopt = (key, value) => {
+        const copy = chatCopy(value);
+        if (!copy) return false;
+        const target = messageSlot(key, true);
+        if (!target) return false;
+        if (target.stores.some(store => ownEntry(store[target.entry], target.swipe))) return true;
+        target.stores.forEach(store => { pruneCopied(store, target.swipe); store[target.entry] = { ...structuredCloneSafe(copy), swipe: target.swipe }; });
+        moved += 1; lastMes = target.mes;
+        return true;
+    };
+    const legacy = ctx.chatMetadata[LEGACY_META_KEY];
+    if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+        for (const [key, value] of Object.entries(legacy)) if (adopt(key, value)) delete legacy[key];
+        if (!Object.keys(legacy).length) delete ctx.chatMetadata[LEGACY_META_KEY];
+    }
+    const head = `${PREFIX}images:`;
+    const currentName = currentChatName(ctx);
+    for (const name of localImageNames()) {
+        const key = name.slice(head.length);
+        const slot = slotOfKey(key);
+        // 先按键里的聊天名挑出这个聊天的，再解析（data: 整图很大，别的聊天的不读）。
+        if (!slot || stripChat(slot.chat) !== currentName) continue;
+        let value = null;
+        try { value = JSON.parse(globalThis.localStorage.getItem(name)); } catch { value = null; }
+        if (value) adopt(key, value);
+    }
+    if (moved) { keyNamesGen += 1; requestChatSave(lastMes); }
+}
+// 存档里所有插图的键：本机的、当前聊天各消息上的、还没搬走的聊天信息里的。
+// 消息上的键按「这个聊天数组、条数、各消息正显示的 swipe、本插件写过几次」记一份，没变就不再整条聊天扫一遍。
+let keyNamesGen = 0;
+const keyNamesCache = new WeakMap();
+function messageKeyNames(ctx) {
+    const signature = `${ctx.chat.length}|${keyNamesGen}|${currentChatName(ctx)}|${ctx.chat.reduce((sum, msg, index) => sum + (Number.isInteger(msg?.swipe_id) ? msg.swipe_id * (index + 1) : 0), 0)}`;
+    const cached = keyNamesCache.get(ctx.chat);
+    if (cached?.signature === signature) return cached.names;
+    const names = [];
+    const head = `${PREFIX}images:`;
+    const chat = currentChatName(ctx);
+    ctx.chat.forEach((msg, mes) => {
+        if (!msg || typeof msg !== 'object') return;
+        const swipes = new Set([Number.isInteger(msg.swipe_id) ? msg.swipe_id : 0]);
+        if (Array.isArray(msg.swipe_info)) msg.swipe_info.forEach((_, index) => swipes.add(index));
+        for (const swipe of swipes) for (const extra of swipeExtras(msg, swipe).filter(Boolean)) {
+            const store = extra[EXTRA_KEY];
+            if (!store || typeof store !== 'object') continue;
+            for (const [entry, value] of Object.entries(store)) if (!entry.startsWith('manual:') && ownEntry(value, swipe)) names.push(`${head}builtin:${chat}:${mes}:${swipe}:${entry}`);
+        }
+    });
+    keyNamesCache.set(ctx.chat, { signature, names });
+    return names;
+}
 function imageKeyNames() {
     const head = `${PREFIX}images:`;
-    const names = new Set();
-    const storage = globalThis.localStorage;
-    try { if (storage) for (let i = 0; i < storage.length; i += 1) { const name = storage.key(i); if (name?.startsWith(head)) names.add(name); } } catch { /* 读不到就当没有 */ }
-    const store = chatMetaStore()?.store;
-    if (store) for (const key of Object.keys(store)) names.add(head + key);
+    const names = new Set(localImageNames());
+    const ctx = liveContext();
+    if (chatReady(ctx)) {
+        for (const name of messageKeyNames(ctx)) names.add(name);
+        const legacy = ctx.chatMetadata?.[LEGACY_META_KEY];
+        if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) for (const key of Object.keys(legacy)) names.add(head + key);
+    }
     return [...names];
 }
 
 function read(key, kind) {
-    if (kind === 'images') backfillChatImages();
+    if (kind !== 'images') {
+        const text = globalThis.localStorage.getItem(storageKey(key, kind));
+        return text == null ? null : JSON.parse(text);
+    }
+    migrateIntoMessages();
+    const fromMessage = readMessageImage(key);
+    if (fromMessage) return fromMessage;
     const text = globalThis.localStorage.getItem(storageKey(key, kind));
-    if (text != null) return JSON.parse(text);
-    if (kind !== 'images') return null;
-    const fromChat = readChatImage(key);
-    if (!fromChat) return null;
-    // 本机这份没了（App 更新、清理数据）：从聊天文件读回来，顺手放回本机缓存（放不下也没关系）。
-    try { globalThis.localStorage.setItem(storageKey(key, kind), JSON.stringify(fromChat)); } catch { /* 本机满了就只用聊天文件那份 */ }
-    return fromChat;
+    if (text != null) {
+        const value = JSON.parse(text);
+        // 本机还有、消息上没有（楼层后来才记上）：搬到消息上。
+        if (chatCopy(value)) writeMessageImage(key, value);
+        return value;
+    }
+    const legacy = liveContext()?.chatMetadata?.[LEGACY_META_KEY]?.[key];
+    if (legacy && typeof legacy === 'object') { writeMessageImage(key, legacy); return legacy; }
+    return readBorrowed(key);
 }
 
 function write(key, kind, value) {
-    // 插图先写进聊天文件那一格：本机写不进去（满了）时，只要这份写上了就不算没存。
-    const inChat = kind === 'images' && writeChatImage(key, value);
-// A single atomic setItem: a quota/error leaves the entire old record intact.
+    // 插图写在消息上（跟聊天记录一起存）。本机另留一份很小的（只有地址、时间这些，不含整张图），
+    // 防的是聊天还没存盘就关了 App；写不进去（本机满了）也不要紧。本机旧记录里有只存在本机的 data: 整图版本时，那份原样留着。
+    if (kind === 'images' && writeMessageImage(key, value)) {
+        const name = storageKey(key, kind);
+        let keepOld = false;
+        try {
+            const old = JSON.parse(globalThis.localStorage.getItem(name) || 'null');
+            const dataOnly = entry => entry && typeof entry === 'object' && !entry.path && /^data:/.test(String(entry.url || entry.dataUrl || ''));
+            keepOld = !!old && (dataOnly(old.current) || (Array.isArray(old.history) && old.history.some(dataOnly)));
+        } catch { keepOld = false; }
+        if (!keepOld) {
+            const light = chatCopy(value);
+            try { globalThis.localStorage.setItem(name, JSON.stringify(light)); } catch { /* 本机满了就只靠聊天记录 */ }
+        }
+        return;
+    }
+    // A single atomic setItem: a quota/error leaves the entire old record intact.
     const name = storageKey(key, kind), text = JSON.stringify(value);
     try { globalThis.localStorage.setItem(name, text); }
     catch (error) {
         // 本机存储满了：先把各张图旧版本里的长提示词瘦下来（图本身一张不删），腾出地方再写一次。
-        try {
-            if (!slimMirrorImagesForQuota()) throw error;
-            globalThis.localStorage.setItem(name, text);
-        } catch (again) {
-            if (!inChat) throw again;
-            // 本机旧的那份里有只存在本机的 data: 图（聊天文件不放）：删了就真没了，照旧算没存上。
-            let localOnly = false;
-            try {
-                const old = JSON.parse(globalThis.localStorage.getItem(name) || 'null');
-                const dataOnly = entry => entry && typeof entry === 'object' && !entry.path && /^data:/.test(String(entry.url || entry.dataUrl || ''));
-                localOnly = !!old && (dataOnly(old.current) || (Array.isArray(old.history) && old.history.some(dataOnly)));
-            } catch { localOnly = false; }
-            if (localOnly) throw again;
-            // 聊天文件里那份写上了：本机这份旧的删掉，免得读到的比聊天文件旧。
-            try { globalThis.localStorage.removeItem(name); } catch { /* 删不掉也只是旧缓存 */ }
-        }
+        if (!slimMirrorImagesForQuota()) throw error;
+        globalThis.localStorage.setItem(name, text);
     }
 }
 
@@ -270,9 +414,13 @@ function storedRecord(record) {
 }
 
 /** 删掉一份插图存档（搬到新键以后清旧键用）。不存在也不报错。 */
-export function removeMirrorImage(key) {
+export function removeMirrorImage(key, { keepSlotOf = '' } = {}) {
     try { globalThis.localStorage.removeItem(storageKey(key, 'images')); } catch { /* 删不掉就留着 */ }
-    try { removeChatImage(key); } catch { /* 聊天文件里那份删不掉就留着 */ }
+    // 旧键和新键指向消息上同一格（只是聊天名写法不同）：刚写进去的就是这一格，不能删。
+    const a = slotOfKey(key), b = keepSlotOf ? slotOfKey(keepSlotOf) : null;
+    const sameSlot = a && b && stripChat(a.chat) === stripChat(b.chat) && a.mes === b.mes && a.swipe === b.swipe && a.entry === b.entry;
+    if (!sameSlot) try { removeMessageImage(key); } catch { /* 消息上那份删不掉就留着 */ }
+    try { const legacy = liveContext()?.chatMetadata?.[LEGACY_META_KEY]; if (legacy && typeof legacy === 'object') delete legacy[key]; } catch { /* 旧格子删不掉就留着 */ }
 }
 
 export function loadMirrorImage(key) {
@@ -418,27 +566,6 @@ export function saveMirrorImageDraft(key, draft) {
 // 删楼层／删 swipe 后，把这个聊天的插图存档（内置生图与手动生图，含提示词草稿）搬到新楼层号。
 // mapper(楼层, swipe) 返回 "新楼层:新swipe"，被删掉的返回 null：那几层的图原样留在本机，不删。
 // 目标位置已经有别的存档时不覆盖，那一张留在原处。
-function remapChatImageStore(nextKeyFor) {
-    const store = chatMetaStore()?.store;
-    if (!store) return 0;
-    const moves = Object.keys(store).map(key => ({ from: key, to: nextKeyFor(key) })).filter(move => move.to && move.to !== move.from);
-    if (!moves.length) return 0;
-    const count = new Map();
-    for (const move of moves) count.set(move.to, (count.get(move.to) || 0) + 1);
-    let plan = moves.filter(move => count.get(move.to) === 1);
-    for (let changed = true; changed;) {
-        const leaving = new Set(plan.map(move => move.from));
-        const kept = plan.filter(move => !Object.prototype.hasOwnProperty.call(store, move.to) || leaving.has(move.to));
-        changed = kept.length !== plan.length;
-        plan = kept;
-    }
-    const values = plan.map(move => ({ ...move, value: store[move.from] }));
-    for (const move of values) delete store[move.from];
-    for (const move of values) store[move.to] = move.value;
-    if (values.length) { const ctx = liveContext(); if (ctx) requestChatSave(ctx, values[0].to); }
-    return values.length;
-}
-
 export function remapMirrorImageSlots(chat, mapper) {
     const storage = globalThis.localStorage;
     if (!storage || typeof chat !== 'string' || !chat || typeof mapper !== 'function') return 0;
@@ -463,8 +590,7 @@ export function remapMirrorImageSlots(chat, mapper) {
         }
         return '';
     };
-    // 聊天文件里那一格也跟着搬（规则同本机：两张搬到一处、或目标被不搬走的占着时不搬）。
-    remapChatImageStore(nextKeyFor);
+    // 消息上的插图记录跟着消息、swipe 走，不用搬；这里只搬本机里的旧记录。
     const moves = [];
     for (let i = 0; i < storage.length; i += 1) {
         const full = storage.key(i);
