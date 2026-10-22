@@ -1,9 +1,9 @@
 // 生成取证：本模块不写存储、不联网、不加定时器、不读实时 DOM（挂载结果由挂载层读好传进来）、不消耗随机数，观察者永远不影响生成结果。
 // 平时自动在本页内存里保留最近 RECENT_LIMIT 次独立 API 生成（出了问题直接导出，不必事先预知）；
 // 手动“记录下一次生成”拿到的那份会被钉住，后面的自动记录不会顶掉它。刷新页面即清空。
-import { generationEvidenceTiming } from './generationTiming.js?rmv=1.76.17';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=1.76.17';
-import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=1.76.17';
+import { generationEvidenceTiming } from './generationTiming.js?rmv=1.76.18';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=1.76.18';
+import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=1.76.18';
 const RECENT_LIMIT = 3;
 let armed = false;
 let current = null;      // 手动钉住的那份；没有时为 null

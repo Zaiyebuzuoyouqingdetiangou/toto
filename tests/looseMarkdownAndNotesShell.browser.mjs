@@ -35,7 +35,7 @@ try {
         const md = await import('/src/outputSanitizer/looseMarkdown.js?' + query);
         const r = {};
         // 1. 卡片外的 ## 标题和 **重点**
-        document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="rmcss-t1"><summary data-rm-title-chrome="true">【兔子镜：字】</summary><context>## 阿雪的热榜 **阿岩**
+        document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="rmcss-t1"><summary data-rm-title-chrome="true">【兔子镜：字】</summary><context>## 阿雪的公告 **阿岩**
 <div class="card">## 卡里的 **不动**</div></context></details>`;
         const d = document.querySelector('details');
         r.changed = md.tidyLooseMarkdown(d);
@@ -52,7 +52,7 @@ try {
         const c2 = document.querySelector('context');
         r.multi = { headings: c2.querySelectorAll('[data-rm-md-heading]').length, bold: c2.querySelectorAll('b').length, hasStar: c2.textContent.includes('**'), hasHash: c2.textContent.includes('#') };
         // 3. 代码里的 # 和 ** 不动；不是 # 开头的（#标签、C#）不动
-        document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="rmcss-t3"><summary data-rm-title-chrome="true">t</summary><pre>## 代码 **x**</pre><context>#神都八卦 和 C# 都留着</context></details>`;
+        document.body.innerHTML = `<details open data-rabbit-mirror-css-scope="rmcss-t3"><summary data-rm-title-chrome="true">t</summary><pre>## 代码 **x**</pre><context>#某城八卦 和 C# 都留着</context></details>`;
         const n3 = md.tidyLooseMarkdown(document.querySelector('details'));
         r.keep = { n3, pre: document.querySelector('pre').textContent, tag: document.querySelector('context').textContent };
         // 4. 画面说明包在看得见的折叠里：搬走后空折叠收掉
@@ -84,12 +84,12 @@ try {
     assert.equal(out.midline, 0);
     assert.equal(out.nested, 1);
     assert.equal(out.changed, 1);
-    assert.equal(out.heading, '阿雪的热榜 **阿岩**'.replace('**阿岩**', '阿岩'));
+    assert.equal(out.heading, '阿雪的公告 **阿岩**'.replace('**阿岩**', '阿岩'));
     assert.equal(out.cardKept, '## 卡里的 **不动**');
     assert.equal(out.outsideHash, false);
     assert.equal(out.again, 0);
     assert.deepEqual(out.multi, { headings: 1, bold: 1, hasStar: false, hasHash: false });
-    assert.deepEqual(out.keep, { n3: 0, pre: '## 代码 **x**', tag: '#神都八卦 和 C# 都留着' });
+    assert.deepEqual(out.keep, { n3: 0, pre: '## 代码 **x**', tag: '#某城八卦 和 C# 都留着' });
     assert.deepEqual(out.shell, { moved: 1, inner: 1, prompt: '阿雪坐在窗边' });
     assert.equal(out.keepShell, 2);
     assert.deepEqual(errors, []);

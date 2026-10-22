@@ -432,7 +432,7 @@ function normalizedDedupKey(text) {
     return String(text || '').toLowerCase().replace(/\s+/g, '').slice(0, 1200);
 }
 
-export function readSelectedMemoryForPrompt(settings, maxChars = 2200, additionalMaterials = []) {
+export function readSelectedMemoryForPrompt(settings, maxChars = 2200, additionalMaterials = [], filterText = null) {
     if (!settings?.memoryScanEnabled) return null;
     const selected = Array.isArray(settings.memoryProviderIds) ? settings.memoryProviderIds : [];
     if (!selected.length && !additionalMaterials.length) return null;
@@ -442,7 +442,9 @@ export function readSelectedMemoryForPrompt(settings, maxChars = 2200, additiona
     const errors = [];
     const sources = [];
     const append = (result, providerId) => {
-        const text = String(result?.text || '').trim();
+        // 「跳过的标签」在截字数之前过滤（截断会把标签块切成两半，认不出来）。
+        const raw = String(result?.text || '');
+        const text = (typeof filterText === 'function' ? String(filterText(raw) ?? '') : raw).trim();
         if (!text) return;
         const key = normalizedDedupKey(text);
         if (seen.has(key)) return;
@@ -484,8 +486,8 @@ export async function prepareSelectedMemoryForPrompt(settings, options = {}) {
     let worldBookError = '';
     if (settings.memoryWorldBookEnabled === true && typeof settings.memoryWorldBookId === 'string' && settings.memoryWorldBookId.trim()) {
         try {
-            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=1.76.17');
-            const result = await readBoundMemoryWorldBook(settings, maxChars, options.worldBookOptions);
+            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=1.76.18');
+            const result = await readBoundMemoryWorldBook(settings, maxChars, { ...(options.worldBookOptions || {}), filterText: options.filterText });
             if (result) additional.push(result);
         } catch (error) {
             worldBookError = `记忆世界书: ${error?.message || String(error)}`;
@@ -505,7 +507,7 @@ export async function prepareSelectedMemoryForPrompt(settings, options = {}) {
             if (text) additional.unshift({ providerId: QQJ_PROVIDER_ID, providerName: QQJ_NAME, text });
         }
     }
-    const material = readSelectedMemoryForPrompt(materialSettings, maxChars, additional);
+    const material = readSelectedMemoryForPrompt(materialSettings, maxChars, additional, options.filterText);
     if (!worldBookError) return material;
     return {
         ...(material || { text: '', sources: [], errors: [] }),

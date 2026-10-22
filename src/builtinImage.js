@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.76.17';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.17';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.17';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.17';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.17';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.17';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.17';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.17';
+import { getSettings } from './settings.js?rmv=1.76.18';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.76.18';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.76.18';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.76.18';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.18';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.76.18';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.76.18';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.76.18';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -881,7 +881,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.17');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.18');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -957,8 +957,9 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.76.17').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.76.18'), import('./independentApi/connection.js?rmv=1.76.18')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
+        filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
     if (worldCastCache.size > 20) worldCastCache.delete(worldCastCache.keys().next().value);
@@ -971,7 +972,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.17');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.76.18');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1091,11 +1092,14 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const keyOwners = new Map();
         for (const person of myriad) for (const key of new Set([person.name, ...person.aliases])) keyOwners.set(key, (keyOwners.get(key) || 0) + 1);
         const myriadRelevant = [];
+        // 「跳过的标签」也管千千结档案里的文字。
+        let cleanRef = value => value;
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.76.18')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
             if (!name || have.has(person.name) || have.has(name) || myriadRelevant.some(item => item.name === name)) continue;
-            myriadRelevant.push({ name, tag: '', nl: person.looks, source: '千千结' });
+            myriadRelevant.push({ name, tag: '', nl: cleanRef(String(person.looks || '')), source: '千千结' });
         }
         const BUDGET = 24;
         const publicFirst = relevantLibrary.slice(0, BUDGET);
