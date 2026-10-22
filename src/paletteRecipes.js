@@ -1,5 +1,5 @@
-import { GENERATION_PALETTE_INDEX, PALETTE_GROUP_LABELS } from '../data/structured/generationPaletteIndex.js?rmv=1.76.18';
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.76.18';
+import { GENERATION_PALETTE_INDEX, PALETTE_GROUP_LABELS } from '../data/structured/generationPaletteIndex.js?rmv=1.76.19';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=1.76.19';
 const BY_ID = new Map(GENERATION_PALETTE_INDEX.map(item => [item.id, item]));
 
 export function paletteRecipeFor(source) {
