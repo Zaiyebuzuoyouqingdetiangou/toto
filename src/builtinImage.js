@@ -1,11 +1,11 @@
-import { getSettings } from './settings.js?rmv=1.74.3';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.74.3';
-import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.74.3';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.74.3';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.74.3';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.74.3';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.74.3';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.74.3';
+import { getSettings } from './settings.js?rmv=1.75.0';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.75.0';
+import { imagePromptFingerprint, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.75.0';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.75.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.75.0';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.75.0';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.75.0';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.75.0';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -522,10 +522,34 @@ function uniqueLibrary(list) {
     return new Map(list.filter(person => person.name && counts.get(person.name) === 1).map(person => [person.name, person]));
 }
 
-function mergeAppearance(library, modelText, tagsOnly) {
+// 衣着：这一幕穿什么随剧情变。兔子镜这一面给这个人写了衣着时，建档、角色卡、世界书里写的衣着那几句／那几个标签不再发，
+// 只留长相（发色、瞳色、脸、身材这些）；这一面没写衣着时，照旧用它们兜底。
+const CLOTHING_TAG = /\b(?:dress|gown|robe|robes|kimono|yukata|hanfu|qipao|cheongsam|shirt|t-shirt|blouse|sweater|hoodie|cardigan|coat|overcoat|trench\s+coat|jacket|blazer|cloak|cape|mantle|poncho|vest|suit|tuxedo|uniform|armor|armour|skirt|miniskirt|pants|trousers|jeans|shorts|leggings|pantyhose|stockings|thighhighs|thigh\s+highs|socks|kneehighs|boots|shoes|heels|sandals|slippers|apron|bikini|swimsuit|leotard|bodysuit|lingerie|underwear|bra|panties|pajamas|nightgown|sleepwear|outfit|clothes|clothing|attire|garment|naked|nude|topless|bottomless|shirtless|serafuku|sailor\s+collar|haori|hakama|obi|sash|corset|tunic|camisole|tank\s+top|crop\s+top|turtleneck|scarf|gloves|fur\s+(?:coat|cloak|trim))\b/i;
+const CLOTHING_TEXT = /(?:(?<![望看拆揭戳])穿(?![过越透插梭行心])|身着|身穿|披着(?![一满]?头?[长短乌黑白银金]*[发髮])|裹着|套着|换上|着装|衣着|服饰|衣服|衣裳|衣衫|衣裙|外衣|内衣|里衣|中衣|上衣|下装|长裙|短裙|裙子|裙装|连衣裙|旗袍|和服|汉服|道袍|长袍|锦袍|外袍|斗篷|披风|大氅|狐裘|外套|夹克|西装|制服|校服|衬衫|毛衣|卫衣|背心|马甲|裤子|长裤|短裤|靴|鞋|袜|手套|围巾|铠甲|盔甲|赤裸|裸着|裸身|一丝不挂|未着寸缕)/;
+const hasClothingTags = tags => String(tags || '').split(',').some(part => CLOTHING_TAG.test(part));
+// 中文描述里夹着的英文衣着词（white dress）也算。
+const hasClothingText = text => CLOTHING_TEXT.test(String(text || '')) || CLOTHING_TAG.test(String(text || ''));
+function personHasClothing(person) {
+    // 标签写法下 text 本身就是英文标签，两种都看。
+    return hasClothingText(person?.text) || hasClothingTags(person?.text) || hasClothingTags(person?.modelTag);
+}
+// 去掉一段长相里写衣着的分句（按中英文标点分）；去完空了就返回空。
+function withoutClothingText(text) {
+    return String(text || '').split(/(?<=[。；;！!？?\n])|(?=[，,、])/).filter(part => !hasClothingText(part)).join('')
+        .replace(/^[，,、。；;\s]+/, '').replace(/([。；;！!？?\n])[，,、\s]+/g, '$1').replace(/[，,、]+(?=[。；;]|$)/g, '').trim();
+}
+function withoutClothingTags(tags) {
+    const raw = String(tags || '');
+    // 带权重括号的整串不拆，免得括号配不上。
+    if (/[{}()[\]]/.test(raw)) return raw;
+    return raw.split(',').map(part => part.trim()).filter(part => part && !CLOTHING_TAG.test(part)).join(', ');
+}
+
+function mergeAppearance(library, modelText, tagsOnly, modelHasClothing = false) {
     // NAI 5：角色库的英文标签另放进标签栏，这里只合并自然语言外貌；角色库只有标签时，标签栏照样用上。
     // 标签写法只用建档的英文标签；建档只有中文自然语言时不塞进标签栏。
-    const base = tagsOnly ? String(library?.tag || '') : String(library?.nl || '');
+    let base = tagsOnly ? String(library?.tag || '') : String(library?.nl || '');
+    if (modelHasClothing) base = tagsOnly ? withoutClothingTags(base) : withoutClothingText(base);
     if (!base.trim()) return modelText;
     if (!modelText) return base.trim();
     // 标签写法：角色库的标签在前，模型写的接在后面（去掉一模一样的）。
@@ -598,7 +622,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.74.3');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.0');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -608,7 +632,8 @@ async function withCardAppearance(people, frame, tagsOnly) {
         const person = merged.find(item => item.name === name);
         if (!person) { if (merged.length < 4) merged.push({ name, text: looks, modelTag: '', looksSource: '人设' }); continue; }
         stripModelLooks(person, { hair: HAS_HAIR.test(looks), eye: HAS_EYE.test(looks) });
-        person.text = [looks, person.text].filter(Boolean).join(' ');
+        const ownLooks = personHasClothing(person) ? withoutClothingText(looks) : looks;
+        person.text = [ownLooks, person.text].filter(Boolean).join(' ');
         person.looksSource = '人设';
     }
     return merged;
@@ -624,7 +649,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = import('./characterWorldBook.js?rmv=1.74.3').then(module => module.readCharacterWorldBookContext(ctx, {
+    const promise = import('./characterWorldBook.js?rmv=1.75.0').then(module => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
     worldCastCache.set(key, { at: Date.now(), promise });
@@ -638,7 +663,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.74.3');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.75.0');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -650,7 +675,8 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
         if (!looks) continue;
         if (!person) { if (merged.length < 4) merged.push({ name, text: looks, modelTag: '', looksSource: '世界书' }); continue; }
         stripModelLooks(person, { hair: HAS_HAIR.test(looks), eye: HAS_EYE.test(looks) });
-        person.text = [looks, person.text].filter(Boolean).join(' ');
+        const ownLooks = personHasClothing(person) ? withoutClothingText(looks) : looks;
+        person.text = [ownLooks, person.text].filter(Boolean).join(' ');
         person.looksSource = '世界书';
     }
     return merged;
@@ -680,7 +706,8 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         if (!tagsOnly) stripModelLooks(next, { hair: looks.hair || nlLooks.hair, eye: looks.eye || nlLooks.eye });
         // 标签写法下建档只有中文自然语言（没有标签）：这一路什么都没给，不算「建档」来源，后面的角色卡、世界书照常补。
         if (tagsOnly && !String(entry.tag || '').trim()) return next;
-        return { ...next, text: mergeAppearance(entry, next.text, tagsOnly), libraryTag: String(entry.tag || ''), fromLibrary: true, looksSource: '建档' };
+        const clothing = personHasClothing(person);
+        return { ...next, text: mergeAppearance(entry, next.text, tagsOnly, clothing), libraryTag: clothing ? withoutClothingTags(entry.tag) : String(entry.tag || ''), fromLibrary: true, looksSource: '建档' };
     });
     const ctx = getContext();
     const owners = [characterGroup(), String(ctx?.name1 || globalThis.name1 || '').trim()].filter(Boolean);
@@ -732,10 +759,11 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const target = details && typeof bridge?.prepareImageTarget === 'function' ? bridge.prepareImageTarget(details) : null;
         if (!target?.plan) throw planningFailure();
         const focus = readPrompt(frame, { cleanTitle: true });
-        const publicCharacters = await imageCharacters(target.floor);
+        const looksSettings = getSettings();
+        const publicCharacters = looksSettings.imageLooksLibrary !== false ? await imageCharacters(target.floor) : [];
         if (!isCurrent()) throw staleImageRequest();
         // 图框里模型写好的出场人物外貌和当时衣着一并单独给生图 LLM，不让它从别处另找衣着、场景。
-        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: readCharacters(frame), publicCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
+        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim()) throw planningFailure();
         return plan;
     } catch (error) {
@@ -789,7 +817,14 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
             // 每个人至少要有这种写法用得上的外貌：标签写法看标签，NAI 5 看自然语言或标签，空的人不发。
             // 长相来源的先后：建档角色 → 角色卡／Persona → 世界书 → 模型自己写的。前面有的，后面不再管这个人。
-            const people = (await withWorldBookAppearance(await withCardAppearance(await withLibraryAppearance(readCharacters(frame), prompt, frame, tagsOnly), frame, tagsOnly), frame, tagsOnly, options.signal || null))
+            // 设置里勾掉的外貌来源不用：兔子镜写的不要时，人名留着给后面几处按名字补长相，只清掉它写的外貌和衣着。
+            const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false };
+            let cast = readCharacters(frame);
+            if (!use.model) cast = cast.map(person => ({ ...person, text: '', modelTag: '' }));
+            if (use.library) cast = await withLibraryAppearance(cast, prompt, frame, tagsOnly);
+            if (use.card) cast = await withCardAppearance(cast, frame, tagsOnly);
+            if (use.world) cast = await withWorldBookAppearance(cast, frame, tagsOnly, options.signal || null);
+            const people = cast
                 .filter(person => tagsOnly ? String(person.text || '').trim() : String(person.text || '').trim() || tagOf(person));
             if (!isCurrent()) throw staleImageRequest();
             // 角色库外貌在前、模型写的在后，两边都保留；单提示词也逐人具名，不匿名混拼。

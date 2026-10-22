@@ -112,6 +112,30 @@ const e = await draw(`<p data-rm-draw-char="阿雪" hidden>棕色短发的少女
 assert.match((e.request.characters || [])[0].nl, /黑色长直发/); checks++;
 assert.doesNotMatch((e.request.characters || [])[0].nl, /红色长发|棕色短发/); checks++;
 
+// 档里写了常穿的衣服（A），这一面写了这一幕换的衣服（B）：档里的衣着不再发，只留长相；这一面没写衣着时照用档里的
+await page.evaluate(() => { window.STBaiBaiImage.getCharacters = () => ({ characters: [{ name: '阿岩', tag: '1boy, auburn hair, hazel eyes, white robe, boots', nl: '赤褐色头发，榛色眼睛，穿白色长袍' }] }); });
+const f = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);
+const f1 = (f.request.characters || [])[0] || {};
+assert.match(f1.tag, /auburn hair, hazel eyes/); checks++;
+assert.match(f1.tag, /black cloak/); checks++;
+assert.doesNotMatch(f1.tag, /white robe|boots/, '档里的衣着不发'); checks++;
+assert.match(f1.nl, /赤褐色头发/); checks++;
+assert.match(f1.nl, /黑色斗篷/); checks++;
+assert.doesNotMatch(f1.nl, /白色长袍/); checks++;
+const g = await draw(`<p data-rm-draw-char="阿岩" hidden>神情冷峻</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, serious</p>`);
+assert.match(((g.request.characters || [])[0] || {}).tag, /white robe/, '这一面没写衣着：用档里的'); checks++;
+
+// 设置里勾掉外貌来源：不用建档、不用兔子镜写的
+await page.evaluate(async query => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksLibrary: false }); }, query);
+const h = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);
+assert.doesNotMatch(JSON.stringify(h.request.characters || []), /auburn hair|赤褐色/, '建档勾掉了就不用'); checks++;
+assert.match(JSON.stringify(h.request.characters || []), /black cloak/); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksLibrary: true, imageLooksModel: false }); });
+const k = await draw(`<p data-rm-draw-char="阿岩" hidden>披着黑色斗篷</p><p data-rm-draw-char-tags="阿岩" hidden>1boy, black cloak</p>`);
+assert.doesNotMatch(JSON.stringify(k.request.characters || []), /black cloak|黑色斗篷/, '兔子镜写的勾掉了就不用'); checks++;
+assert.match(JSON.stringify(k.request.characters || []), /auburn hair/); checks++;
+await page.evaluate(async () => { const ext = await import('/extensions.js'); Object.assign(ext.extension_settings.rabbit_mirror_theater, { imageLooksModel: true }); });
+
 assert.deepEqual(pageErrors, []);
 console.log(JSON.stringify({ checks }));
 await browser.close(); server.close();
