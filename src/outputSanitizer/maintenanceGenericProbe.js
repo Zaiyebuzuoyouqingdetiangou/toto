@@ -2,11 +2,12 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.2';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.2';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.76.2';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.76.2';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.76.2';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.5';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.5';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.76.5';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.76.5';
+import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.76.5';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.76.5';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -193,6 +194,8 @@ export function openGenericProbeSandbox(root, beforeRearm = null) {
     if (!root?.isConnected || typeof getComputedStyle !== 'function') return null;
     const sandbox = createMaintenanceLabeledCheckedProbeSandbox(root);
     if (!sandbox) return null;
+    // 真实页面上装过「只有选中样式」单选提示的，副本里才重新装；没装过的不能替它装，否则副本测成能用、真实页面其实还是死的。
+    const liveHadSelectionOnly = !!(root.matches?.('[data-rabbit-mirror-selection-only-fallback]') || root.querySelector?.('[data-rabbit-mirror-selection-only-fallback]'));
     try {
         const sandboxRoot = sandbox.root;
         const details = sandboxRoot.matches?.('details') ? sandboxRoot : sandboxRoot.querySelector?.('details');
@@ -211,6 +214,10 @@ export function openGenericProbeSandbox(root, beforeRearm = null) {
         // 工具栏链接的那几种线（内层整页 details 的「轻触返回」、只有状态类的翻面开关）克隆后监听会丢，按属性接回。
         try { installNestedDetailsReplacementContainment(toto); } catch {}
         try { rearmOrphanStateWiring(toto); } catch {}
+        // 维修兔接过的填空选择、静态展开／选择，副本里也照记号接回；「只有选中样式」的单选提示重新装上。
+        // 不接的话，修好的控件在副本里仍测成没反应，修完复核永远说「还有没反应」。
+        try { rehydrateRabbitMirrorMaintenanceRepairs(toto, { cloned: true }); } catch {}
+        if (liveHadSelectionOnly) { try { installSelectionOnlyStateFallback(toto); } catch {} }
         return { sandbox, details, toto };
     } catch (error) {
         try { sandbox.destroy(); } catch {}

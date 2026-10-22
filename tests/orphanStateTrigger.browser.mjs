@@ -60,12 +60,34 @@ try {
         orphan.attachOrphanStateToggle(document.querySelector('.p3'), 'open');
         document.querySelector('.t3-btn').click(); document.querySelector('.t3-btn').click();
         out.savedOpen = document.querySelector('.p3').classList.contains('open');
+        // 按钮包在前面那一块里（签筒和摇签按钮在一块，结果面板在后面）：由里面唯一的按钮来开
+        document.body.innerHTML = `<style>.res{display:none}.res.active{display:block}.tube{cursor:pointer}</style><div class="area"><div class="tube">筒</div><button class="draw">摇签</button></div><div class="res">某教</div>`;
+        orphan.attachOrphanStateToggle(document.querySelector('.res'), 'active');
+        document.querySelector('.draw').click();
+        out.innerBtn = document.querySelector('.res').classList.contains('active');
+        // 反例：前面那块里唯一的按钮已经有别的用处（插件交互、弹窗），或藏在没展开的折叠里：不接
+        for (const btn of ['<button data-rm-next>下一页</button>', '<button popovertarget="pp">弹</button>', '<details><summary>折</summary><button>摇</button></details>',
+            '<button data-rabbit-mirror-button-adjacent-hidden-rescue="true">摇</button>', '<button aria-controls="r2x">摇</button><i id="r2x"></i>', '<button disabled>摇</button>',
+            '<button>摇</button><button>停</button>', '<button>摇</button><button style="display:none">停</button>', '<button type="submit">摇</button>', '<button style="visibility:hidden">摇</button>', '<button aria-disabled="true">摇</button>', '<label><button>摇</button></label>', '<button>摇</button>' + '字'.repeat(90)]) {
+            document.body.innerHTML = `<style>.r2{display:none}.r2.active{display:block}</style><div class="blk">${btn}</div><div class="r2">阿岩</div>`;
+            if (orphan.attachOrphanStateToggle(document.querySelector('.r2'), 'active')) out.neg = (out.neg || '') + btn;
+        }
+        // 对照：同样的块，按钮是闲着的（包括只被「点了没反应」兜底标过的）就接上——证明上面的反例是被那些用处挡下来的
+        for (const btn of ['<button>摇</button>', '<button data-rabbit-mirror-inert-action-rescue="true" data-rabbit-mirror-inert-action-active="false">摇</button>']) {
+            document.body.innerHTML = `<style>.r2{display:none}.r2.active{display:block}</style><div class="blk">${btn}</div><div class="r2">阿岩</div>`;
+            if (!orphan.attachOrphanStateToggle(document.querySelector('.r2'), 'active')) out.pos = (out.pos || '') + btn;
+        }
+        // 中间隔着 <style>，或块和面板之间夹一小段没按钮的提示字：照样找得到
+        document.body.innerHTML = `<style>.r3{display:none}.r3.active{display:block}</style><div class="blk"><button class="b3">摇</button></div><style>.x{}</style><div class="r3">阿竹</div>`;
+        if (!orphan.attachOrphanStateToggle(document.querySelector('.r3'), 'active')) out.pos = (out.pos || '') + 'style-between';
+        document.body.innerHTML = `<style>.r4{display:none}.r4.active{display:block}</style><button class="b4">开</button><small>提示</small><div class="r4">阿松</div>`;
+        if (!orphan.attachOrphanStateToggle(document.querySelector('.r4'), 'active')) out.pos = (out.pos || '') + 'skip-small';
         // 默认藏着、前面没有能点的：不接
         document.body.innerHTML = `<style>.lone{display:none}.lone.active{display:block}</style><p>${'字'.repeat(60)}</p><div class="lone">某教</div>`;
         out.lone = orphan.attachOrphanStateToggle(document.querySelector('.lone'), 'active');
         return out;
     }, html);
-    assert.deepEqual(result, { wiredPanel: true, wiredCard: true, afterTrig: true, innerKeeps: true, afterSecond: false, card: true, rearmed: 2, afterRearm: true, panelRole: null, both: true, savedOpen: true, lone: false });
+    assert.deepEqual(result, { wiredPanel: true, wiredCard: true, afterTrig: true, innerKeeps: true, afterSecond: false, card: true, rearmed: 2, afterRearm: true, panelRole: null, both: true, savedOpen: true, innerBtn: true, lone: false });
     // 收藏重开：收藏存的是 cloneNode 的 outerHTML，接线记号留着、监听丢了。经共用的 rearm 入口（rearmRabbitMirrorSerializedInteractionRoot）
     // 接回后点触发处照样能开关；收藏打开走的 ensureExternalTools（收藏不走工具栏链）也要接回。
     await page.evaluate(async query => {

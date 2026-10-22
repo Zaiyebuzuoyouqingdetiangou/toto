@@ -1,7 +1,7 @@
 // Split from outputSanitizer.js — choiceRescue.
-import { RAW_SCRIPT_TIMELINE_RESCUE_ATTR } from './checkedStateRescue.js?rmv=1.76.2';
+import { RAW_SCRIPT_TIMELINE_RESCUE_ATTR } from './checkedStateRescue.js?rmv=1.76.5';
 
-import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.76.2';
+import { hasBehaviorInteractionControl, isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.76.5';
 
 import {
     FEEDBACK_CAT_ATTR,
@@ -9,7 +9,7 @@ import {
     RECIPE_BUTTON_ATTR,
     TOOL_ENTRY_HOST_ATTR,
     escapeCssIdentifier,
-} from './runtime.js?rmv=1.76.2';
+} from './runtime.js?rmv=1.76.5';
 import {
     DETACHED_CHECKED_HAS_CONTROL_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -17,7 +17,7 @@ import {
     HINTED_PSEUDO_RESCUE_ATTR,
     INLINE_PSEUDO_RESCUE_ATTR,
     interactionCapabilityStates,
-} from './checkedStateRescue.js?rmv=1.76.2';
+} from './checkedStateRescue.js?rmv=1.76.5';
 import {
     RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR,
     RENDERED_CLICKABLE_ADJACENT_HIDDEN_RESCUE_ATTR,
@@ -27,13 +27,13 @@ import {
     findRenderedClickableAdjacentHiddenTarget,
     findRenderedClickableAdjacentPopupTarget,
     getClassTokens,
-} from './renderedStateRescue.js?rmv=1.76.2';
+} from './renderedStateRescue.js?rmv=1.76.5';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     detectInteractionCapabilities,
     filterRabbitMirrorRuntimeText,
     isRabbitMirrorRuntimeTextTarget,
-} from './scriptedInteractionRescue.js?rmv=1.76.2';
+} from './scriptedInteractionRescue.js?rmv=1.76.5';
 import {
     DISABLED_ONLY_CHOICE_CONTROL_ATTR,
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
@@ -73,8 +73,8 @@ import {
     fillInChoiceRescueStates,
     staticChoiceSelectionRescueStates,
     structuredStaticDisclosureRescueStates,
-} from './diagnostics.js?rmv=1.76.2';
-import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.76.2';
+} from './diagnostics.js?rmv=1.76.5';
+import { maintenanceCheckedInteractionDepth } from './maintenanceInspect.js?rmv=1.76.5';
 
 const STATIC_CHOICE_TITLE_RE = /^(?:选项|选择|方案|路线|分支|抉择|结局|行动|choice|option|route|path)\s*(?:[A-Z0-9一二三四五六七八九十]+)?\s*[:：·\-—]/i;
 
@@ -1015,6 +1015,7 @@ function buttonHasKnownInteractionRoute(button, root) {
     ];
     if (rescueAttrs.some(attribute => button.hasAttribute?.(attribute))) return true;
     if (button.hasAttribute?.('data-rm-sibling-tab')) return true; // 已按顺序接成分页（siblingTabRescue.js）
+    if (button.hasAttribute?.('data-rm-orphan-state-trigger')) return true; // 已接成「点了展开后面那块」（orphanStateWiring.js）
     if (findRenderedButtonAdjacentHiddenTarget(button)
         || findRenderedClickableAdjacentHiddenTarget(button)
         || findRenderedClickableAdjacentPopupTarget(button)) return true;
@@ -1071,8 +1072,10 @@ export function installInertActionButtonFallback(root) {
 
         let active = false;
         const render = () => {
-            status.hidden = !active;
-            status.style.display = active ? 'block' : 'none';
+            // 后来这个按钮被接成「点了展开后面那块」了：真的有结果，不再弹「已记录」的说明。
+            const claimed = button.hasAttribute('data-rm-orphan-state-trigger');
+            status.hidden = !active || claimed;
+            status.style.display = active && !claimed ? 'block' : 'none';
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
             button.dataset.rabbitMirrorInertActionActive = active ? 'true' : 'false';
         };
@@ -1440,8 +1443,10 @@ function rehydrateFillInChoiceRepair(root) {
 }
 
 
-export function rehydrateRabbitMirrorMaintenanceRepairs(root) {
-    if (!root?.querySelectorAll || !rabbitMirrorHasPersistedMaintenanceRepair(root)) return 0;
+// cloned：维修时把活着的这一面复制替换掉。原来那一面上的维修接线是当场装上的（不一定已经存盘），
+// 记号都在、监听丢了，所以不看「已存盘」标记，照记号接回。
+export function rehydrateRabbitMirrorMaintenanceRepairs(root, { cloned = false } = {}) {
+    if (!root?.querySelectorAll || (!cloned && !rabbitMirrorHasPersistedMaintenanceRepair(root))) return 0;
     let rebound = 0;
     const run = (label, fn) => {
         try { rebound += Number(fn(root)) || 0; }

@@ -23,15 +23,58 @@ function hiddenByStyle(node) {
     } catch { return false; }
 }
 
+// 维修兔自己的「点了没反应」提示不算块里的字。
+function blockTextWithoutStatus(node) {
+    const statuses = [...(node.querySelectorAll?.('[data-rabbit-mirror-inert-action-status]') || [])];
+    if (!statuses.length) return String(node.textContent || '').trim();
+    let text = '';
+    const walker = node.ownerDocument.createTreeWalker(node, 4);
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) if (!statuses.some(st => st.contains(t))) text += t.nodeValue;
+    return text.trim();
+}
+
+// 块里那个按钮得是「闲着的」：看得见、能点、没有别的用处。
+// 别的修复已经接过线的（data-rabbit-mirror-*）不要；只被「点了没反应」兜底标过的、或已经替别的面板当触发处的可以。
+function innerButtonIsFree(el) {
+    if (typeof el.checkVisibility === 'function' && !el.checkVisibility({ visibilityProperty: true, opacityProperty: false })) return false;
+    if (!el.getClientRects?.().length) return false;
+    try { if (el.ownerDocument?.defaultView?.getComputedStyle?.(el)?.visibility === 'hidden') return false; } catch { /* 拿不到样式就不管 */ }
+    if (el.closest('[aria-hidden="true"], [inert]')) return false;
+    if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+    if (el.getAttribute(ORPHAN_STATE_ATTR)) return false;
+    if (el.closest('[data-rabbit-mirror-tool-entry-host], [data-rm-ui], form, summary, label, details:not([open])')) return false;
+    if (String(el.getAttribute('type') || '').toLowerCase() === 'submit') return false;
+    const doc = el.ownerDocument;
+    for (const attr of el.attributes) {
+        const name = attr.name;
+        if (/^(?:popovertarget|commandfor|onclick|onchange|oninput|onpointerdown|onmousedown|form|formaction|href)$/.test(name)) return false;
+        if (name === 'aria-controls' && String(attr.value).split(/\s+/).some(id => id && doc?.getElementById(id))) return false;
+        if (/^data-rm-/.test(name) && !/^data-rm-(?:press|polish|orphan-state-trigger)/.test(name)) return false;
+        if (/^data-rabbit-mirror-/.test(name) && !/^data-rabbit-mirror-inert-action-(?:rescue|active)$/.test(name)) return false;
+    }
+    return true;
+}
+
 export function findOrphanStateTrigger(target) {
     let node = target?.previousElementSibling;
+    let firstReal = true;
     for (let step = 0; node && step < 3; step += 1, node = node.previousElementSibling) {
         if (node.matches?.('style, script, br, hr') || node.contains(target) || hiddenByStyle(node)) continue;
+        const adjacent = firstReal;
+        firstReal = false;
         // 它自己是另一组状态的主体：不拿来当触发处（点一下会同时切两样）。已经替前一块面板当触发处的照样可以（一个按钮开几块）。
         if (node.getAttribute?.(ORPHAN_STATE_ATTR)) return null;
         let pointer = false;
         try { pointer = node.ownerDocument?.defaultView?.getComputedStyle?.(node)?.cursor === 'pointer'; } catch { pointer = false; }
         if (node.matches?.('button, [role="button"], a') || pointer || TRIGGER_NAME.test(String(node.getAttribute?.('class') || ''))) return node;
+        // 前面紧挨着的这一块本身不是按钮，但里面只有一个按钮（「签筒＋摇签按钮」整块在结果面板前面）：就是它。
+        // 只看紧挨着的那一块、块里字不多；按钮已经有别的用处（插件交互、弹窗、表单、翻页）的不算。
+        if (adjacent && blockTextWithoutStatus(node).length <= 80) {
+            // 块里所有按钮都数（藏着的也算）：不止一个就不猜；没有按钮或按钮不闲，照旧往前找。
+            const buttons = [...(node.querySelectorAll?.('button, [role="button"]') || [])];
+            if (buttons.length > 1) return null;
+            if (buttons.length === 1 && innerButtonIsFree(buttons[0])) return buttons[0];
+        }
         // 中间隔着一段普通文字就不再往前找。
         if (String(node.textContent || '').trim().length > 40) return null;
     }

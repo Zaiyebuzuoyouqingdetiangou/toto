@@ -1,13 +1,13 @@
 // Split from outputSanitizer.js — idsAndRearm.
 
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.2';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.5';
 import {
     RABBIT_MIRROR_CSS_SCOPE_ATTR,
     escapeCssIdentifier,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.76.2';
+} from './runtime.js?rmv=1.76.5';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -23,26 +23,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.76.2';
+} from './checkedStateRescue.js?rmv=1.76.5';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.76.2';
+} from './scriptedInteractionRescue.js?rmv=1.76.5';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.76.2';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR } from './diagnostics.js?rmv=1.76.2';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.76.2';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.76.2';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.76.2';
-import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.76.2';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.76.2';
-import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.76.2';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.76.2';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.76.2';
+} from './fallbackRescue.js?rmv=1.76.5';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR, SELECTION_ONLY_FALLBACK_ATTR, SELECTION_ONLY_PLACEHOLDER_ATTR, SELECTION_ONLY_SOURCE_ATTR } from './diagnostics.js?rmv=1.76.5';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.76.5';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.76.5';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.76.5';
+import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.76.5';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.76.5';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.76.5';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.76.5';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.76.5';
 
 let interactionScopeCounter = 0;
 
@@ -771,6 +771,17 @@ export function rearmRabbitMirrorSerializedInteractionRoot(root) {
             cleared += 1;
         }
     }
+    // 「只有选中样式」的单选兜底：记号留着、监听丢了，切换时提示和正文都不跟着变。撤掉提示和记号，退回原样，下次维修再重新接。
+    [...(root.matches?.(`[${SELECTION_ONLY_PLACEHOLDER_ATTR}]`) ? [root] : []), ...root.querySelectorAll(`[${SELECTION_ONLY_PLACEHOLDER_ATTR}]`)].forEach(node => node.remove());
+    [...(root.matches?.(`[${SELECTION_ONLY_SOURCE_ATTR}]`) ? [root] : []), ...root.querySelectorAll(`[${SELECTION_ONLY_SOURCE_ATTR}]`)].forEach(node => {
+        node.removeAttribute(SELECTION_ONLY_SOURCE_ATTR);
+        if (node.style?.getPropertyValue?.('display') === 'none' && node.style.getPropertyPriority('display') === 'important') node.style.removeProperty('display');
+    });
+    [...(root.matches?.(`[${SELECTION_ONLY_FALLBACK_ATTR}]`) ? [root] : []), ...root.querySelectorAll(`[${SELECTION_ONLY_FALLBACK_ATTR}]`)].forEach(node => {
+        node.removeAttribute(SELECTION_ONLY_FALLBACK_ATTR);
+        delete node.dataset.rabbitMirrorSelectionOnlySelected;
+        cleared += 1;
+    });
     root.removeAttribute?.(RAW_SCRIPT_TIMELINE_ROOT_ATTR);
     delete root.dataset?.rabbitMirrorRawHoverFallback;
     delete root.dataset?.rabbitMirrorSelfMutationFallback;
