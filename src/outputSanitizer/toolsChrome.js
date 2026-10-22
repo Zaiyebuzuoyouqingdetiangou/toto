@@ -1,29 +1,29 @@
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.76.11';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.76.11';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.76.11';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.76.11';
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=1.76.16';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=1.76.16';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=1.76.16';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=1.76.16';
 // Split from outputSanitizer.js — toolsChrome.
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.76.11';
-import { installPressFeedback } from './pressFeedback.js?rmv=1.76.11';
-import { installReadabilityPolish } from './readabilityPolish.js?rmv=1.76.11';
-import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=1.76.11';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=1.76.16';
+import { installPressFeedback } from './pressFeedback.js?rmv=1.76.16';
+import { installReadabilityPolish } from './readabilityPolish.js?rmv=1.76.16';
+import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=1.76.16';
 
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.76.11';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.76.11';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.76.11';
-import { isTextPresentation } from '../presentationMode.js?rmv=1.76.11';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.11';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.76.11';
-import { getCurrentChatKey } from '../storage.js?rmv=1.76.11';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.76.11';
-import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.76.11';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=1.76.16';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=1.76.16';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=1.76.16';
+import { isTextPresentation } from '../presentationMode.js?rmv=1.76.16';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.16';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=1.76.16';
+import { getCurrentChatKey } from '../storage.js?rmv=1.76.16';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=1.76.16';
+import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=1.76.16';
 import {
     captureTheaterFavoriteFromRoot,
     openTheaterFavoriteLibrary,
     toggleTheaterFavorite,
     isTheaterFavoriteHtml,
-} from '../theaterFavorites.js?rmv=1.76.11';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.76.11';
+} from '../theaterFavorites.js?rmv=1.76.16';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=1.76.16';
 import {
     FEEDBACK_CAT_TYPES,
     clearActiveFeedbackForCurrentChat,
@@ -32,8 +32,8 @@ import {
     getActiveFeedbackForCurrentChat,
     getFeedbackCatLastReceiptForCurrentChat,
     setActiveFeedbackForCurrentChat,
-} from '../feedbackCat.js?rmv=1.76.11';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.11';
+} from '../feedbackCat.js?rmv=1.76.16';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.16';
 import {
     FAVORITE_MULTIPLIER_MAX,
     FAVORITE_MULTIPLIER_MIN,
@@ -55,7 +55,7 @@ import {
     setFavoriteMultiplier,
     toggleBlacklistItem,
     toggleFavoriteItem,
-} from '../blacklist.js?rmv=1.76.11';
+} from '../blacklist.js?rmv=1.76.16';
 import {
     EXTERNAL_REFERENCE_NOTE_ATTR,
     FEEDBACK_CAT_ATTR,
@@ -79,11 +79,11 @@ import {
     isInsideChatMessage,
     isMaintenanceRabbitEnabled,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.76.11';
-import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=1.76.11';
-import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.76.11';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.11';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.76.11';
+} from './runtime.js?rmv=1.76.16';
+import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=1.76.16';
+import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring, innerButtonIsFree } from './orphanStateWiring.js?rmv=1.76.16';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.76.16';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=1.76.16';
 import {
     FEEDBACK_CAT_MENU_ATTR,
     FEEDBACK_HISTORY_EVENT,
@@ -107,8 +107,8 @@ import {
     rabbitMirrorLanguageBalance,
     scheduleCurrentHighConfidenceTextRepair,
     setMaintenanceRabbitState,
-} from './diagnostics.js?rmv=1.76.11';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.76.11';
+} from './diagnostics.js?rmv=1.76.16';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=1.76.16';
 import {
     MAINTENANCE_FINDING_STAGE_LABELS,
     beginMaintenanceRepairRun,
@@ -129,19 +129,19 @@ import {
     runMaintenanceUserRepair,
     triggerDiagnosticForMaintenanceRoot,
     getRenderedMessageElement,
-} from './maintenanceInspect.js?rmv=1.76.11';
+} from './maintenanceInspect.js?rmv=1.76.16';
 import {
     getRabbitMirrorFacePosition,
     installMaintenanceHorizontalClipOpenRescue,
     repairLegacyMaintenanceMobileStateRows,
-} from './layoutRescue.js?rmv=1.76.11';
+} from './layoutRescue.js?rmv=1.76.16';
 import {
     getMessageIndexFromMirrorNode,
     installMaintenanceAutoSafeOpenPatrol,
     installManagedRabbitMirrorTools,
     pruneMaintenanceAutoSafeOpenBindings,
     scheduleMaintenanceAutoSafeForRoot,
-} from './lifecycle.js?rmv=1.76.11';
+} from './lifecycle.js?rmv=1.76.16';
 
 installMirrorUpdateMenuHook();
 
@@ -743,7 +743,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.76.11';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=1.76.16';
 
 // 纯点菜里的题库点选。默认只显示已选项；点「浏览」才展开列表。
 // 来源可切换：内置题库（按大组浏览 / 搜索）或已导入并启用的母本库。
@@ -2543,7 +2543,7 @@ function beginHostWorkTiming(name){
 }
 
 function loadMirrorImageModule() {
-    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.76.11').catch(error => { mirrorImageModule = null; throw error; });
+    if (!mirrorImageModule) mirrorImageModule = import('../imageUi.js?rmv=1.76.16').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 
@@ -2852,19 +2852,19 @@ function installUnifiedMirrorTools(root) {
     if (!summary) return;
     if (isTheaterFavoriteSurface(root)) {
         stripTheaterFavoriteTitleChrome(root);
-        void import('../materialTexture.js?rmv=1.76.11').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
-        void import('../pixelSprites.js?rmv=1.76.11').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
+        void import('../materialTexture.js?rmv=1.76.16').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+        void import('../pixelSprites.js?rmv=1.76.16').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
         void loadMirrorImageModule().then(module => { if (root.isConnected) return module.mountMirrorImage(root); }).catch(() => {});
         // 收藏里只把当时画好、存在本机的内置生图放回去，从不发生图请求。
         if (root.querySelector?.('[data-rm-draw-frame]')) {
-            void import('../builtinImage.js?rmv=1.76.11').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
+            void import('../builtinImage.js?rmv=1.76.16').then(module => { if (root.isConnected) module.restoreSavedBuiltinImages(root); }).catch(() => {});
         }
         return;
     }
     // 材质纹理（实验性）：开着就把模型写了描述的地方铺上；关着就撤掉。
-    void import('../materialTexture.js?rmv=1.76.11').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
+    void import('../materialTexture.js?rmv=1.76.16').then(module => { if (root.isConnected) module.applyMaterialTextures(root); }).catch(() => {});
     // 字母像素画：模型用字母写的小人、小猫，画成像素方块。
-    void import('../pixelSprites.js?rmv=1.76.11').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
+    void import('../pixelSprites.js?rmv=1.76.16').then(module => { if (root.isConnected) module.applyPixelSprites(root); }).catch(() => {});
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
     if (roleColorFaces(root).length) {
@@ -2883,7 +2883,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: '🔄 重说', run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: '✍️ 续写', run: () => {
-            void import('../independentApi/mount.js?rmv=1.76.11').then(module => module.continueIndependentLongText(root))
+            void import('../independentApi/mount.js?rmv=1.76.16').then(module => module.continueIndependentLongText(root))
                 .catch(() => globalThis.toastr?.error?.('续写没有写上，原来的正文还在。'));
         } });
     }
@@ -2906,11 +2906,11 @@ function installUnifiedMirrorTools(root) {
             .catch(() => globalThis.toastr?.warning?.('生图面板未能打开，请重新打开后再试。'));
     } });
     actions.push({ id: 'theater-snapshot', label: '📷 快拍', run: () => {
-        void import('../theaterSnapshot.js?rmv=1.76.11').then(module => module.openTheaterSnapshot())
+        void import('../theaterSnapshot.js?rmv=1.76.16').then(module => module.openTheaterSnapshot())
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '快拍无法打开。')));
     } });
     actions.push({ id: 'theater-favorite-library', label: '📖 收藏夹', run: () => {
-        void import('../independentApi.js?rmv=1.76.11').then(module =>
+        void import('../independentApi.js?rmv=1.76.16').then(module =>
             openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
             .catch(error => globalThis.toastr?.warning?.(String(error?.message || '无法打开收藏夹。')));
     } });
@@ -2925,7 +2925,7 @@ function installUnifiedMirrorTools(root) {
     if (root.querySelector?.('[data-rm-draw-frame]')) {
         // 开着内置生图：补画缺的图；关着：只把本机已存的图放回去，不请求生图。
         const drawNew = getSettings().builtinImageEnabled === true;
-        void import('../builtinImage.js?rmv=1.76.11').then(module => {
+        void import('../builtinImage.js?rmv=1.76.16').then(module => {
             if (!root.isConnected) return;
             if (drawNew) module.fillBuiltinImageFrames(root);
             else module.restoreSavedBuiltinImages(root);
@@ -3171,7 +3171,83 @@ function orphanStatePairs(root) {
     return pairs;
 }
 
-function wireOrphanStateClasses(root) {
+// 状态类写在外层、管的是里面的东西：.卡片.expanded .分析 { display:block }，卡片里有个「展开」按钮，却没人给卡片加 expanded。
+// 先试一下：给外层加上这个类，里面有原本藏着的东西出来，而外层里正好一个闲着的按钮（不在出来的那块里）——就让它开关这个类。
+function ancestorOrphanStatePairs(root) {
+    const pairs = new Map();
+    for (const style of root.querySelectorAll('style')) {
+        const css = String(style.textContent || '').replace(/\{[^{}]*\}/g, '{}');
+        for (const selector of css.split(/[{},]/)) {
+            const parts = selector.trim().split(/[\s>+~]+/).filter(Boolean);
+            for (const compound of parts.slice(0, -1)) {
+                const classes = [...compound.matchAll(/\.([\w-]+)/g)].map(match => match[1]);
+                if (classes.length < 2 || /[:[]/.test(compound)) continue;
+                const state = classes[classes.length - 1];
+                if (!ORPHAN_STATE_NAME.test(state)) continue;
+                const base = classes.slice(0, -1).join('.');
+                if (!pairs.has(base)) pairs.set(base, new Set());
+                pairs.get(base).add(state);
+            }
+        }
+    }
+    return pairs;
+}
+const isShown = node => { try { const style = getComputedStyle(node); return style.display !== 'none' && style.visibility !== 'hidden'; } catch { return false; } };
+// 试过不行的外层记一下（按样式长度区分），每次挂工具时不重复试。
+const ancestorOrphanTried = new WeakMap();
+const ancestorOrphanWaiting = new WeakSet();
+function wireAncestorOrphanStates(root) {
+    let wired = 0;
+    // 这一面还没展开、或者整块看不见（折叠着、在屏幕外被收起）：量不出谁藏谁显，这次先不试，也不记成「试过不行」。
+    const face = root.matches?.('details') ? root : root.querySelector?.('details');
+    if (face && !face.open) {
+        // 展开时再试一次（只挂一次）。
+        if (!ancestorOrphanWaiting.has(face)) {
+            ancestorOrphanWaiting.add(face);
+            face.addEventListener('toggle', function retry() {
+                if (!face.open) return;
+                face.removeEventListener('toggle', retry);
+                ancestorOrphanWaiting.delete(face);
+                try { wireAncestorOrphanStates(root); } catch { /* 认不出就不接 */ }
+            });
+        }
+        return 0;
+    }
+    if (!root.getClientRects?.().length || (typeof root.checkVisibility === 'function' && !root.checkVisibility())) return 0;
+    const styleKey = [...root.querySelectorAll('style')].reduce((sum, style) => sum + String(style.textContent || '').length, 0);
+    const faceText = String(root.textContent || '').length;
+    for (const [base, states] of ancestorOrphanStatePairs(root)) {
+        let hosts;
+        try { hosts = [...root.querySelectorAll('.' + base.split('.').map(name => CSS.escape(name)).join('.'))]; } catch { continue; }
+        if (!hosts.length || hosts.length > 12) continue;
+        for (const state of states) {
+            let present = false;
+            try { present = [...root.querySelectorAll('.' + CSS.escape(state))].some(node => node.getAttribute(ORPHAN_STATE_ATTR) !== state); } catch { present = true; }
+            if (present) continue;
+            for (const host of hosts) {
+                if (host.closest?.(`[${TOOL_ENTRY_HOST_ATTR}]`) || isOrphanStateWired(host)) continue;
+                const tried = ancestorOrphanTried.get(host);
+                if (tried?.has(`${state}:${styleKey}`)) continue;
+                const remember = () => { const set = ancestorOrphanTried.get(host) || new Set(); set.add(`${state}:${styleKey}`); ancestorOrphanTried.set(host, set); };
+                // 外层自己藏着（弹窗这类）、或者几乎就是整面（整面的唯一按钮不拿来开关整面）：不接。
+                if (!isShown(host) || host.matches('details') || host.querySelector('summary') || String(host.textContent || '').length > faceText * 0.6) { remember(); continue; }
+                const hidden = [...host.querySelectorAll('*')].filter(node => !isShown(node));
+                if (!hidden.length) { remember(); continue; }
+                let revealed = [];
+                host.classList.add(state);
+                try { revealed = hidden.filter(isShown); } finally { host.classList.remove(state); }
+                if (!revealed.length) { remember(); continue; }
+                const buttons = [...host.querySelectorAll('button, [role="button"]')]
+                    .filter(button => !revealed.some(node => node.contains(button)) && button.getClientRects().length && isShown(button));
+                if (buttons.length !== 1 || !innerButtonIsFree(buttons[0])) { remember(); continue; }
+                if (attachOrphanStateToggle(host, state, buttons[0])) wired += 1;
+            }
+        }
+    }
+    return wired;
+}
+
+export function wireOrphanStateClasses(root) {
     if (!root?.querySelectorAll || root.querySelector?.('input[type="checkbox"], input[type="radio"]')) return 0;
     let wired = rearmOrphanStateWiring(root);
     for (const [base, states] of orphanStatePairs(root)) {
@@ -3189,6 +3265,7 @@ function wireOrphanStateClasses(root) {
             }
         }
     }
+    try { wired += wireAncestorOrphanStates(root); } catch { /* 认不出就不接 */ }
     return wired;
 }
 
@@ -3622,9 +3699,25 @@ function tidyNativeToggles(root) {
     }
 }
 
+// 兔子镜里面模型自己写的折叠块（「绘制说明」之类）以前被当成另一面，挂上了标题框和维修兔。
+// 存档里带回来的这些痕迹撤掉：标题框标记、工具按钮拿掉，标题文字原样放回去。
+function stripNestedFaceChrome(scope) {
+    for (const summary of [...scope.querySelectorAll(`summary[${TITLE_CHROME_ATTR}]`)]) {
+        const details = summary.parentElement;
+        // 只撤「外面已经是一面兔子镜」的里层折叠块；<toto> 里标题被改过的那种照常留着标题框。
+        const outer = details?.parentElement?.closest?.('details');
+        if (!details?.matches?.('details') || !outer || isRabbitMirrorDetails(details) || !isRabbitMirrorDetails(outer)) continue;
+        summary.querySelectorAll(`:scope > [${TOOL_ENTRY_HOST_ATTR}]`).forEach(node => node.remove());
+        summary.removeAttribute(TITLE_CHROME_ATTR);
+        const label = summary.querySelector(`:scope > [${MIRROR_TITLE_LABEL_ATTR}]`);
+        if (label) label.replaceWith(...label.childNodes);
+    }
+}
+
 export function refreshRabbitMirrorToolsInScope(scope, { historyRestoreLight = false } = {}) {
     cleanupFacePagers(scope);
     if (!scope?.querySelectorAll) return;
+    try { stripNestedFaceChrome(scope); } catch { /* 撤不掉就照旧 */ }
     repairRabbitMirrorScopedClassAliasesInScope(scope);
     // 1.4.30.17: preserve the 1.3.57/1.3.93/1.3.94 history invariant. A full-chat
     // restore may reattach old collapsed mirrors, but it must not run the newer

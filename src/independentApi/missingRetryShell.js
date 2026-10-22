@@ -11,6 +11,12 @@ export const MISSING_SHELL_SCAN_RANGE_OPTIONS = [10, 20, 'all'];
 
 export const MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE = '暂未找到与这条回复对应的已保存兔子镜。请先点击“找回旧兔子镜”重新读取已有存档，不会调用模型。确认没有旧作品后，再选择重新生成。';
 
+// 安全阀（正文标签没闭合、正文太短这类）停下了本轮自动生成：这层本来就没有成品，不是旧作品丢了。卡上写明原因，别说成「旧镜面待恢复」。
+export const SAFETY_VALVE_SHELL_PREFIX = '本轮兔子镜没有自动生成';
+export function safetyValveShellMessage(reason) {
+    return `${SAFETY_VALVE_SHELL_PREFIX}：${String(reason || '正文看起来不完整')}。这不是旧作品丢了；需要的话点「重新生成兔子镜」手动生成。若以前确实生成过，也可以点「找回旧兔子镜」。`;
+}
+
 export const INDEPENDENT_HISTORY_READ_ERROR_MESSAGE = '旧存档暂时无法读取，不能据此判断以前没有生成成功。请点击“找回旧兔子镜”重新读取已有存档；不会调用模型。';
 
 export function normalizeMissingShellScanRange(value) {

@@ -1,7 +1,7 @@
-import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.76.11';
-import { getSettings, updateSettings } from '../settings.js?rmv=1.76.11';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.76.11';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.76.11';
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=1.76.16';
+import { getSettings, updateSettings } from '../settings.js?rmv=1.76.16';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=1.76.16';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=1.76.16';
 import {
     EXTERNAL_WORLD_BOOK_SELECTION_MODE,
     createEmptySelection,
@@ -9,14 +9,14 @@ import {
     createWholeBookSelection,
     entryIdentity,
     toggleEntrySelection,
-} from './selectionState.js?rmv=1.76.11';
+} from './selectionState.js?rmv=1.76.16';
 import {
     EXTERNAL_WORLD_BOOK_CLASSIFICATION,
     applyExternalWorldBookBulkClassification,
     createExternalWorldBookClassificationDraft,
     externalWorldBookClassificationCounts,
     updateExternalWorldBookDraftItem,
-} from './classifier.js?rmv=1.76.11';
+} from './classifier.js?rmv=1.76.16';
 import {
     deleteExternalLibrary,
     listExternalLibraries,
@@ -28,11 +28,11 @@ import {
     hydrateExternalPoolMetadata,
     getExternalPoolHydrationStatus,
     rebuildExternalPoolMetadata,
-} from './store.js?rmv=1.76.11';
-import { applyAppearanceTheme } from '../appearanceTheme.js?rmv=1.76.11';
-import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.76.11';
-import { externalCandidateCounts } from './candidateCounts.js?rmv=1.76.11';
-import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.76.11';
+} from './store.js?rmv=1.76.16';
+import { applyAppearanceTheme } from '../appearanceTheme.js?rmv=1.76.16';
+import { getExternalPoolSnapshot } from './externalPool.js?rmv=1.76.16';
+import { externalCandidateCounts } from './candidateCounts.js?rmv=1.76.16';
+import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=1.76.16';
 
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
@@ -457,7 +457,7 @@ async function renderSavedLibraries() {
     if (!libraries.length) {
         state.savedLibrariesList.append(el('div', { text: '还没有保存的外部世界书。', style: { opacity: '.65', fontSize: '11px', padding: '8px 2px' } }));
         // 本机是空的、酒馆里有备份：多半是本机数据被清掉了，给一个一键恢复。
-        void import('./serverBackup.js?rmv=1.76.11').then(module => module.findRestorableMotherLibraryBackup()).then(found => {
+        void import('./serverBackup.js?rmv=1.76.16').then(module => module.findRestorableMotherLibraryBackup()).then(found => {
             if (!found || state !== owner || !owner.overlay.isConnected || renderSequence !== owner.savedLibrariesSequence) return;
             const box = el('div', { style: { padding: '8px 2px', fontSize: '12px', lineHeight: '1.6', overflowWrap: 'anywhere' } });
             const names = found.names.length ? `（${found.names.join('、')}${found.libraryCount > found.names.length ? ' 等' : ''}）` : '';
@@ -465,7 +465,7 @@ async function renderSavedLibraries() {
             const restore = button('一键恢复', async () => {
                 restore.disabled = true;
                 try {
-                    const module = await import('./serverBackup.js?rmv=1.76.11');
+                    const module = await import('./serverBackup.js?rmv=1.76.16');
                     const result = await module.restoreMotherLibrariesFromServerBackup();
                     setStatus(`已从酒馆备份恢复 ${result.importedLibraries} 本、${result.importedEntries} 条。抽签总开关没有改。`);
                     await renderSavedLibraries();
@@ -689,7 +689,7 @@ function createLibraryTransferControls() {
         if (busy) return;
         const owner = state; lock(true); feedback('正在读取本设备已导入的库并生成迁移文件……');
         try {
-            const module = await import('./backup.js?rmv=1.76.11');
+            const module = await import('./backup.js?rmv=1.76.16');
             if (!current(owner)) return;
             const result = await module.exportExternalLibraryBackup();
             if (!current(owner)) return;
@@ -706,7 +706,7 @@ function createLibraryTransferControls() {
         if (!globalThis.confirm('导入这份备份里的外部库？目标已有同编号库会保留并跳过，其余库保留备份的分类和启用状态。不删除或覆盖旧库，不改变抽签总开关。')) return;
         const owner = state, backup = pending; lock(true); feedback('正在原子保存迁移数据；请暂时保留此页面……');
         try {
-            const module = await import('./backup.js?rmv=1.76.11');
+            const module = await import('./backup.js?rmv=1.76.16');
             if (!current(owner)) return;
             const result = await module.importExternalLibraryBackup(backup);
             if (!current(owner)) return;
@@ -724,7 +724,7 @@ function createLibraryTransferControls() {
         const selected = file.files?.[0]; if (!selected) return;
         const owner = state, ownSequence = ++sequence; lock(true); feedback('正在校验迁移文件，尚未写入……');
         try {
-            const module = await import('./backup.js?rmv=1.76.11');
+            const module = await import('./backup.js?rmv=1.76.16');
             if (!current(owner)) return;
             const backup = await module.readExternalLibraryBackupFile(selected);
             if (!current(owner) || sequence !== ownSequence) return;
@@ -760,7 +760,7 @@ function createServerBackupSection(isCurrent, afterRestore) {
         return `最近一次没有存上：${status.message || '原因不明'}${status.savedAt ? `。上一次成功：${backupTimeText(status.savedAt)}` : ''}`;
     };
     const refresh = async () => {
-        const module = await import('./serverBackup.js?rmv=1.76.11');
+        const module = await import('./serverBackup.js?rmv=1.76.16');
         if (section.isConnected) line.textContent = describe(module.getMotherLibraryServerBackupStatus());
     };
     const lock = value => { busy = value; saveButton.disabled = value; restoreButton.disabled = value; };
@@ -768,7 +768,7 @@ function createServerBackupSection(isCurrent, afterRestore) {
         if (busy) return;
         lock(true); line.textContent = '正在存进酒馆……';
         try {
-            const module = await import('./serverBackup.js?rmv=1.76.11');
+            const module = await import('./serverBackup.js?rmv=1.76.16');
             const status = await module.saveMotherLibraryServerBackup();
             if (section.isConnected) line.textContent = describe(status);
         } catch (error) { if (section.isConnected) line.textContent = `没有存上：${String(error?.message || error)}`; }
@@ -778,7 +778,7 @@ function createServerBackupSection(isCurrent, afterRestore) {
         if (busy) return;
         lock(true); line.textContent = '正在读取酒馆里的备份……';
         try {
-            const module = await import('./serverBackup.js?rmv=1.76.11');
+            const module = await import('./serverBackup.js?rmv=1.76.16');
             const result = await module.restoreMotherLibrariesFromServerBackup();
             if (!section.isConnected) return;
             line.textContent = result.empty ? '酒馆里还没有母本库备份。'

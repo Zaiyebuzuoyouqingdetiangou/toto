@@ -1,14 +1,14 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.76.11';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.76.11';
-import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.76.11';
-import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.76.11';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.76.11';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.76.11';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.76.11';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.76.11';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.76.11';
-import { addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.76.11';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.76.11';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.76.16';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.76.16';
+import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.76.16';
+import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.76.16';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.76.16';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.76.16';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.76.16';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.76.16';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.76.16';
+import { addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.76.16';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.76.16';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -1240,7 +1240,29 @@ export function hasBehaviorInteractionControl(root, button) {
     // 整个容器当开关的 toggle：容器里没另写开关时，里面的按钮也归它管（点了就翻）。
     if (state.type === 'toggle' && !own(state.group, '[data-rm-toggle]').length
         && !button.hasAttribute('popovertarget') && !button.hasAttribute('commandfor')) return true;
+    // 输入区里没写任何标记的按钮（「发送」「提交」「确认」）：就是交卷键，按下按当前填的字再核对一次。
+    if (inputSubmitButton(state, button)) return true;
     return (attrs[state.type] || []).some(attr => button.hasAttribute(`data-rm-${attr}`));
+}
+
+// 交卷键核对哪个框：按钮前面最近的那个文字框（名字框在前、答案框在后时核对答案框）；前面没有就用第一个。
+const INPUT_TEXT = 'input:not([type]), input[type="text"], input[type="password"], textarea';
+function inputTextField(state, button = null) {
+    const fields = own(state.group, INPUT_TEXT);
+    if (button) {
+        const before = fields.filter(field => field.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING);
+        if (before.length) return before[before.length - 1];
+    }
+    return fields[0] || null;
+}
+// 「清空」「重置」这类按钮不是交卷键；这一区没写答案、也没有回显框（按了什么都不会变）时也不算。
+const CLEAR_BUTTON_TEXT = /清空|清除|重置|重来|重新输入|删除|撤销|reset|clear|undo/i;
+function inputSubmitButton(state, button) {
+    if (state?.type !== 'input' || ownerGroup(button) !== state.group || !inputTextField(state, button)) return false;
+    if (CLEAR_BUTTON_TEXT.test(String(button.textContent || button.value || '').trim())) return false;
+    if (!state.group.hasAttribute('data-rm-answer') && !own(state.group, 'output').length) return false;
+    if ([...button.attributes].some(attr => /^data-rm-/.test(attr.name) && !/^data-rm-(?:press|polish)/.test(attr.name))) return false;
+    return !button.hasAttribute('popovertarget') && !button.hasAttribute('commandfor') && !button.hasAttribute('onclick');
 }
 
 function reset(state) {
@@ -1302,6 +1324,7 @@ function reset(state) {
 function action(state, button) {
     if (!state) return; // Mobile arrows/range buttons have their own local listener.
     if (button.hasAttribute('data-rm-reset')) { reset(state); return; }
+    if (inputSubmitButton(state, button)) { inputChange(state, inputTextField(state, button), true); return; }
     const verify = beginVerify(state, button, true);
     if (state.type === 'drag') {
         const item = button.closest('[data-rm-item]');
@@ -2192,7 +2215,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.76.11').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.76.16').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2300,4 +2323,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.76.11').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.76.16').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
