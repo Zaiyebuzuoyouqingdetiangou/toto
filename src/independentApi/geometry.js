@@ -1,14 +1,14 @@
 // Split from independentApi.js — geometry.
-import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.76.16';
-import { rearmOrphanStateWiring } from '../outputSanitizer/orphanStateWiring.js?rmv=1.76.16';
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.76.16';
+import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.78.2';
+import { rearmOrphanStateWiring } from '../outputSanitizer/orphanStateWiring.js?rmv=1.78.2';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.78.2';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.76.16';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.76.16';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.76.16';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.76.16';
-import { getSettings } from '../settings.js?rmv=1.76.16';
-import { resolveExternalAnchor, normalizeExternalAnchor } from './externalAnchor.js?rmv=1.76.16';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.78.2';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.78.2';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.78.2';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.78.2';
+import { getSettings } from '../settings.js?rmv=1.78.2';
+import { resolveExternalAnchor, normalizeExternalAnchor } from './externalAnchor.js?rmv=1.78.2';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -22,14 +22,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.76.16';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.76.16';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.76.16';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.76.16';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.76.16';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.76.16';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE, SAFETY_VALVE_SHELL_PREFIX } from './missingRetryShell.js?rmv=1.76.16';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.76.16';
+} from '../outputSanitizer.js?rmv=1.78.2';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.78.2';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.78.2';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.78.2';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.78.2';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.78.2';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE, SAFETY_VALVE_SHELL_PREFIX } from './missingRetryShell.js?rmv=1.78.2';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.78.2';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -44,8 +44,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.76.16';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.76.16';
+} from './runtime.js?rmv=1.78.2';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.78.2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -54,7 +54,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.76.16';
+} from './persistence.js?rmv=1.78.2';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -72,7 +72,9 @@ import {
     savedRecordMatchesObserved,
     slotSearchKeys,
     swipeId,
-} from './connection.js?rmv=1.76.16';
+    independentContextExcludedTagSet,
+} from './connection.js?rmv=1.78.2';
+import { stripExcludedTagsFromFaceOutput } from './faceTagFilter.js?rmv=1.78.2';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -106,7 +108,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.76.16';
+} from './request.js?rmv=1.78.2';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -130,20 +132,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.76.16';
+} from './mount.js?rmv=1.78.2';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.76.16';
+} from './earlyBody.js?rmv=1.78.2';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.76.16';
+} from './lifecycle.js?rmv=1.78.2';
 
 let externalGeometryFrame = 0;
 
@@ -1537,7 +1539,8 @@ export function prepareIndependentReadyHtml(html='',savedReceipt=null,ownerSlot=
  const source=String(html||'').trim();
  try{ assertIndependentMarkupComplexity(source); }catch{return '';}
  const bannedWords=getSettings()?.rabbitMirrorBannedWords;
- const bannedFingerprint=hashText(Array.isArray(bannedWords)?JSON.stringify(bannedWords):'');
+ const excludedTags=independentContextExcludedTagSet();
+ const bannedFingerprint=hashText((Array.isArray(bannedWords)?JSON.stringify(bannedWords):'')+'|'+JSON.stringify([...excludedTags]));
  const provenance=locallyPrepared?'prepared':savedReceipt?`record:${ownerSlot}:${JSON.stringify(copyIndependentReplacementReceipt(savedReceipt))}`:'raw';
  const cacheKey=`${RUNTIME_VERSION}:${bannedFingerprint}:${provenance}:${storedDisplay?'stored:':''}${source.length}:${hashText(source)}`;
  if(preparedReadyHtmlCache.has(cacheKey)) return preparedReadyHtmlCache.get(cacheKey);
@@ -1562,7 +1565,9 @@ export function prepareIndependentReadyHtml(html='',savedReceipt=null,ownerSlot=
  const prepared=/<details\b/i.test(cleaned)
   ? compactTotoBlock(cleaned)
   : cleaned;
- const sanitized=sanitizeIndependentReadyFragment(prepared,textAlreadyFiltered);
+ // 「跳过的标签」放在所有修复、净化之后：先解析会把写坏的引号、粘连的标签拆坏，后面的修复就修不回来了。
+ // 净化前、已清理过的那一版用来数标签关没关（净化会自动补关标签）。
+ const sanitized=stripExcludedTagsFromFaceOutput(sanitizeIndependentReadyFragment(prepared,textAlreadyFiltered),excludedTags,globalThis.document,prepared);
  cachePreparedReadyHtml(cacheKey,sanitized);
  // callIndependentApi() stores this already-prepared value and the first DOM
  // mount receives those exact bytes. Seed that value's own key as well so the
@@ -2282,7 +2287,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.76.16').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.78.2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();

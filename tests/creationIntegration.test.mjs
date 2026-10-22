@@ -46,7 +46,7 @@ test('changing the next image composition preserves an existing draft; editing s
 
 test('image material snapshots detect in-place character and persona edits and respect read switches', () => {
     const mount = source('src/independentApi/mount.js');
-    const sandbox = {};
+    const sandbox = { stripExcludedTagsFromReference: value => String(value ?? '') };
     vm.runInNewContext(mount.slice(mount.indexOf('function mirrorImageReferenceSnapshot('), mount.indexOf('function prepareMirrorImageTarget(')), sandbox);
     const ctx = { characterId: 0, characters: [{ name: '角色', data: { description: '旧描述' } }], name1: '用户甲', powerUserSettings: { persona_description: '旧人设' } };
     const snapshot = settings => JSON.stringify(sandbox.mirrorImageReferenceSnapshot(ctx, settings));

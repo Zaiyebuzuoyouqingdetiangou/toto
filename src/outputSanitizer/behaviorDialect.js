@@ -1,7 +1,7 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.76.16';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.76.16';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.76.16';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.76.16';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.78.2';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.78.2';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.78.2';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.78.2';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。
@@ -365,6 +365,11 @@ const RUNTIME_ATTR = /^data-rm-(?:[a-z-]*-(?:wired|active|done|verified|patched|
 
 const values = (group, attr) => own(group, `[${attr}]`).map(node => String(node.getAttribute(attr) || '').trim()).filter(Boolean);
 
+// 一格一格走的滑杆：当前格号（加这些前缀）也算状态。只给本身没有别的键来源的类型（动画、调节、揭示、缩放、跟随），
+// 选项、翻页、拖放这些已经有自己的键，滑杆格号混进去会让不该出现的内容出现。
+export const STEP_RANGE_TYPES = new Set(['motion', 'adjust', 'reveal', 'view', 'follow']);
+export const STEP_RANGE_PREFIXES = ['', 'p', 'step', 's', 'page', 'part', 'ch', 'chapter', 'seg', 'track'];
+
 // 某个容器按它的类型「可能出现」的状态键；不确定的类型返回 null（不报）。
 export function reachableBehaviorKeys(group) {
     const type = group?.getAttribute?.('data-rm-ui');
@@ -418,6 +423,16 @@ export function reachableBehaviorKeys(group) {
         default: break;
     }
     if (group.hasAttribute('data-rm-answer')) [...MATCH_WORDS, ...MISS_WORDS].forEach(key => keys.add(key));
+    // 一格一格走的滑杆：每一格的号（"2"、"p2"、"step2"……）都可能出现（见 behaviorInteractions.js stepRangeKeys）。
+    const range = STEP_RANGE_TYPES.has(type) ? (own(group, 'input[type="range"]')[0] || (type === 'motion' ? motionOutsideControls(group).ranges[0] : null)) : null;
+    if (range && range.step !== 'any') {
+        const min = range.min === '' ? 0 : Number(range.min);
+        const max = range.max === '' ? 100 : Number(range.max);
+        const step = range.step === '' || range.step === 'any' ? 1 : Number(range.step);
+        if ([min, max, step].every(Number.isFinite) && Number.isInteger(min) && Number.isInteger(step) && step > 0 && max - min <= 20 * step) {
+            for (let value = min; value <= max; value += step) for (const prefix of STEP_RANGE_PREFIXES) keys.add(`${prefix}${value}`);
+        }
+    }
     return keys;
 }
 

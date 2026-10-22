@@ -22,7 +22,7 @@ function ensureStyle() {
 function hasOwnAction(button) {
     if (button.disabled) return true;
     if (button.hasAttribute('popovertarget') || button.hasAttribute('commandfor') || button.closest('label, a[href], form')) return true;
-    if ([...button.attributes].some(attr => /^data-rm-/.test(attr.name) && !/^data-rm-(?:polish|press|sibling)/.test(attr.name))) return true;
+    if ([...button.attributes].some(attr => /^data-rm-/.test(attr.name) && !/^data-rm-(?:polish|press|sibling|select)/.test(attr.name))) return true;
     if (/^(?:submit|reset)$/i.test(button.getAttribute('type') || '')) return true;
     // 别的维修已经接管过的按钮（data-rabbit-mirror-*-rescue 之类）不再抢。
     if ([...button.attributes].some(attr => /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;

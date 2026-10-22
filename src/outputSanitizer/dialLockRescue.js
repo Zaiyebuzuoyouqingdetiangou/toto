@@ -35,7 +35,7 @@ function hasOwnAction(control) {
     }
     if (control.disabled || control.hasAttribute('popovertarget') || control.hasAttribute('commandfor')) return true;
     if (control.closest('a[href], form, label')) return true;
-    if ([...control.attributes].some(attr => /^data-rm-(?!polish|press|dial)/.test(attr.name) || /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;
+    if ([...control.attributes].some(attr => /^data-rm-(?!polish|press|dial|select)/.test(attr.name) || /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;
     return /^(?:submit|reset)$/i.test(control.getAttribute('type') || '');
 }
 

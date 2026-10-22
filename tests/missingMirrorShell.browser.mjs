@@ -49,6 +49,12 @@ const result = await page.evaluate(async query => {
         movedScope: /^<details data-rabbit-mirror-css-scope="sx1">/.test(request.extractMirrorInner(`<toto data-rabbit-mirror-css-scope="sx1">${body}</toto>`)),
         hiddenNotes: (html => /^<details[^>]*><summary>【兔子镜：字字字的十二种反应】<\/summary>/.test(html) && /<details hidden><summary>字<\/summary><div data-rm-draw-notes="1" hidden>/.test(html))(request.extractMirrorInner(`<toto>${body}<details hidden><summary>字</summary><div data-rm-draw-notes="1" hidden><p data-rm-draw-prompt="1">字字字</p></div></details></toto>`)),
         tiny: !/<details/.test(request.extractMirrorInner('<toto><p>字</p></toto>')),
+        // 本体标题是一整句：只取开头【名字】那段，或取到第一个标点为止，不抄整句
+        bracketTitle: request.extractMirrorInner('<toto><style>.t{}</style><div class="t"><h1>【某城奇遇测验】当阿雪在榻上醒来看见阿岩……</h1><p>字字字字字字字字字字字字字字字字字字字字字</p></div></toto>').includes('【兔子镜：某城奇遇测验】'),
+        numberedTitle: request.extractMirrorInner('<toto><style>.t{}</style><div class="t"><h2>1. 阿竹的一天</h2><p>字字字字字字字字字字字字字字字字字字字字字</p></div></toto>').includes('【兔子镜：阿竹的一天】'),
+        prefixedTitle: request.extractMirrorInner('<toto><style>.t{}</style><div class="t"><h1>【兔子镜：某教】</h1><p>字字字字字字字字字字字字字字字字字字字字字</p></div></toto>').includes('【兔子镜：某教】'),
+        quotedTitle: request.extractMirrorInner('<toto><style>.t{}</style><div class="t"><h1>「阿雪」的日记</h1><p>字字字字字字字字字字字字字字字字字字字字字</p></div></toto>').includes('【兔子镜：阿雪】'),
+        sentenceTitle: request.extractMirrorInner('<toto><style>.t{}</style><div class="t"><h1>阿竹的夜市，灯笼一路亮到河边去了</h1><p>字字字字字字字字字字字字字字字字字字字字字</p></div></toto>').includes('【兔子镜：阿竹的夜市】'),
     };
 }, query);
 await browser.close(); server.close();
@@ -66,4 +72,9 @@ assert.equal(result.hiddenNotes, true);
 assert.equal(result.completeWins, true);
 assert.equal(result.fullKeepsStatus, true);
 assert.equal(result.movedScope, true);
+assert.equal(result.bracketTitle, true);
+assert.equal(result.sentenceTitle, true);
+assert.equal(result.numberedTitle, true);
+assert.equal(result.prefixedTitle, true);
+assert.equal(result.quotedTitle, true);
 console.log('missingMirrorShell ok');

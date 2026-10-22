@@ -1,8 +1,8 @@
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.76.16';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.76.16';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.76.16';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.76.16';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.76.16';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.78.2';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.78.2';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.78.2';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.2';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.78.2';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -174,6 +174,8 @@ function normalizeRecord(value) {
         characterName,
         createdAt: Number(value.createdAt) || Date.now(),
         ...(value.contentKey ? { contentKey: String(value.contentKey).slice(0, 80) } : {}),
+        // 这一面的插图记录（图片地址、时间、种子、提示词）：插图记在原来那条消息上，别的聊天里打开收藏时读不到，收藏里另带一份。
+        ...(value.images && typeof value.images === 'object' && !Array.isArray(value.images) ? { images: value.images } : {}),
     };
 }
 
@@ -486,6 +488,11 @@ export async function deleteTheaterFavorite(id) {
 // 星标切换：按内容查重。intent='add'（星本来是空的，用户要收藏）时，已经收藏过同一面就不再存，直接报已收藏；
 // intent='remove'（星亮着，用户要取消）时，把内容相同的几份一起删掉。不传 intent 时按库里有没有自动决定。
 // 查和写在同一个事务里；记录里存下内容指纹，以后查重不用再解析。
+async function favoriteImagesFor(captured) {
+    if (!Number.isInteger(captured?.mesid) || !Number.isInteger(captured?.swipe)) return null;
+    try { return (await import('./imageStore.js?rmv=1.78.2')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || ''); } catch { return null; }
+}
+
 export async function toggleTheaterFavorite(input, intent = 'auto') {
     const captured = input && typeof input === 'object' ? input : null;
     const html = scrubTheaterFavoriteHtml(captured?.html);
@@ -500,6 +507,7 @@ export async function toggleTheaterFavorite(input, intent = 'auto') {
         characterId: captured?.characterId || character.characterId,
         characterName: captured?.characterName || character.characterName,
         createdAt: Date.now(), contentKey,
+        images: await favoriteImagesFor(captured),
     });
     if (!record) throw new Error('收藏内容无法保存。');
     let knownIds = [];
@@ -592,7 +600,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
     // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
-    const atlases = await import('./favoriteAtlases.js?rmv=1.76.16');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.78.2');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};

@@ -1,12 +1,12 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.76.16';
-import { getSettings } from './settings.js?rmv=1.76.16';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.76.16';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.76.16';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.76.16';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.76.16';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.76.16';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=1.76.16';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.76.16';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.78.2';
+import { getSettings } from './settings.js?rmv=1.78.2';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.78.2';
+import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.78.2';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.2';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.78.2';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=1.78.2';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.78.2';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -26,6 +26,17 @@ function hasStoredImages() {
             if (globalThis.localStorage.key(i)?.startsWith('rabbitMirror:image:v1:images:')) { savedImagesExist = true; break; }
         }
     } catch { savedImagesExist = true; }
+    // 插图记录也可能只在消息上（跟聊天记录存的）：当前聊天里有就算有。不记住「没有」，换聊天后再看。
+    if (!savedImagesExist) {
+        try {
+            const chat = globalThis.SillyTavern?.getContext?.()?.chat;
+            const has = Array.isArray(chat) && chat.some(msg => (msg?.extra?.rabbitMirrorImages && Object.keys(msg.extra.rabbitMirrorImages).length)
+                || (Array.isArray(msg?.swipe_info) && msg.swipe_info.some(info => info?.extra?.rabbitMirrorImages && Object.keys(info.extra.rabbitMirrorImages).length)));
+            if (has) { savedImagesExist = true; return true; }
+        } catch { /* 读不到就照本机的算 */ }
+        savedImagesExist = null;
+        return false;
+    }
     return savedImagesExist;
 }
 function targetFor(root) {

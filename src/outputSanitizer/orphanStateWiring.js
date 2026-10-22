@@ -49,7 +49,7 @@ export function innerButtonIsFree(el) {
         const name = attr.name;
         if (/^(?:popovertarget|commandfor|onclick|onchange|oninput|onpointerdown|onmousedown|form|formaction|href)$/.test(name)) return false;
         if (name === 'aria-controls' && String(attr.value).split(/\s+/).some(id => id && doc?.getElementById(id))) return false;
-        if (/^data-rm-/.test(name) && !/^data-rm-(?:press|polish|orphan-state-trigger)/.test(name)) return false;
+        if (/^data-rm-/.test(name) && !/^data-rm-(?:press|polish|orphan-state-trigger|state-group|pulse-trigger|select-item|select-step|flag-toggle)/.test(name)) return false;
         if (/^data-rabbit-mirror-/.test(name) && !/^data-rabbit-mirror-inert-action-(?:rescue|active)$/.test(name)) return false;
     }
     return true;

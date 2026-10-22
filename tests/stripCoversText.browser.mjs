@@ -1,4 +1,4 @@
-// 贴着上下边的台标、底部字幕条（绝对定位、不透明底色）压住了正文的字（走近科学之神都红线疑云）：
+// 贴着上下边的台标、底部字幕条（绝对定位、不透明底色）压住了正文的字：
 // 给所在的框在那一边补出空位，字往里让。只压着图、半透明水印、整块遮层都不动；切到别的内容时重新量。
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -26,7 +26,7 @@ const query = JSON.parse(await readFile(path.join(rootDir, 'manifest.json'), 'ut
 await page.evaluate(async q => { window.polish = await import('/src/outputSanitizer/readabilityPolish.js?' + q); }, query);
 const text = '正文的字'.repeat(30);
 const screen = (inner, extra = '') => `<details open><summary>t</summary><div id="s" style="position:relative;padding:10px;background:#000;color:#fff;font-size:14px">
-  <span id="badge" style="position:absolute;top:8px;left:10px;background:#c33;padding:2px 6px;font-size:12px">神都卫视 · 走近修真</span>
+  <span id="badge" style="position:absolute;top:8px;left:10px;background:#c33;padding:2px 6px;font-size:12px">某城卫视 · 走近修真</span>
   ${inner}
   <div id="sub" style="position:absolute;bottom:8px;left:10px;right:10px;background:rgba(0,0,0,.85);padding:6px;font-size:12px">【当事人口述】字幕一行字幕一行字幕一行</div>${extra}</div></details>`;
 const room = () => page.evaluate(() => {

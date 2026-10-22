@@ -1,29 +1,29 @@
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.76.16';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.76.16';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.76.16';
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.78.2';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.78.2';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.78.2';
 // Split from independentApi.js — request.
 
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.76.16';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.76.16';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.76.16';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.78.2';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.78.2';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.78.2';
 
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.76.16';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.76.16';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.76.16';
-import { getSettings } from '../settings.js?rmv=1.76.16';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.76.16';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.76.16';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.76.16';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.78.2';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.78.2';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.78.2';
+import { getSettings } from '../settings.js?rmv=1.78.2';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.78.2';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.78.2';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.78.2';
 import {
     assertRabbitMirrorIndependentResponseBytes,
     assertRabbitMirrorIndependentResponseText,
     authorizeRabbitMirrorIndependentServiceRequest,
-} from '../independentSecurityGuard.js?rmv=1.76.16';
+} from '../independentSecurityGuard.js?rmv=1.78.2';
 import {
     parseIndependentAdvancedOptions,
     buildIndependentAdvancedCarrier,
     applyIndependentAdvancedExclusions,
-} from '../advancedRequestOptions.js?rmv=1.76.16';
+} from '../advancedRequestOptions.js?rmv=1.78.2';
 import {
     buildRabbitMirrorPromptDetails,
     planRabbitMirrorPromptDetails,
@@ -32,15 +32,15 @@ import {
     prepareSelectedMemoryForPrompt,
     memoryRequestSettingsKey,
     assertMemoryRequestSettings,
-} from '../promptBuilder.js?rmv=1.76.16';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.76.16';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.76.16';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.76.16';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.76.16';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.76.16';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.76.16';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.76.16';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.76.16';
+} from '../promptBuilder.js?rmv=1.78.2';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.78.2';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.78.2';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.78.2';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.78.2';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.78.2';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.78.2';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.78.2';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.78.2';
 import {
     createVisualHistorySelection,
     resolveVisualHistorySelection,
@@ -49,9 +49,9 @@ import {
     markPendingBatchAttempt,
     findPendingComboBatchPlan,
     releasePendingComboBatch,
-} from '../storage.js?rmv=1.76.16';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.76.16';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.76.16';
+} from '../storage.js?rmv=1.78.2';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.78.2';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.78.2';
 import {
     RUNTIME_VERSION,
     EXTERNAL_SHELL_ATTR,
@@ -62,8 +62,8 @@ import {
     byteLength,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.76.16';
-import { operationEpochForBase } from './flights.js?rmv=1.76.16';
+} from './runtime.js?rmv=1.78.2';
+import { operationEpochForBase } from './flights.js?rmv=1.78.2';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INDEPENDENT_MAX_APPROX_DEPTH,
@@ -78,7 +78,7 @@ import {
     normalizedConfiguredTemperature,
     readHistoryStore,
     readStore,
-} from './persistence.js?rmv=1.76.16';
+} from './persistence.js?rmv=1.78.2';
 import {
     API_PROFILE_ORDER,
     chatKey,
@@ -111,10 +111,12 @@ import {
     rememberApiProfile,
     safeJson,
     stageNextApiProfile,
+    stripExcludedTagsFromReference,
+    isOutputFormatInstruction,
     swipeId,
     validatedIndependentConnectionProfile,
     connectionProfileSecretState,
-} from './connection.js?rmv=1.76.16';
+} from './connection.js?rmv=1.78.2';
 import {
     externalGeometryCycleSequence,
     externalGeometryLifecycleEpoch,
@@ -125,7 +127,7 @@ import {
     writeExternalGeometryCycleSequence,
     writeExternalGeometryLifecycleEpoch,
     writeExternalGeometryLifecycleReason,
-} from './geometry.js?rmv=1.76.16';
+} from './geometry.js?rmv=1.78.2';
 import {
     INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS,
     INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES,
@@ -140,8 +142,8 @@ import {
     writeExternalHostSyncIndex,
     writeIndependentRejectedPreviewChars,
     writeIndependentRejectedPreviewSequence,
-} from './mount.js?rmv=1.76.16';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.76.16';
+} from './mount.js?rmv=1.78.2';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.78.2';
 
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE={
  chat_system_user_full:'chat_system_user_full_nostream',
@@ -563,7 +565,15 @@ function wrapMissingMirrorShell(inner,openTag=''){
  const titled=body.match(/<(h[1-4])\b[^>]*>([\s\S]*?)<\/\1>/i)?.[2]
   || body.match(/<([a-z0-9]+)\b[^>]*\bclass\s*=\s*["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i)?.[2]
   || '';
- const title=[...plain(titled).replace(/^[^\p{L}\p{N}]+/u,'')].slice(0,14).join('').trim()||'小剧场';
+ // 标题只取一个短名字，不抄整句正文：本体标题开头是【名字】的取括号里那段；否则取到第一个标点为止，最多 14 个字。
+ // 模型把「兔子镜：」也写进了本体标题的，先去掉；开头的序号（1.、一、）不算名字。
+ const heading=String(titled||'').replace(/<[^>]+>/g,'').replace(/&[a-z#0-9]+;/gi,' ').trim()
+  .replace(/^[【\[]?\s*兔子镜\s*[:：]\s*/,'').replace(/^(?:\d+|[一二三四五六七八九十]+)\s*[.、:：)）．]\s*/,'');
+ const bracketed=heading.match(/^[【\[［〔]([^】\]］〕]{2,20})[】\]］〕]/)?.[1]||'';
+ const whole=plain(heading).replace(/^[^\p{L}\p{N}]+/u,'');
+ const headline=plain(bracketed||heading).replace(/^[^\p{L}\p{N}]+/u,'').split(/[，。！？；：,.!?;:…—~～（）()「」『』“”"《》〔〕［］]/)[0].trim();
+ // 切出来不到两个字（「Dr. Who」只剩 Dr）：退回整句开头。
+ const title=[...([...headline].length>=2?headline:whole)].slice(0,14).join('').trim()||'小剧场';
  // 净化时 css 作用域挂在 <toto> 上（因为没有 details）；取出内部时要把它搬到补上的 details 上，不然样式全对不上。
  const scope=String(openTag||'').match(/\bdata-rabbit-mirror-css-scope\s*=\s*["']([^"']+)["']/i)?.[1]||'';
  const scopeAttr=scope?` data-rabbit-mirror-css-scope="${escapeLongText(scope)}"`:'';
@@ -1768,7 +1778,7 @@ export function wireIndependentRejectedFaceControls(host){
    independentRejectedFaceControlsWired.add(resay);
    resay.addEventListener('click',event=>{
     event.preventDefault(); event.stopPropagation();
-    void import('../outputSanitizer/toolsChrome.js?rmv=1.76.16').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+    void import('../outputSanitizer/toolsChrome.js?rmv=1.78.2').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
    },true);
   }
  }
@@ -1981,7 +1991,7 @@ async function loadIndependentAppearanceReference(owner){
  let module;
  assertIndependentPromptOwner(owner);
  try{
-  try{module=await import('../appearanceReference.js?rmv=1.76.16');}
+  try{module=await import('../appearanceReference.js?rmv=1.78.2');}
   catch{
    const error=new Error('外观参考模块未能加载；本轮未发送请求，请刷新后重试或关闭外观参考。');
    error.code='RABBIT_MIRROR_APPEARANCE_MODULE_UNAVAILABLE';error.requestCount=0;throw error;
@@ -2402,13 +2412,14 @@ export async function callIndependentApi(ctx,index,msg,signal=null,requestOption
    if(reference.enabled) appearanceMaterial=await loadIndependentAppearanceReference(promptOwner);
    if(plan.memoryWorldBook?.enabled){
     assertIndependentPromptOwner(promptOwner);
-    try{memoryMaterial=await prepareSelectedMemoryForPrompt(plan.args.settings,{generationType:'independent',hasSharedMemoryTheme:true});}
+    // 记忆世界书、千千结记忆也按「跳过的标签」过滤（在截字数之前）。
+    try{memoryMaterial=await prepareSelectedMemoryForPrompt(plan.args.settings,{generationType:'independent',hasSharedMemoryTheme:true,filterText:value=>stripExcludedTagsFromReference(value)});}
     finally{promptOwner.awaited=true;assertIndependentPromptOwner(promptOwner);}
    }
    if(characterWorldBookEnabled||imageCastEnabled){
     // 这一轮和前两层的原文：出场人物的条目排到前面，免得长世界书按顺序截断时把他们截掉。
     const characterWorldBookFocus=(Array.isArray(ctx.chat)?ctx.chat.slice(Math.max(0,index-2),index+1):[]).map(message=>String(message?.mes||'')).join('\n').slice(-20000);
-    try{characterWorldBookContext=await readCharacterWorldBookContext(ctx,{signal,disabledBooks:st.independentWorldInfoDisabledBooks||[],focusText:characterWorldBookFocus,...(imageCastEnabled?{onlyMentioned:true,maxChars:3000}:{}),assertCurrent:()=>assertIndependentPromptOwner(promptOwner)});
+    try{characterWorldBookContext=await readCharacterWorldBookContext(ctx,{signal,disabledBooks:st.independentWorldInfoDisabledBooks||[],focusText:characterWorldBookFocus,filterContent:value=>isOutputFormatInstruction(value)?'':stripExcludedTagsFromReference(value),...(imageCastEnabled?{onlyMentioned:true,maxChars:3000}:{}),assertCurrent:()=>assertIndependentPromptOwner(promptOwner)});
      if(imageCastEnabled&&characterWorldBookContext) characterWorldBookContext.imageCast=true;}
     catch(error){if(error?.name!=='AbortError'&&imageCastEnabled){characterWorldBookContext={text:'',entryCount:0,titles:[],imageCast:true,reason:`读取失败：${String(error?.message||error).slice(0,120)}`};}else{if(error?.name!=='AbortError') error.code='RABBIT_MIRROR_CHARACTER_WORLD_BOOK_UNAVAILABLE';throw error;}}
     finally{promptOwner.awaited=true;assertIndependentPromptOwner(promptOwner);}
@@ -2597,6 +2608,7 @@ ${independentUserTail}`;
   globalWorldInfoEnabled:st.independentReadGlobalWorldInfo===true,
   globalWorldInfoCaptured:!!globalWorldInfoView?.block,
   globalWorldInfoEntries:Number(globalWorldInfoView?.includedEntries||0),
+  globalWorldInfoFormatEntriesSkipped:Number(globalWorldInfoView?.formatEntriesSkipped||0),
   globalWorldInfoTotalEntries:Number(globalWorldInfoView?.totalEntries||0),
   globalWorldInfoChars:Number(globalWorldInfoView?.chars||0),
   globalWorldInfoTruncated:globalWorldInfoView?.truncated===true,
@@ -2606,7 +2618,7 @@ ${independentUserTail}`;
   imageCastEnabled,
   imageCastEntries:imageCastEnabled?Number(characterWorldBookContext?.entryCount||0):0,
   imageCastTitles:imageCastEnabled?(characterWorldBookContext?.titles||[]).slice(0,8).map(title=>String(title).slice(0,30)):[],
-  imageCastReason:imageCastEnabled?String(characterWorldBookContext?.reason||(characterWorldBookContext?.entryCount?'':'绑定的世界书里没有条目的关键词或标题在这一轮和前两层出现过')):'',
+  imageCastReason:imageCastEnabled?String(characterWorldBookContext?.reason||(characterWorldBookContext?.entryCount?'':(characterWorldBookContext?.skippedNoLooks?`这一轮提到的 ${characterWorldBookContext.skippedNoLooks} 条都没写长相或衣着（规则、格式、地点这类），没带`:'绑定的世界书里没有条目的关键词或标题在这一轮和前两层出现过'))):'',
   totalRequestChars,
  };
  const batchPlan=details.batchPlan||null;

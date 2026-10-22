@@ -8,6 +8,15 @@ const TITLE_NOISE = /^(?:角色|人物|人设|设定|主角|配角|男主|女主
 // 「碧眼」这类只认不会是剧情的颜色（「白眼一翻」「红眼了」「黑眼圈」不算）；「眉眼弯弯地笑」「方脸的掌柜」这类不收。
 const APPEARANCE_WORDS = /[金银蓝碧绿紫琥翠灰褐]眼(?![圈镜神眶角])|鹅蛋脸|瓜子脸|鼻梁高|高鼻梁|发色|头发|[长短直卷]发|发型|发丝|马尾|[黑白银金红棕灰紫蓝粉]发|瞳|眸|眼睛(?:是|呈|为)?(?:[^，,。；;]{0,3}色|[浅深淡暗乌漆]?[黑白银金红棕灰紫蓝粉绿褐赤青碧琥乌])|色的?[大圆细长]?眼睛|身高|身材|体型|身形|外貌|长相|容貌|相貌|五官|面容|肤色|皮肤|肌肤|白皙|痣|疤痕|伤疤|雀斑|胎记|纹身|刺青|hair|eyes|skin|complexion|mole|freckle|tattoo|birthmark/i;
 
+// 内置生图只要出场人物的外貌和衣着：条目里一个讲长相、身高、衣着、饰品的字眼都没有（规则、输出格式、地点、榜单这类），
+// 即使关键词在正文里出现过也不带——不然里面给主模型的格式说明会被副 API 当范例照抄。
+// 这里故意放宽：宁可多带一条，也不漏掉只写了衣着、身高或英文外貌的人物条目。
+const PERSON_LOOKS_WORDS = /外貌|外表|外形|外观|外觀|样貌|樣貌|长相|長相|容貌|相貌|五官|个子|個子|身高|身材|体型|體型|体格|體格|\d{2,3}\s*(?:cm|CM|厘米|公分)|[发髮](?:色|型|丝|絲|梢|尾|髻|带|帶|饰|飾|圈|量)|[长短直卷黑白银金红棕灰紫蓝粉長捲銀紅藍][发髮]|头发|頭髮|刘海|劉海|马尾|馬尾|辫|辮|[肤膚]色|皮[肤膚]|[脸臉](?:型|蛋|庞|龐|颊|頰)|[圆圓方长長小尖]脸|[圆圓方长長小尖]臉|瓜子[脸臉]|鹅蛋[脸臉]|鵝蛋臉|娃娃[脸臉]|眼(?:睛|眸|瞳|尾|角|皮|镜|鏡)|[大小圆圓细細杏桃丹凤鳳]眼|眉|唇|鼻梁|鼻樑|痣|疤|胎记|胎記|纹身|紋身|刺青|面具|面纱|面紗|眼镜|眼鏡|上衣|衣服|衣着|衣著|衣裳|大衣|外衣|风衣|風衣|毛衣|睡衣|[裙袍衫裤褲靴鞋帽袜襪]|斗篷|披风|披風|西装|西裝|制服|铠|鎧|盔|甲胄|手套|项链|項鍊|耳环|耳環|戒指|手镯|手鐲|簪|首饰|首飾|饰品|飾品|发饰|髮飾|配饰|配飾|穿着|穿著|身穿|一身|戴着|戴著|佩戴/;
+const PERSON_LOOKS_WORDS_EN = /\b(?:appearance|hair(?:ed|style)?|eyes?|eyed|skin|complexion|height|tall|petite|muscular|slender|scars?|tattoos?|freckles?|wears?|wearing|dressed|outfit|coat|cloak|dress|shirt|jacket|suit|uniform|armou?r|glasses|mask|gloves?|boots?)\b/i;
+function describesLooks(content) {
+    return APPEARANCE_WORDS.test(content) || PERSON_LOOKS_WORDS.test(content) || PERSON_LOOKS_WORDS_EN.test(content);
+}
+
 function currentCharacter(ctx) {
     return ctx?.characters?.[ctx.characterId] || ctx?.character || null;
 }
@@ -32,7 +41,7 @@ function sourceRow(value) {
 // directory, the chat/persona book, or RabbitMirror's random selection library.
 // SillyTavern world-info.js uses data.extensions.world and data.character_book.
 export async function readCharacterWorldBookContext(ctx, {
-    signal, assertCurrent = () => {}, maxChars = 8000, disabledBooks = [], focusText = '', onlyMentioned = false,
+    signal, assertCurrent = () => {}, maxChars = 8000, disabledBooks = [], focusText = '', onlyMentioned = false, filterContent = null,
 } = {}) {
     if (!Number.isSafeInteger(maxChars) || maxChars < 0) throw new RangeError('角色世界书字符预算必须为非负整数。');
     const character = currentCharacter(ctx);
@@ -82,6 +91,7 @@ export async function readCharacterWorldBookContext(ctx, {
     const entries = book?.entries;
     if (!entries || typeof entries !== 'object') throw new TypeError(`角色世界书“${name}”缺少有效 entries。`);
     const rows = [];
+    let skippedNoLooks = 0;
     const focus = text(focusText);
     // 这一轮正文里出现过的名字（任一条目的关键词、标题里的人名）：大条目里按它们找人物那一段。
     const anchors = new Set();
@@ -105,7 +115,7 @@ export async function readCharacterWorldBookContext(ctx, {
             const pieces = title.split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/)
                 .map(piece => piece.trim()).filter(piece => piece.length >= 2 && piece.length <= 8 && !TITLE_NOISE.test(piece));
             // 只认写了长相的条目（地点、规则这类标题碰巧和正文重字的不算），英文片段要整词对上。
-            const looksLikePerson = APPEARANCE_WORDS.test(text(entry.content));
+            const looksLikePerson = describesLooks(text(entry.content));
             const hit = piece => /^[A-Za-z0-9 ]+$/.test(piece)
                 ? piece.length >= 3 && new RegExp(`(?:^|[^A-Za-z0-9])${piece.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^A-Za-z0-9])`, 'i').test(focus)
                 : focus.includes(piece);
@@ -123,9 +133,14 @@ export async function readCharacterWorldBookContext(ctx, {
         if (entry.enabled === false || entry.disable === true) continue;
         if (typeof entry.content !== 'string') throw new TypeError(`角色世界书“${name}”条目内容不是文本。`);
         if (!entry.content.trim()) continue;
+        // 「跳过的标签」也管世界书：条目里写的同名标签块不发给副 API（不然模型照着抄回兔子镜）。
+        const content = typeof filterContent === 'function' ? String(filterContent(entry.content) ?? '') : entry.content;
+        if (!content.trim()) continue;
         const title = text(entry.comment) || text(entry.name) || text(entry.title);
-        const score = mentioned(entry);
-        rows.push({ row: sourceRow({ book: name, title, content: entry.content }), title, content: entry.content, score, hits: mentioned.hits || [], order: rows.length });
+        const score = mentioned({ ...entry, content });
+        // 只要出场人物外貌（内置生图）时：没写长相、衣着的条目不带（见 PERSON_LOOKS_WORDS）。
+        if (onlyMentioned && score > 0 && !describesLooks(content)) { skippedNoLooks += 1; continue; }
+        rows.push({ row: sourceRow({ book: name, title, content }), title, content, score, hits: mentioned.hits || [], order: rows.length });
     }
     // 只要这一轮提到的条目（内置生图写人物外貌用）：没提到的一条不带。
     if (onlyMentioned) rows.splice(0, rows.length, ...rows.filter(item => item.score > 0));
@@ -134,7 +149,7 @@ export async function readCharacterWorldBookContext(ctx, {
     // （一个势力条目里写了十几个 NPC，长相不在开头），找到的条目排前面，只留这几段；找不到的留开头。
     if (onlyMentioned && rows.reduce((sum, item) => sum + item.row.length + 1, 0) > maxChars) {
         const names = [...anchors].filter(value => value.length >= 2);
-        // 段落的先后：这一条自己命中的名字在前（别的条目命中的「神都」这类地名排后面），名字后面越快写到长相越靠前。
+        // 段落的先后：这一条自己命中的名字在前（别的条目命中的「某城」这类地名排后面），名字后面越快写到长相越靠前。
         // 后面按额度截的时候从末尾截，最像这个人长相的那段留得住。
         const safe = (content, at) => (at > 0 && at < content.length && /[\uDC00-\uDFFF]/.test(content[at]) ? at - 1 : at);
         for (const item of rows) {
@@ -206,7 +221,7 @@ export async function readCharacterWorldBookContext(ctx, {
     rows.splice(0, rows.length, ...rows.map(item => item.row));
     check();
     const fullText = rows.join('\n');
-    if (fullText.length <= maxChars) return { text: fullText, bookNames: [name], entryCount: rows.length, titles: titles.filter(Boolean), truncated: false };
+    if (fullText.length <= maxChars) return { text: fullText, bookNames: [name], entryCount: rows.length, titles: titles.filter(Boolean), truncated: false, ...(skippedNoLooks ? { skippedNoLooks } : {}) };
     const note = maxChars >= 15 ? '\n【角色世界书已按预算截断】' : '【已截断】';
     const marker = note.slice(0, maxChars);
     const contentBudget = Math.max(0, maxChars - marker.length);
@@ -220,7 +235,7 @@ export async function readCharacterWorldBookContext(ctx, {
         entryCount += 1;
         used += row.length + 1;
     }
-    return { text: prefix + marker, bookNames: [name], entryCount, titles: titles.slice(0, entryCount).filter(Boolean), truncated: true };
+    return { text: prefix + marker, bookNames: [name], entryCount, titles: titles.slice(0, entryCount).filter(Boolean), truncated: true, ...(skippedNoLooks ? { skippedNoLooks } : {}) };
 }
 
 /**

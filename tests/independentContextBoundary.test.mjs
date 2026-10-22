@@ -125,7 +125,7 @@ test('actual contextBundle and generated prompt/lock accept quoted headers from 
     const begin = source.indexOf('function* independentContextCandidateIndexes');
     const end = source.indexOf('\n}', source.indexOf('export function contextBundle')) + 2;
     const context = vm.createContext({ getSettings: config.getSettings, CONTEXT_TOTAL_BUDGET: 20000, CONTEXT_TRANSCRIPT_BUDGET: 12000,
-        GLOBAL_WORLD_INFO_CONTEXT_BUDGET: 6000, isRabbitMirrorEligibleAssistantMessage: message => message?.is_user !== true && typeof message?.mes === 'string' });
+        GLOBAL_WORLD_INFO_CONTEXT_BUDGET: 6000, stripExcludedTagsFromReference: value => String(value ?? ''), independentContextExcludedTagSet: () => new Set(), isOutputFormatInstruction: () => false, isRabbitMirrorEligibleAssistantMessage: message => message?.is_user !== true && typeof message?.mes === 'string' });
     const referenceHelpers = source.slice(source.indexOf('function quoteIndependentContextHeaderLines'), source.indexOf('export function stripHistoricalRabbitMirrorBlocks'));
     vm.runInContext(source.match(/^export function safeJson.*$/m)[0].replace('export ', '') + '\n' + referenceHelpers.replace(/^export /gm, '') + '\n' + source.slice(begin, end).replace(/^export /gm, ''), context);
     const details = builder.buildRabbitMirrorPromptDetails(config.getSettings(), 'independent', null, 'boundary-regression', { chat: [], batchIdentity: { mesid: 0, swipeId: 0, sourceHash: 'fixture' } });

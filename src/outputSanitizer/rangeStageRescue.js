@@ -2,7 +2,7 @@
 // 用 `:has(input[value="2"]:checked)` 之类的规则去切换。滑杆没有 checked 状态，这种规则永远不生效，
 // 拖动滑杆什么也不变。这里只在“编号段落与滑杆取值一一对应、且这些段落默认是隐藏的”时接上：
 // 滑到几就显示第几段，其余段落收起。不写任何新内容，不执行模型脚本。
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.76.16';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.78.2';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
@@ -80,7 +80,7 @@ export function installRangeStageRescue(root) {
     let installed = 0;
     for (const input of root.querySelectorAll('input[type="range"]')) {
         if (states.has(input) || input.disabled || input.closest('[data-rm-ui]')) continue;
-        if (input.hasAttribute('oninput') || input.hasAttribute('onchange')) continue;
+        if (input.hasAttribute('oninput') || input.hasAttribute('onchange') || input.hasAttribute('data-rm-state-group')) continue;
         const stages = findStages(input);
         if (!stages) continue;
         const state = { input, stages, shown: naturalStageDisplays(stages) };
@@ -131,7 +131,7 @@ function headTargetsInput(head, input) {
 export function installRangeValueAttributeMirror(root) {
     if (!root?.querySelectorAll) return 0;
     const ranges = [...root.querySelectorAll('input[type="range"]')]
-        .filter(input => !valueMirrors.has(input) && !input.disabled);
+        .filter(input => !valueMirrors.has(input) && !input.disabled && !input.hasAttribute('data-rm-state-group'));
     if (!ranges.length) return 0;
     const heads = valueAttributeHeads(root);
     if (!heads.length) return 0;
@@ -284,7 +284,7 @@ export function installOrphanRangeLayerRescue(root) {
     let installed = 0;
     for (const input of root.querySelectorAll('input[type="range"]')) {
         if (layerStates.has(input) || input.disabled || input.closest('[data-rm-ui]')) continue;
-        if (input.hasAttribute('oninput') || input.hasAttribute('onchange') || states.has(input)) continue;
+        if (input.hasAttribute('oninput') || input.hasAttribute('onchange') || states.has(input) || input.hasAttribute('data-rm-state-group')) continue;
         if ([...input.attributes].some(attr => /^data-rabbit-mirror-.*(?:rescue|program)/.test(attr.name) && attr.name !== LAYER_RESCUE_ATTR)) continue;
         // 已经接过线又被克隆／重新挂载的：按标记认回目标，不重新猜。
         const marked = input.hasAttribute(LAYER_RESCUE_ATTR)

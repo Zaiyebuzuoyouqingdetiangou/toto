@@ -1,8 +1,8 @@
 // Split from outputSanitizer.js — renderedStateRescue.
 
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.76.16';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.78.2';
 
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.76.16';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.78.2';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     PSEUDO_ACTIVE_ATTR,
@@ -10,7 +10,7 @@ import {
     REVERSIBLE_TARGET_CLOSE_ATTR,
     restoreInteractionInlineOverrides,
     reversibleTargetCloseStates,
-} from './checkedStateRescue.js?rmv=1.76.16';
+} from './checkedStateRescue.js?rmv=1.78.2';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     applyPseudoStyleAssignments,
@@ -28,17 +28,17 @@ import {
     resolveElementChildIndexPath,
     restorePseudoStyleState,
     shouldIgnorePseudoToggleEvent,
-} from './scriptedInteractionRescue.js?rmv=1.76.16';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.76.16';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.76.16';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.76.16';
+} from './scriptedInteractionRescue.js?rmv=1.78.2';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.78.2';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=1.78.2';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.78.2';
 import {
     cssContainsUnsafeGeneratedResource,
     cssDeclarationBlockContainsUnsafeOverlayGeometry,
     sanitizeGeneratedCssDeclarationBlock,
     splitCssDeclarationList,
     splitCssSelectorList,
-} from './markup.js?rmv=1.76.16';
+} from './markup.js?rmv=1.78.2';
 
 export const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
 
@@ -1337,9 +1337,8 @@ function isRenderedButtonAdjacentHiddenTarget(element, button) {
 }
 
 
-export function findRenderedButtonAdjacentHiddenTarget(button) {
-    if (isBehaviorInteractionOwned(button) || button?.hasAttribute?.('popovertarget') || button?.hasAttribute?.('commandfor')) return null;
-    let node = button?.nextElementSibling || null;
+function findButtonAdjacentHiddenAfter(start, button) {
+    let node = start?.nextElementSibling || null;
     for (let step = 0; node && step < 3; step += 1, node = node.nextElementSibling) {
         if (/^(?:style|script|template)$/i.test(node.tagName || '')) continue;
         if (isRenderedButtonAdjacentHiddenTarget(node, button)) return node;
@@ -1350,6 +1349,72 @@ export function findRenderedButtonAdjacentHiddenTarget(button) {
         if (text.length > 12) break;
     }
     return null;
+}
+
+// 别的接线已经管着的按钮（孤立状态开关、选项卡、选中条目、播放开关……）：不再当「点了显示后面那块」接，免得一下点击两边抢。
+const OTHER_WIRING = '[data-rm-orphan-state-trigger], [data-rm-sibling-tab], [data-rm-select-item], [data-rm-select-step], [data-rm-flag-toggle], [data-rm-state-group], [data-rm-pulse-trigger]';
+export function findRenderedButtonAdjacentHiddenTarget(button) {
+    if (isBehaviorInteractionOwned(button) || button?.hasAttribute?.('popovertarget') || button?.hasAttribute?.('commandfor')) return null;
+    if (button?.matches?.(OTHER_WIRING)) return null;
+    const direct = findButtonAdjacentHiddenAfter(button, button);
+    if (direct) return direct;
+    // 按钮单独包在一行操作区里（<div class="操作"><button>查看结果</button></div>），结果紧跟在这一行后面：
+    // 往外最多走两层，每层都只装着这一个按钮时，按那一层后面的内容找。
+    let host = button;
+    const ownText = String(button?.textContent || '').replace(/\s+/g, '');
+    for (let level = 0; level < 2; level += 1) {
+        const parent = host?.parentElement;
+        if (!parent || parent.matches?.('details, summary, label, [data-rm-ui], [data-rabbit-mirror-tool-entry-host]')) break;
+        const others = [...parent.children].filter(child => child !== host && !/^(?:style|script|template)$/i.test(child.tagName || ''));
+        if (others.length || String(parent.textContent || '').replace(/\s+/g, '') !== ownText) break;
+        host = parent;
+        const target = findButtonAdjacentHiddenAfter(host, button);
+        if (target && !target.hasAttribute('data-rm-orphan-state-wired')) return target;
+        if (target) return null;
+    }
+    return null;
+}
+
+// 结果里「重新测试／再来一次」这类按钮：收起结果，把这道测验里已经选的选项清掉，可以重新做。
+// 只清离「查看结果」按钮最近、装着选项的那一块；整组里有默认选中的（导航、选项卡用的单选）不动；复选框回到原来的默认。
+const BUTTON_ADJACENT_RESET_ATTR = 'data-rabbit-mirror-button-adjacent-reset';
+const BUTTON_ADJACENT_RESET_TEXT = /^(?:重新[^，。]{0,4}|重来|再[测做来玩][^，。]{0,3}|重置|重做|reset|retry|restart|try again)$/i;
+const wiredResets = new WeakSet();
+// 原来写着的默认选中：存档里带回来的 checked 是用户上次选的，不算默认；插件记过最初状态的按记下的算。
+function initiallyChecked(input) {
+    const recorded = input.getAttribute('data-rm-reversible-radio-initial-checked');
+    if (recorded === 'true' || recorded === 'false') return recorded === 'true';
+    return input.defaultChecked;
+}
+function quizInputsFor(root, entry) {
+    let scope = entry.button.parentElement;
+    while (scope && scope !== root && !scope.querySelector('input[type="radio"], input[type="checkbox"]')) scope = scope.parentElement;
+    if (!scope) return [];
+    const inputs = [...scope.querySelectorAll('input[type="radio"], input[type="checkbox"]')]
+        .filter(input => !input.closest('summary, [data-rabbit-mirror-tool-entry-host]') && !entry.target.contains(input));
+    const defaultGroups = new Set(inputs.filter(input => input.type === 'radio' && initiallyChecked(input)).map(input => input.name || input));
+    return inputs.filter(input => input.type !== 'radio' || !defaultGroups.has(input.name || input));
+}
+function wireButtonAdjacentReset(root, entry) {
+    for (const reset of entry.target.querySelectorAll('button')) {
+        if (wiredResets.has(reset) || isBehaviorInteractionOwned(reset) || reset.matches(OTHER_WIRING)
+            || reset.hasAttribute('popovertarget') || reset.hasAttribute('commandfor') || reset.hasAttribute('onclick')
+            || [...reset.attributes].some(attr => /^data-rabbit-mirror-.*(?:rescue|wired|fallback)$/.test(attr.name))) continue;
+        if (!BUTTON_ADJACENT_RESET_TEXT.test(String(reset.textContent || '').replace(/\s+/g, ' ').trim())) continue;
+        wiredResets.add(reset);
+        reset.setAttribute(BUTTON_ADJACENT_RESET_ATTR, 'true');
+        reset.addEventListener('click', event => {
+            event.preventDefault();
+            applyRenderedButtonAdjacentHiddenEntry(entry, false);
+            for (const input of quizInputsFor(root, entry)) {
+                const next = input.type === 'checkbox' ? initiallyChecked(input) : false;
+                if (input.checked === next) continue;
+                input.checked = next;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }, false);
+    }
 }
 
 
@@ -1480,6 +1545,7 @@ export function installRenderedButtonAdjacentHiddenRescue(root) {
             }
         }, false);
         applyRenderedButtonAdjacentHiddenEntry(entry, false);
+        try { wireButtonAdjacentReset(root, entry); } catch { /* 接不上就只留查看结果 */ }
     }
 
     if (state.entries.size) root.dataset.rabbitMirrorButtonAdjacentHiddenFallback = 'true';

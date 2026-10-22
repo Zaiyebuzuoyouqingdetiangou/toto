@@ -2,7 +2,7 @@
 // 模型原本用脚本在两种状态之间切换，脚本被拿掉了，按了没反应。
 // 只认很确定的：按钮没写别的动作；字面是「切换／拨换／拉动／调／开关／昼夜／明暗／模式」这类；
 // 样式里有一个没人写的状态词属性，按钮和它管着的画在同一块里。按一下换下一个词，轮着来。
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.76.16';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.78.2';
 
 const BOUND_ATTR = 'data-rm-word-cycle';
 const BOUND = new WeakSet();
@@ -11,7 +11,7 @@ const SWITCH_WORDS = /切换|拨换|换成|变换|拉动|调换|调光|开关|�
 function hasOwnAction(button) {
     if (button.disabled || button.closest('[data-rm-ui]')) return true;
     if (button.hasAttribute('popovertarget') || button.hasAttribute('commandfor') || button.closest('a[href], form, label')) return true;
-    if ([...button.attributes].some(attr => /^data-rm-(?!press|polish|mobile)/.test(attr.name) || /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;
+    if ([...button.attributes].some(attr => /^data-rm-(?!press|polish|mobile|select)/.test(attr.name) || /^data-rabbit-mirror-.*(?:rescue|wired|fallback)/.test(attr.name))) return true;
     return /^(?:submit|reset)$/i.test(button.getAttribute('type') || '');
 }
 

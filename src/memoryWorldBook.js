@@ -1,4 +1,4 @@
-import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.76.16';
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=1.78.2';
 
 const MAX_MEMORY_CHARS = 6000;
 const MAX_MEMORY_ENTRIES = 24;
@@ -25,7 +25,7 @@ function limitChars(maxChars) {
 }
 
 /** Bounded extraction in the host's supplied order; no entry is treated as a new instruction. */
-export function extractMemoryWorldBookMaterial(book, maxChars = 2200) {
+export function extractMemoryWorldBookMaterial(book, maxChars = 2200, filterText = null) {
     const limit = limitChars(maxChars);
     const entries = Array.isArray(book?.entries) ? book.entries : [];
     const chunks = [];
@@ -40,13 +40,15 @@ export function extractMemoryWorldBookMaterial(book, maxChars = 2200) {
         // normalized book or construct a second full-book string for the prompt.
         const remaining = limit - usedChars - (chunks.length ? 2 : 0);
         if (remaining <= 0) { omitted = true; break; }
-        const text = entry.content.slice(0, remaining).trim();
+        // 「跳过的标签」先过滤整条、再按预算截：截成两半的标签块认不出来，里面的字会漏出去。
+        const content = typeof filterText === 'function' ? String(filterText(entry.content) ?? '') : entry.content;
+        const text = content.slice(0, remaining).trim();
         if (!text || seen.has(text)) continue;
         seen.add(text);
         chunks.push(text);
         usedChars += text.length + (chunks.length > 1 ? 2 : 0);
         selectedEntries++;
-        if (entry.content.length > remaining) { omitted = true; break; }
+        if (content.length > remaining) { omitted = true; break; }
     }
     return {
         providerId: `worldbook:${String(book?.sourceId || '')}`,
@@ -65,5 +67,5 @@ export async function readBoundMemoryWorldBook(settings, maxChars = 2200, option
     // it does not expose per-entry reads. Only the bounded material escapes this
     // function, and neither the response nor the book is persisted or cached.
     const book = await readHostWorldBook({ fileId }, options);
-    return extractMemoryWorldBookMaterial(book, maxChars);
+    return extractMemoryWorldBookMaterial(book, maxChars, options.filterText);
 }

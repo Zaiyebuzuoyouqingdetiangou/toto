@@ -1,14 +1,14 @@
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.76.16';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.76.16';
-import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.76.16';
-import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.76.16';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.76.16';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.76.16';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.76.16';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.76.16';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.76.16';
-import { addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.76.16';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.76.16';
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=1.78.2';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=1.78.2';
+import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=1.78.2';
+import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=1.78.2';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=1.78.2';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass } from './behaviorStateMirror.js?rmv=1.78.2';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=1.78.2';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.78.2';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=1.78.2';
+import { STEP_RANGE_TYPES, STEP_RANGE_PREFIXES, addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=1.78.2';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=1.78.2';
 
 export { behaviorToggleKey, motionOutsideControls };
 
@@ -105,10 +105,26 @@ function stateKeys(state) {
     for (const key of state.entered || []) keys.add(key);
     for (const [, , key] of state.pairs || []) keys.add(key);
     if (EXTRA.has(state.type)) extraKeys(state, keys);
+    // 一格一格走的滑杆（有声书进度 1–3、章节 1–5）：当前格的号也算状态，
+    // data-rm-show="2"、"p2"、"step2"、"page2"、"ch2" 都认（模型常这样写分段字幕、章节说明）。
+    stepRangeKeys(state, keys);
     // 跨面继承：data-rm-recall="名" 的区域，另一面记下的键也算这里的状态。
     if (group.hasAttribute('data-rm-recall')) recalledKeys(group, keys);
     // 意思对、写法不标准的显示条件（见 behaviorDialect.js 的方言表）。
     return addDialectStateKeys(state, keys);
+}
+
+function stepRangeKeys(state, keys) {
+    if (!STEP_RANGE_TYPES.has(state.type)) return;
+    const range = state.type === 'motion' ? motionRange(state) : first(state.group, 'input[type="range"]');
+    if (!range || range.step === 'any') return;
+    const min = range.min === '' ? 0 : Number(range.min);
+    const max = range.max === '' ? 100 : Number(range.max);
+    const step = range.step === '' ? 1 : Number(range.step);
+    if (![min, max, step].every(Number.isFinite) || !Number.isInteger(min) || !Number.isInteger(step) || step <= 0 || max - min > 20 * step) return;
+    const value = Math.round(clamp(Number(range.value), min, max));
+    if (!Number.isFinite(value)) return;
+    for (const prefix of STEP_RANGE_PREFIXES) keys.add(`${prefix}${value}`);
 }
 
 function rangeValue(input) {
@@ -2215,7 +2231,7 @@ function scheduleOnDemandRelay(root, target) {
 function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected) return;
-        void import('./behaviorRelay.js?rmv=1.76.16').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
+        void import('./behaviorRelay.js?rmv=1.78.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => {});
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function') idle(run, { timeout: 800 }); else setTimeout(run, 120);
@@ -2323,4 +2339,4 @@ configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, re
 // 跨面继承按聊天分开记：聊天键从存储模块拿，拿不到时所有面共用一份。
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=1.76.16').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
+import('../storage.js?rmv=1.78.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => {});
