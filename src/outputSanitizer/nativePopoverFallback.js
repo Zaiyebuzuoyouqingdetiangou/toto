@@ -176,8 +176,10 @@ function installPopoverPickClose(root) {
     pickCloseRoots.add(root);
     root.addEventListener('click', event => {
         const popup = event.target?.closest?.('[popover]');
+        // 点的是打开另一个弹窗的按钮：不收。
+        if (event.target?.closest?.(BUTTON_SELECTOR)) return;
         const control = popup && root.contains(popup) ? pickedControl(event) : null;
-        if (!control) return;
+        if (!control || control.disabled) return;
         // 选项本身（或它所在的那组）在弹窗外面：选的结果显示在弹窗外面，才收。弹窗里自己的分页、测验不收。
         const owner = control.matches('input') ? control : control.closest('[data-rm-ui]');
         if (!owner || popup.contains(owner)) return;
