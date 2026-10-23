@@ -31,14 +31,15 @@ await page.goto(origin);
 const query = JSON.parse(await readFile(path.join(rootDir, 'manifest.json'), 'utf8')).js.split('?')[1];
 await page.evaluate(async query => {
     localStorage.clear();
-    const old = performance.timeOrigin - 60000;
+    const old = performance.timeOrigin - 2 * 60 * 60 * 1000;
     const chat = Array.from({ length: 16 }, (_, i) => ({ mes: '回复' + i, is_user: i % 2 === 1, swipe_id: 0 }));
     for (const i of [12, 14]) { chat[i].gen_started = new Date(old).toISOString(); chat[i].gen_finished = new Date(old).toISOString(); }
     chat.push({ mes: '多面', swipe_id: 0 }, { mes: '用户', is_user: true }, { mes: '多面2', swipe_id: 0 });
     const ctx = { chat, chatId: 'c', getCurrentChatId: () => 'c', chatMetadata: { rabbit_mirror_independent_outputs_v2: { owners: {
         '10:0': { html: '<details><summary>旧</summary>旧的面</details>', ts: old, sourceHash: 'a' },
         '12:0': { html: '<details><summary>新</summary>新的面</details>', ts: old, sourceHash: 'b' },
-        '18:0': { html: '<details><summary>多面</summary>多面</details>', ts: Date.now(), sourceHash: 'c' },
+        '18:0': { html: '<details><summary>多面</summary>多面</details>', ts: old, sourceHash: 'c' },
+        '17:0': { html: '<details><summary>刚生成</summary>刚生成</details>', ts: performance.timeOrigin - 5 * 60 * 1000, sourceHash: 'd' },
     } }, other: 1 } };
     window.__ctx = ctx;
     window.SillyTavern = { getContext: () => ctx };
@@ -99,7 +100,7 @@ await mount(16);
 await page.waitForTimeout(200);
 assert.equal(await calls(), 3); checks++;
 
-// 5 存档时间被别的操作刷新过（重说、翻版本、找回都会改），没在这次打开后为它发过生成：仍不自动画
+// 5 以前生成的多面（没在这次打开后为它发过生成）：不自动画
 await mount(18);
 await page.waitForTimeout(200);
 assert.equal(await calls(), 3); checks++;
@@ -140,6 +141,9 @@ await page.evaluate(() => { window.__ctx.chat[16].gen_started = new Date(); });
 await mountInline(16, '正文里的面：新回复里的雨巷');
 await page.waitForTimeout(200);
 assert.equal(await calls(), 7); checks++;
+// 画好的图记在所在那条消息上（面上没写归属也按那条消息记），刷新、本机存储被清也找得回来
+await page.evaluate(async () => { for (const run of window.__release.splice(0)) run(); await new Promise(resolve => setTimeout(resolve, 80)); });
+assert.ok(await page.evaluate(() => Object.values(window.__ctx.chat[16].extra?.rabbitMirrorImages || {}).some(v => /雨巷/.test(v?.current?.prompt || ''))), '存进了消息'); checks++;
 
 // 10 聊天信息还没加载完整：消息上存着的图先读不到，等加载好再读，放回原图，不画也不提示
 await page.evaluate(async query => {
@@ -159,6 +163,12 @@ await page.waitForTimeout(800);
 assert.equal(await page.evaluate(() => window.__midStatus), ''); checks++;
 assert.equal(await calls(), 7); checks++;
 assert.match(await page.evaluate(() => document.querySelector('img[data-rm-draw-result]')?.getAttribute('src') || ''), /saved\.png/); checks++;
+
+// 11 刚生成没多久（5 分钟前）App 就被重启：图还没画，照常补画
+const before11 = await calls();
+await mount(17);
+await page.waitForTimeout(200);
+assert.equal(await calls(), before11 + 1); checks++;
 
 assert.deepEqual(pageErrors, []); checks++;
 await browser.close();
