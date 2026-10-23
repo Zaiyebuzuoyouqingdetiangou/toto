@@ -1,9 +1,9 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.78.12';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.12';
-import { mountUserSkinControls } from './userSkin.js?rmv=1.78.12';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.12';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.79.0';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.79.0';
+import { mountUserSkinControls } from './userSkin.js?rmv=1.79.0';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.79.0';
 const colorLabels = ['背景', '卡片底色', '正文', '辅助文字', '主色', '辅助色', '边框'];
 const mounts = new WeakMap();
 // Keep the existing public theme hook for older consumers.
@@ -52,7 +52,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.78.12').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.79.0').then(mod => {
         if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
@@ -159,7 +159,8 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     row('mode','early','想在正文完成前开始生成？','默认等正文完成。需要时再配置正文标签。');
     row('mode','regex','检查不发送兔子镜正则','避免旧镜面跟着下一次请求重复发送。');
     const outer='每面兔子镜带有独有的外置壳，防止被其他模块包裹。',inner='生成时外置展示，完成后以内嵌方式查看。';
-    move('rh_follow_regex_helper','regex');
+    // 跟随模式里那一小块正则（状态＋两个按钮）和工具里的完整一块是同一套，同一页里只留完整那块。
+    { const dup=get('rh_follow_regex_helper'); if(dup) dup.hidden=true; }
     const followDisplay=move('rh_follow_display_row','display'),indDisplay=move('rh_independent_display_row','display');
     for(const input of followDisplay.querySelectorAll('input'))choice(input,input.value==='inline'?'放在正文下方':'外置展示',input.value==='inline'?'翻到这条回复，就能看到对应的小剧场。':outer);
     for(const input of indDisplay.querySelectorAll('input'))choice(input,input.value==='external'?'外置展示':'跟随正文内嵌',input.value==='external'?outer:inner);
@@ -323,7 +324,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
-            void import('./mirrorUpdateMenu.js?rmv=1.78.12').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
+            void import('./mirrorUpdateMenu.js?rmv=1.79.0').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();

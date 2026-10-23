@@ -1,7 +1,7 @@
 // 抽完展现形式后，按形式所属的媒介大类从真实用法索引里强随机抽 3 项，避开近期给过的用法。
 // 只有这 3 项进入 Prompt；索引本身不发送。由出题计划冻结，重说与逐面子请求沿用同一份。
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.78.12';
-import { FORMAT_USAGES } from '../data/raw/formatUsages.js?rmv=1.78.12';
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=1.79.0';
+import { FORMAT_USAGES, FORMAT_CORE_USAGES } from '../data/raw/formatUsages.js?rmv=1.79.0';
 
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';
@@ -75,7 +75,10 @@ export function drawUsageOffer(combo, { avoidFlip = false, avoidSlide = false } 
     const coreNonFlip = coreAll.filter(item => !avoided(item));
     const corePool = (avoidFlip || avoidSlide) && coreNonFlip.length ? coreNonFlip : coreAll;
     const coreFresh = corePool.filter(item => !recent.includes(item));
-    const core = corePool.length ? shuffled(coreFresh.length >= coreCount ? coreFresh : corePool).slice(0, coreCount) : [];
+    let core = corePool.length ? shuffled(coreFresh.length >= coreCount ? coreFresh : corePool).slice(0, coreCount) : [];
+    // 轮换：这个形式最标志性的那条玩法，最近没给过就这一面先给它；最近给过就照常随机，不每面都给（免得成了模板）。
+    const signature = [...(combo?.formats || []), ...(combo?.texts || [])].map(item => FORMAT_CORE_USAGES[String(item?.id || '')]).find(Boolean);
+    if (signature && corePool.includes(signature) && !recent.includes(signature)) core = [signature, ...core.filter(item => item !== signature)].slice(0, Math.max(1, coreCount));
     const rest = pool.filter(item => !core.includes(item));
     const fresh = rest.filter(item => !recent.includes(item));
     const source = fresh.length >= OFFER_SIZE - core.length ? fresh : rest;
