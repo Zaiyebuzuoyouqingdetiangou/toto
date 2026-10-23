@@ -1,4 +1,4 @@
-// 跟随正文：兔子镜提示词最前面要有正文隔离（思考分两段，抽到的东西不写进正文）；副 API 不需要。
+// 跟随正文：兔子镜提示词最前面要有正文隔离（不规定思考步骤，只要求抽到的东西不写进正文）；副 API 不需要。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +16,8 @@ test('follow prompt opens with the main-reply firewall; independent prompt does 
     assert.ok(open >= 0);
     const firewall = follow.indexOf('【正文隔离·最高优先】');
     assert.ok(firewall > open && firewall - open < 40, '隔离紧跟在开头');
-    assert.match(follow, /先后两段/);
+    assert.match(follow, /只能出现在兔子镜 <toto> 里面/);
+    assert.doesNotMatch(follow, /先后两段|第一段|第二段/, '不规定思考步骤');
     const independent = prompt.buildRabbitMirrorPrompt({ ...base, generationSource: 'independent' }, 'independent', null, 'fw:2', { batchIdentity: { mesid: 4, swipeId: 0, sourceHash: 'i' } });
     assert.doesNotMatch(independent, /正文隔离/);
 });
