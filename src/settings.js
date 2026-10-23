@@ -1,11 +1,11 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.78.4';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.78.4';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.78.5';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.78.5';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.78.4';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.78.4';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.78.4';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.78.4';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.78.5';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.78.5';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.78.5';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.78.5';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -676,7 +676,7 @@ export function updateSettings(patch) {
     for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) safePatch[key] = safePatch[key] !== false;
     }
-    // 自己选过挂载位置：以后不再按 1.78.4 的默认改动。
+    // 自己选过挂载位置：以后不再按 1.78.5 的默认改动。
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentExternalAnchor')) safePatch.independentExternalAnchorDefaultV2 = true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imageCompositionMode')) safePatch.imageCompositionMode = safePatch.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'imagePromptFormat')) safePatch.imagePromptFormat = safePatch.imagePromptFormat === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
