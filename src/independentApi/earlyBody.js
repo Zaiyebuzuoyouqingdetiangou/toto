@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.78.10';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.78.11';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.78.10';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.78.10';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.78.10';
-import { getSettings } from '../settings.js?rmv=1.78.10';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.78.10';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.78.10';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.78.10';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.78.11';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.78.11';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.78.11';
+import { getSettings } from '../settings.js?rmv=1.78.11';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.78.11';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.78.11';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.78.11';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     safetyValveShellMessage,
@@ -18,7 +18,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.78.10';
+} from './missingRetryShell.js?rmv=1.78.11';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -28,7 +28,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.78.10';
+} from './runtime.js?rmv=1.78.11';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -44,7 +44,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.78.10';
+} from './flights.js?rmv=1.78.11';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -62,7 +62,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.78.10';
+} from './persistence.js?rmv=1.78.11';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -112,7 +112,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.78.10';
+} from './connection.js?rmv=1.78.11';
 import {
     allExternalHosts,
     externalHosts,
@@ -121,7 +121,7 @@ import {
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
     isTheaterFavoriteHost,
-} from './request.js?rmv=1.78.10';
+} from './request.js?rmv=1.78.11';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -155,7 +155,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.78.10';
+} from './geometry.js?rmv=1.78.11';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -209,7 +209,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.78.10';
+} from './mount.js?rmv=1.78.11';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -234,7 +234,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.78.10';
+} from './lifecycle.js?rmv=1.78.11';
 
 let earlyBodyParserPromise=null;
 
@@ -363,7 +363,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.78.10')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.78.11')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;

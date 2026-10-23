@@ -7,7 +7,7 @@ export const DRIVER_METHODS = Object.freeze({
     popup: { names: ['弹窗'], how: 'button popovertarget 指向本面 div popover，内置 popovertargetaction="hide" 关闭钮，不预先展开' },
     toggle: { names: ['翻面', '开关切换'], how: 'data-rm-ui="toggle"，点 data-rm-toggle 部件（不写则点整个容器）切换容器的 [data-rm-on~="on"]，CSS 据此翻转，或用 data-rm-show="on"／"!on" 分出两面' },
     pick: { names: ['分支选择', '整幕切换'], how: 'data-rm-ui="pick"，各选项 data-rm-pick="键"，对应内容 data-rm-show="键"，选中项带 [data-rm-active]；容器写 data-rm-picked="键" 设初始项' },
-    pager: { names: ['翻页阅读', '逐页推进'], how: 'data-rm-ui="pager"，每页 data-rm-page，data-rm-prev／data-rm-next 翻页（也可左右划），只显示当前页，容器带 [data-rm-index="页码"]' },
+    pager: { names: ['翻页阅读', '逐页推进'], how: 'data-rm-ui="pager"，每页 data-rm-page，data-rm-prev／data-rm-next 翻页（也可左右划；乙女游戏式对话框可把整个对话框写成 data-rm-next，点一下出下一句），只显示当前页，容器带 [data-rm-index="页码"]' },
     roll: { names: ['随机抽取', '抽签掷骰'], how: 'data-rm-ui="roll"，每个结果 data-rm-show="键"，点 data-rm-roll 随机显示其中一个，不连着重复' },
     connect: { names: ['配对连线', '线索连接'], how: 'data-rm-ui="connect"，成对的两端 data-rm-end 写同一个键，先后点两端连上线，连上的带 [data-rm-paired]，全部连完容器带 [data-rm-done]' },
     turn: { names: ['旋转拨盘', '转盘对位'], how: 'data-rm-ui="turn"，转钮 data-rm-knob 可拖转也可点按，容器写 data-rm-stops="格数" 时按格停并带 [data-rm-index]，写 data-rm-answer="格号" 对准时带 [data-rm-match]，停在第几格（从 0 数）时 data-rm-show="格号" 的内容出现' },

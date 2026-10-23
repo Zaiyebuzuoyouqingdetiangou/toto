@@ -1,13 +1,13 @@
 // Split from outputSanitizer.js — idsAndRearm.
 
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.78.10';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.78.11';
 import {
     RABBIT_MIRROR_CSS_SCOPE_ATTR,
     escapeCssIdentifier,
     escapeRegExp,
     getRabbitMirrorLocalStyleElements,
     hashInteractionSignature,
-} from './runtime.js?rmv=1.78.10';
+} from './runtime.js?rmv=1.78.11';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DIRECT_ID_CLASS_STATE_RESCUE_ATTR,
@@ -23,26 +23,26 @@ import {
     repairMalformedNestedInteractiveLabels,
     repairRabbitMirrorSelectorPanelGridSpan,
     restoreInteractionInlineOverrides,
-} from './checkedStateRescue.js?rmv=1.78.10';
+} from './checkedStateRescue.js?rmv=1.78.11';
 import {
     RAW_SELF_MUTATION_RESCUE_ATTR,
     chooseMatchingRawRabbitMirrorRoot,
     getRawAssistantMessageForRenderedRoot,
-} from './scriptedInteractionRescue.js?rmv=1.78.10';
+} from './scriptedInteractionRescue.js?rmv=1.78.11';
 import {
     applyCheckedVisualFallback,
     inputHasMeaningfulCheckedSiblingRule,
     installIntelligentInteractionRescue,
-} from './fallbackRescue.js?rmv=1.78.10';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR, SELECTION_ONLY_FALLBACK_ATTR, SELECTION_ONLY_PLACEHOLDER_ATTR, SELECTION_ONLY_SOURCE_ATTR } from './diagnostics.js?rmv=1.78.10';
-import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.78.10';
-import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.78.10';
-import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.78.10';
-import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.78.10';
-import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.78.10';
-import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.78.10';
-import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.78.10';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.78.10';
+} from './fallbackRescue.js?rmv=1.78.11';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR, INERT_ACTION_STATUS_ATTR, SELECTION_ONLY_FALLBACK_ATTR, SELECTION_ONLY_PLACEHOLDER_ATTR, SELECTION_ONLY_SOURCE_ATTR } from './diagnostics.js?rmv=1.78.11';
+import { rehydrateRabbitMirrorMaintenanceRepairs } from './choiceRescue.js?rmv=1.78.11';
+import { maintenanceRepairRootBudget } from './maintenanceInspect.js?rmv=1.78.11';
+import { recoverBehaviorInteractions } from './behaviorRecovery.js?rmv=1.78.11';
+import { installDisabledRangeProgressRescue, installOrphanRangeLayerRescue, installRangeStageRescue, installRangeValueAttributeMirror } from './rangeStageRescue.js?rmv=1.78.11';
+import { installMobileInteractionControls } from './mobileInteractionControls.js?rmv=1.78.11';
+import { installNextStepHighlightRescue } from './nextStepHighlightRescue.js?rmv=1.78.11';
+import { installNativePopoverFallback } from './nativePopoverFallback.js?rmv=1.78.11';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.78.11';
 
 let interactionScopeCounter = 0;
 
