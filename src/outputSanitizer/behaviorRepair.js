@@ -1,5 +1,5 @@
-import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=1.78.5';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.78.5';
+import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=1.78.6';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.78.6';
 // 插件写法的按类修复：不认某一面、某一条，只认“这一类写法常见的写错方式”。
 // 1. 类型名写成别名（flip、tabs、carousel、dial…）或漏了 rm 前缀 → 换成标准类型名；
 // 2. 声明的类型和里面的部件对不上（写 toggle 却放了 data-rm-pick）→ 按部件认出真正的类型；

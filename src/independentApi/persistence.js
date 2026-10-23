@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.78.5';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.78.5';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.78.5';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.78.6';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.78.6';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.78.6';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.78.5';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.78.5';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.78.5';
+} from '../swipeVersions.js?rmv=1.78.6';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.78.6';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.78.6';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.78.5';
+} from './faceSwipe.js?rmv=1.78.6';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.78.5';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.78.5';
+} from './connection.js?rmv=1.78.6';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.78.6';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.78.5';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.78.5';
+} from './geometry.js?rmv=1.78.6';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.78.6';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -709,7 +709,7 @@ const SAFE_SAVE_SLOW_RETRY_MS=10000;
 let safeSaveTimer=null;
 let safeSaveRequest=null;
 export function requestSafeChatSave(ctx,index,msg){
- if(typeof ctx?.saveMetadataDebounced!=='function' || !Array.isArray(ctx?.chat) || !ctx.chat.length) return false;
+ if(!['saveChat','saveMetadata','saveMetadataDebounced'].some(name=>typeof ctx?.[name]==='function') || !Array.isArray(ctx?.chat) || !ctx.chat.length) return false;
  const metadata=chatMetadataObject(ctx);
  if(!metadata || ctx.chat[Number(index)]!==msg) return false;
  const request={chat:ctx.chat,metadata,key:chatKey(ctx),length:ctx.chat.length,index:Number(index),msg,since:Date.now()};
@@ -742,7 +742,9 @@ function runSafeChatSave(){
  const snapshot=state?{pending:new Map(state.pending),allGen:state.allGen}:null;
  let saving=null;
  try{
-  if(typeof live.saveMetadata==='function') saving=live.saveMetadata();
+  // 存整份聊天（消息上的插图记录、归属标记也在里面）；群聊也走酒馆自己的存法。没有就退回只存聊天信息。
+  if(typeof live.saveChat==='function') saving=live.saveChat();
+  else if(typeof live.saveMetadata==='function') saving=live.saveMetadata();
   else live.saveMetadataDebounced();
  }catch(error){ console.debug('[RabbitMirror] 稍后保存聊天的请求没有发出：',error); return; }
  if(saving && typeof saving.then==='function'){

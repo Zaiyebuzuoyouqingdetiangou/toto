@@ -141,6 +141,9 @@ await page.evaluate(() => { window.__ctx.chat[16].gen_started = new Date(); });
 await mountInline(16, '正文里的面：新回复里的雨巷');
 await page.waitForTimeout(200);
 assert.equal(await calls(), 7); checks++;
+// 画好的图记在所在那条消息上（面上没写归属也按那条消息记），刷新、本机存储被清也找得回来
+await page.evaluate(async () => { for (const run of window.__release.splice(0)) run(); await new Promise(resolve => setTimeout(resolve, 80)); });
+assert.ok(await page.evaluate(() => Object.values(window.__ctx.chat[16].extra?.rabbitMirrorImages || {}).some(v => /雨巷/.test(v?.current?.prompt || ''))), '存进了消息'); checks++;
 
 // 10 聊天信息还没加载完整：消息上存着的图先读不到，等加载好再读，放回原图，不画也不提示
 await page.evaluate(async query => {

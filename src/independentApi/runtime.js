@@ -1,6 +1,6 @@
 // Split from independentApi.js — runtime.
 
-export const RUNTIME_VERSION = '1.78.5';
+export const RUNTIME_VERSION = '1.78.6';
 
 export const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 
