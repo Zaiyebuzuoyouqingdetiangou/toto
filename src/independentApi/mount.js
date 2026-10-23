@@ -33,7 +33,7 @@ import {
     FOLLOW_GENERATION_SETTLED_EVENT,
     getRabbitMirrorFollowBatchFailure,
 } from '../visualScanner.js?rmv=1.78.4';
-import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch, describeComboHistoryFailure } from '../storage.js?rmv=1.78.4';
+import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch, describeComboHistoryFailure, comboHistoryFailureCode } from '../storage.js?rmv=1.78.4';
 let lastComboHistoryWarning=null;
 import {
     consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror,
@@ -2088,10 +2088,11 @@ export async function generateFor(index,msg,force=false,sourceAware=true,multifa
     }
    }
    // 没有按第一批记上时，补发那一面照旧按它自己的记录记（和 1.68.1 一样）。
-   if(!heldCommitted && result?.historySelection && completedVisualScan && !commitVisualHistorySelection(result.historySelection,completedVisualScan)){
+   if(!heldCommitted && result?.historySelection && completedVisualScan && commitVisualHistorySelection(result.historySelection,completedVisualScan)) lastComboHistoryWarning=null;
+   else if(!heldCommitted && result?.historySelection && completedVisualScan){
     // 同一个原因只提示一次（每轮都弹同一句没有用）；原因说清楚。
-    const why=describeComboHistoryFailure();
-    if(why!==lastComboHistoryWarning){ lastComboHistoryWarning=why; globalThis.toastr?.warning?.(`兔子镜已生成，但这一次的避重记录未能保存${why?'：'+why:''}成品保留，不会自动补发请求。`); }
+    const code=comboHistoryFailureCode()||'unknown', why=describeComboHistoryFailure();
+    if(code!==lastComboHistoryWarning){ lastComboHistoryWarning=code; globalThis.toastr?.warning?.(`兔子镜已生成，但这一次的避重记录未能保存${why?'：'+why:'。'}成品保留，不会自动补发请求。`); }
    }
    const liveEl=messageElement(index);
    let liveHost=null;

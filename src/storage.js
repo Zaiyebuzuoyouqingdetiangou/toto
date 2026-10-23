@@ -1793,6 +1793,7 @@ export function resolveVisualHistorySelection(selection, choice) {
 }
 
 export function commitVisualHistorySelection(selection, scan = {}) {
+    lastComboHistoryFailure = '';
     if (!selection?.historyId || (selection.atmosphereMenu?.length > 1 && selection.atmosphereResolved !== true)) return false;
     const committed = commitComboToHistory(compactHistoryCombo(selection), normalizeFaceScan(scan, scan?.faceIndex) || {}, { historyId: selection.historyId });
     if (committed && selection.atmosphereResolved === true && selection.pendingScopeKey && selection.pendingChatKey) {
@@ -1904,6 +1905,7 @@ function historyHasBatchFace(history, batchId, faceIndex) {
 
 // 上一次避重记录没写进去的原因（给提示用）：空字符串表示上一次写成了。
 let lastComboHistoryFailure = '';
+export function comboHistoryFailureCode() { return lastComboHistoryFailure; }
 export function describeComboHistoryFailure() {
     if (!lastComboHistoryFailure) return '';
     if (lastComboHistoryFailure === 'BATCH_STORAGE_QUOTA_EXCEEDED') return `本机存储满了，腾了兔子镜自己的缓存也没写进去。${describeRabbitMirrorStorageUsage()}`;
@@ -1911,6 +1913,7 @@ export function describeComboHistoryFailure() {
     return `写入失败（${String(lastComboHistoryFailure).slice(0, 60)}）。`;
 }
 function commitComboToHistory(combo, visual = {}, options = {}) {
+    lastComboHistoryFailure = '';
     if (!combo || typeof combo !== 'object') return false;
     const { visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null } = visual || {};
     const batchId = String(options?.batchId || '');
@@ -1949,8 +1952,9 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             const normalizedFamily = normalizeInteractionFamily(interactionFamily);
             if (normalizedFamily) last.interactionFamily = normalizedFamily;
             last.visualSignatureTs = now;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
-            return true;
+            const before = localStorage.getItem(STORAGE_KEY);
+            return writeOwnedTransaction([{ key: STORAGE_KEY, before, after: JSON.stringify(history.slice(-MAX_STORED)) }],
+                { onRejected: code => { lastComboHistoryFailure = code; } }, true);
         }
         history.push({
             ...combo,
