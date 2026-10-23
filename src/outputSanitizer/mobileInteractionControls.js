@@ -1,4 +1,4 @@
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.78.11';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.78.12';
 // Touch-host alternatives and authored gallery dots stay inside the face;
 // no document listeners or polling.
 const bindings = new WeakMap();
