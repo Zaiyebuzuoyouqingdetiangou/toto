@@ -3,13 +3,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { readCharacterWorldBookContext, appearanceFromCast } from '../src/characterWorldBook.js';
+import { readCharacterWorldBookContext, appearanceFromCast, explicitGenderStatements, isExplicitGenderStatement } from '../src/characterWorldBook.js';
 import { parseImagePlan } from '../src/imagePlan.js';
 
 const src = readFileSync(new URL('../src/builtinImage.js', import.meta.url), 'utf8');
 const chunk = src.slice(src.indexOf('const TAG_HUE'), src.indexOf('function storageKey'))
     + src.slice(src.indexOf('// 衣着、发型：这一幕穿什么'), src.indexOf('async function withCardAppearance'));
-const context = vm.createContext({});
+// 截出来的这段代码用到 builtinImage.js 顶上导入的性别判断（1.78.7 起），照原样给它。
+const context = vm.createContext({ explicitGenderStatements, isExplicitGenderStatement });
 vm.runInContext(`${chunk}\nglobalThis.T = { withoutSceneText, mergeTagLists, fillLooksFrom, SCENE_KINDS };`, context);
 const { withoutSceneText, mergeTagLists, fillLooksFrom, SCENE_KINDS } = context.T;
 const clothing = [SCENE_KINDS.find(kind => kind.name === 'clothing')];

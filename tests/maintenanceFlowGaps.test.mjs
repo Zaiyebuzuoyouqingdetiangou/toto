@@ -9,24 +9,34 @@ const between = (source, from, to) => source.slice(source.indexOf(from), source.
 
 test('patrol dead counts are keyed on the face details, whichever node the caller passes', () => {
     const code = between(inspect, 'const maintenancePatrolDeadCounts', 'function maintenancePatrolDeadFinding');
-    const context = vm.createContext({});
+    // 1.78.7 起记数同时记下这一面的归属（聊天、楼层、重挂次数）；归属变了，旧记数作废。
+    let origin = { index: 3, ownerKey: 'chat:c|3|0', remountEpoch: 1 };
+    const context = vm.createContext({
+        captureMaintenanceRepairOrigin: () => ({ ...origin }), maintenanceRepairOriginKey: value => `${value?.ownerKey}|${value?.index}`,
+        maintenanceRepairOriginIsCurrent: () => true, independentMaintenanceHost: () => null, MIRROR_TOTO_SELECTOR: 'toto',
+    });
     vm.runInContext(`${code}\nglobalThis.T = { maintenancePatrolDeadCount, setMaintenancePatrolDeadCount };`, context);
-    const details = { matches: sel => sel === 'details' };
+    const details = { matches: sel => sel === 'details', closest: () => null };
     const host = { matches: () => false, querySelector: () => details };
     context.T.setMaintenancePatrolDeadCount(host, 2);
     assert.equal(context.T.maintenancePatrolDeadCount(details), 2);
     context.T.setMaintenancePatrolDeadCount(details, 0);
     assert.equal(context.T.maintenancePatrolDeadCount(host), 0);
+    context.T.setMaintenancePatrolDeadCount(details, 2);
+    origin = { ...origin, remountEpoch: 2 };
+    assert.equal(context.T.maintenancePatrolDeadCount(host), 0, '这一面重挂（或换了归属）后，旧的记数不再算');
 });
 
 test('manual patrol hands its dead-control count to automatic repair; a timed-out probe never clears it', () => {
     const patrol = between(inspect, 'export function patrolMaintenanceRabbit(', 'function findLiveMaintenanceRoot(');
     assert.match(patrol, /patrolDeadToRecord = deadCount/);
-    assert.match(patrol, /maintenanceRepairOriginIsCurrent\(origin\)\) \{\s*if \(patrolDeadToRecord >= 0\) setMaintenancePatrolDeadCount\(root, patrolDeadToRecord\)/);
+    assert.match(patrol, /maintenancePatrolOriginIsCurrent\(root, origin\)\) \{\s*if \(patrolDeadToRecord >= 0\) setMaintenancePatrolDeadCount\(root, patrolDeadToRecord\)/);
     const plan = between(inspect, 'function runMaintenanceAutomaticRepairPlan(', 'const initialPlan = maintenanceRepairModesForFindings(initialFindings);');
     assert.match(plan, /runMaintenanceGenericProbe\(root/);
     assert.match(patrol, /if \(deadCount \|\| \(!probe\.truncated && !probe\.uncertain\)\)/);
-    assert.match(inspect, /if \(dead\.length \|\| \(!probe\.truncated && !probe\.uncertain\)\) setMaintenancePatrolDeadCount/);
+    // 1.78.7 起自动实测的结论统一经 rememberMaintenanceProbeResult 记：只有测完（done）或测出没反应的才改记数，没测完不清。
+    assert.match(inspect, /record\.state = probe \? \(probe\.truncated \|\| probe\.uncertain \? 'incomplete' : 'done'\) : 'failed'/);
+    assert.match(inspect, /if \(dead \|\| record\.state === 'done'\) setMaintenancePatrolDeadCount\(root, dead\)/);
     assert.match(inspect, /不能确定控件都正常/);
     const finalize = between(inspect, '巡逻测出过没反应的控件：修完在隐藏副本里再实测一遍', '// 先用维修前');
     assert.match(finalize, /found > 0 \|\| \(!probe\.truncated && !probe\.uncertain\)/);

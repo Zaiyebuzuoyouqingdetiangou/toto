@@ -31,7 +31,8 @@ await page.goto(origin);
 const query = JSON.parse(await readFile(path.join(rootDir, 'manifest.json'), 'utf8')).js.split('?')[1];
 await page.evaluate(async query => {
     localStorage.clear();
-    const ctx = { chat: [], chatId: 'c', getCurrentChatId: () => 'c' };
+    // 1.78.8 起只有确实成功的新输出才自动生图：每层都放一条真回复，画之前按真实流程给这一层生图许可。
+    const ctx = { chat: Array.from({ length: 200 }, (_, i) => ({ mes: '回复' + i, swipe_id: 0, extra: {} })), chatId: 'c', getCurrentChatId: () => 'c', chatMetadata: { other: 1 } };
     window.SillyTavern = { getContext: () => ctx };
     window.__calls = 0;
     window.__release = [];
@@ -48,6 +49,7 @@ await page.evaluate(async query => {
     ctx.characters = [{ name: '阿雪', description: card, data: { description: card, extensions: {} } }];
     ctx.powerUserSettings = { persona_description: '{{user}}是个金发碧眼的少女，{{char}}是她的师姐。' };
     window.images = await import('/src/builtinImage.js?' + query);
+    window.fresh = await import('/src/freshDrawSlots.js?' + query);
 }, query);
 
 let checks = 0;
@@ -57,6 +59,7 @@ const draw = chars => page.evaluate(async chars => {
     const mes = 12 + (window.__drawSeq || 0);
     document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="${mes}" data-rm-owner-swipe="0"><details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="${mes}" data-rabbit-mirror-owner-swipe="0"><summary>一面</summary><figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>石殿里三个人围着炭盆说话，暖光。（${window.__drawSeq = (window.__drawSeq || 0) + 1}）</p>${chars}</figure></details></div>`;
     localStorage.clear();
+    fresh.markFreshDrawSlot('chat:c', mes, 0);
     images.fillBuiltinImageFrames(document.querySelector('details'));
     for (let i = 0; i < 40 && !window.__sent.length; i += 1) await new Promise(r => setTimeout(r, 50));
     await new Promise(r => setTimeout(r, 80));

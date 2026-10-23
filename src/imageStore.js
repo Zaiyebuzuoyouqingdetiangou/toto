@@ -172,7 +172,7 @@ function requestChatSave(mes) {
         const request = saveRequest;
         saveRequest = null;
         if (!liveChatSaveContext(request)) return;
-        import('./independentApi/persistence.js?rmv=1.78.9')
+        import('./independentApi/persistence.js?rmv=1.78.10')
             .then(module => {
                 // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
                 const live = liveChatSaveContext(request);
@@ -379,6 +379,8 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
     const messagePrevious = target && ownEntry(candidate, target.swipe) && recordMatchesMessage(candidate, target.msg, target.swipe, false) ? candidate : null;
     if (!previous && preserveCurrent && messagePrevious) previous = { ...messagePrevious.current, history: messagePrevious.history || [] };
     const keepCurrent = preserveCurrent && previous?.imageOwner?.token === owner.token;
+    // 换上镜面的那一刻：图框挪过位置、同一张图在两个键下都有记录时，按它挑最后换上的那张。
+    if (!keepCurrent) record = { ...record, shownAt: Date.now() };
     const history = imageHistory(previous ? [...previous.history, keepCurrent ? record : storedRecord(previous)] : [], keepCurrent ? previous : record);
     if (keepCurrent) record = storedRecord(previous);
     const retained = { ...storedRecord(record), history };
@@ -403,7 +405,7 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
             : JSON.stringify([manual[0], target.mes, target.swipe, ...manual.slice(3)]);
         // Use the owner's existing versions, never an old local numeric occupant.
         const history = keepCurrent ? retained.history : imageHistory([...(retained.history || []), ...(messagePrevious?.history || []), ...(messagePrevious?.current ? [messagePrevious.current] : [])], record);
-        const result = replaceMirrorImageVersions(liveKey, record, history);
+        const result = replaceMirrorImageVersions(liveKey, record, history, { keepShownAt: keepCurrent });
         // A chat save is only queued, not an acknowledgement of durable disk
         // storage. Preserve the caller's session/unsaved warning if both local
         // safety writes failed, even though the live message has the picture.
@@ -756,7 +758,7 @@ export function loadMirrorImage(key) {
 
 export function saveMirrorImage(key, record) {
     const previous = loadMirrorImage(key);
-    const current = storedRecord(record);
+    const current = { ...storedRecord(record), shownAt: Date.now() };
     // 旧版本只留最近 4 张；整张图存在本机（data:）的旧版本只留最近一张，免得重画几次就把本机空间占满。
     // 提示词只给当前那张留一份：旧版本只记图片地址、时间和种子（图本身在柏宝绘图库／酒馆上）。
     migrateOldImageRecords();
@@ -908,9 +910,10 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
 }
 
 // 换成历史里的另一张显示：选中的那张当当前，其余按原来的先后留在历史里。不发请求。
-export function replaceMirrorImageVersions(key, current, history) {
+// keepShownAt：晚回来的旧请求只进历史、当前那张没换——不改它换上镜面的时间，免得挪过位置的图框认回旧图。
+export function replaceMirrorImageVersions(key, current, history, { keepShownAt = false } = {}) {
     migrateOldImageRecords();
-    const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(slimEntry) };
+    const value = { version: 1, current: keepShownAt ? storedRecord(current) : { ...storedRecord(current), shownAt: Date.now() }, history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(slimEntry) };
     const slot = slotOfKey(key), token = value.current.imageOwner?.token, target = messageSlot(key);
     let archiveKey = '', archive = null;
     if (slot && token) {

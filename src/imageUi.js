@@ -1,12 +1,12 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.78.9';
-import { getSettings } from './settings.js?rmv=1.78.9';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.78.9';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.78.9';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.9';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.9';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.78.9';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=1.78.9';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.78.9';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.78.10';
+import { getSettings } from './settings.js?rmv=1.78.10';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.78.10';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.78.10';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.10';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.10';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.78.10';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=1.78.10';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.78.10';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -561,14 +561,18 @@ function buildBuiltinSection(doc, root, initial) {
             image.style.opacity = job ? '.55' : '1';
             image.addEventListener('error', () => { image.remove(); if (!view.firstChild) view.append(el(doc, 'span', '这张图读不到了，可以再画一张。')); }, { once: true });
             view.append(image);
-        } else view.append(el(doc, 'span', item.broken ? '这张图的存档读不出来。' : '这张图还没画。'));
+        } else view.append(el(doc, 'span', item.broken && item.brokenCode === 'image_version_unconfirmed' ? '这张图认不出是哪一版，原档保留着。' : item.broken ? '这张图的存档读不出来。' : '这张图还没画。'));
         const total = item.versions.length;
         counter.textContent = total ? `${item.current + 1} / ${total}` : '0 / 0';
-        prev.disabled = !!job || firstDraw || item.current <= 0;
-        next.disabled = !!job || firstDraw || item.current >= total - 1;
+        const gone = !!sectionTarget && !current(sectionTarget);
+        prev.disabled = gone || !!job || firstDraw || item.current <= 0;
+        next.disabled = gone || !!job || firstDraw || item.current >= total - 1;
         nav.hidden = total < 2;
         roll.hidden = !!job; cancel.hidden = !job;
-        roll.disabled = !ready || firstDraw || item.broken; edit.disabled = !ready || !!job || firstDraw || item.broken; editGo.disabled = !ready || !!job || firstDraw || item.broken;
+        // 只认不出原图是哪一版（旧分支）：原档留着，手动再画一张照样能存进这个分支，和图框里的「重新生图」一样能用。
+        const unconfirmed = item.broken && item.brokenCode === 'image_version_unconfirmed';
+        const blocked = item.broken && !unconfirmed;
+        roll.disabled = !ready || firstDraw || blocked; edit.disabled = !ready || !!job || firstDraw || blocked; editGo.disabled = !ready || !!job || firstDraw || blocked;
         editor.hidden = !editing;
         if (editing && !editBox.dataset.forKey) { editBox.value = item.editPrompt || item.prompt; editBox.dataset.forKey = item.key; }
         const reusable = builtinImageReusable(shown);
@@ -578,6 +582,7 @@ function buildBuiltinSection(doc, root, initial) {
         sourceLine.hidden = !sources;
         hint.textContent = !ready
             ? '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。'
+            : unconfirmed ? `这张图的存档认不出是哪一版（旧分支留下的），原档保留不动；再画一张会存进这个分支，花一次${provider()}额度。`
             : item.broken ? '这张图的存档读不出来，重画的结果会存不进去，所以先不让画。'
             : reusable ? `同一段提示词，换随机种子再画一次，花一次${provider()}额度，不调用语言模型。最多留 5 张。`
             : `这张是旧版本画的，没留下当时的提示词：再画会按这一面写的画面重新准备一次提示词${imageLlmConfigured(getSettings()) ? '（会调用一次生图 LLM）' : ''}，再花一次${provider()}额度。`;
@@ -614,7 +619,10 @@ function buildBuiltinSection(doc, root, initial) {
     cancel.addEventListener('click', () => { const job = frameJob(currentFrame()); if (!job) { refresh(); render(); return; } job.controller.abort(); statusLine.textContent = '已请求取消，等这次调用结束；不会自动重试。'; });
     edit.addEventListener('click', () => { editing = !editing; editBox.dataset.forKey = ''; render(); });
     editGo.addEventListener('click', () => { const text = editBox.value.trim(); if (text.length < 4) { statusLine.textContent = '提示词太短了。'; return; } start(text); });
+    // 面板打开以后，这一层换成了别的消息（删楼、重新生成）：旧面板不再切图，免得改到新消息的插图。
+    const stale = () => !!sectionTarget && !current(sectionTarget);
     const step = delta => {
+        if (stale()) { message = '这一面已经换成别的回复了，这个面板不能再切图；请关掉面板，在现在这一面上重新打开。'; render(); return; }
         const item = currentFrame();
         const target = item.current + delta;
         if (target < 0 || target >= item.versions.length) return;

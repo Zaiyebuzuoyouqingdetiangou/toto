@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.78.9';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.78.9';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.78.9';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.78.9';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.78.9';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.9';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.78.9';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.78.9';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.78.9';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.78.9';
+import { getSettings } from './settings.js?rmv=1.78.10';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.78.10';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.78.10';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.78.10';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.78.10';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.10';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.78.10';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.78.10';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.78.10';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.78.10';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -319,9 +319,20 @@ function readSaved(key) {
 // 当前键下没有这张图时：先找同一聊天里兼容的键（当时还没记上楼层），再看是不是聊天开了分支／改了名，图还存在旧名字下。
 // 还找不到时：同一聊天、同一楼层、同一 swipe、同一段提示词，只是图框序号变了（重新进聊天时这一面的结构被整理过、
 // 前面多了或少了一个图框）——也是那一张。claimed 是这一面里别的图框自己的键，被它们占着的不拿。
+function shownTime(record) { const at = Number(record?.shownAt); return Number.isFinite(at) ? at : 0; }
 function savedKeyFor(key, claimed = null, legacyKey = '') {
     const own = readSaved(key);
-    if (own.broken || own.record) return key;
+    if (own.broken) return key;
+    if (own.record) {
+        // 图框挪过位置、在挪开的那段时间里重画过：新图存在挪开时的键下，挪回原位后原键下还是旧图。
+        // 同一楼层、同一段提示词、别的序号下有更晚换上镜面的那张（别的图框占着的不算），就用那一张。
+        const moved = findShiftedBuiltinImageKey(key, claimed);
+        if (moved && moved !== key) {
+            const other = readSaved(moved);
+            if (other.record && shownTime(other.record) > shownTime(own.record)) return moved;
+        }
+        return key;
+    }
     for (const other of [legacyKey, findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key), findShiftedBuiltinImageKey(key, claimed)]) {
         if (other && other !== key) {
             const saved = readSaved(other);
@@ -444,6 +455,16 @@ const automaticFrames = new WeakMap();
 // request or an explicit history selection for the same message entry.
 function imageJobIdentity(owner, matchEntry = true) {
     return JSON.stringify([owner.scope || `chat:${owner.chat}`, owner.token, owner.swipe, matchEntry ? owner.entry : null, owner.source]);
+}
+// 用户在挪过位置的图框上手动重画／选图：挪开前那个序号下还没回音的旧请求，也是这一格的，一并作废（晚回来只进历史）。
+// 这一面别的图框自己的键不算。
+function supersedeShiftedImageJobs(key, claimed = null) {
+    let taken = null;
+    for (const [other, entry] of inflight) {
+        if (!builtinImageKeysShifted(key, other) || !mirrorImageOwnerMatchesKey(entry.owner, key, { matchEntry: false })) continue;
+        taken ||= (typeof claimed === 'function' ? claimed() : claimed) || new Set();
+        if (!taken.has(other)) entry.superseded = true;
+    }
 }
 function supersedeImageJobs(owner) {
     const identity = imageJobIdentity(owner);
@@ -1013,7 +1034,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.9');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.10');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -1089,7 +1110,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.78.9'), import('./independentApi/connection.js?rmv=1.78.9')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.78.10'), import('./independentApi/connection.js?rmv=1.78.10')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1104,7 +1125,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.9');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.10');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1226,7 +1247,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         // 「跳过的标签」也管千千结档案里的文字。
         let cleanRef = value => value;
-        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.78.9')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.78.10')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
@@ -1634,7 +1655,7 @@ export function listBuiltinImageFrames(root) {
         const key = storageKey(root, frame, prompt);
         const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
         const { list: versions, current } = saved.broken ? { list: [], current: -1 } : versionsOf(saved.record);
-        list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken,
+        list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken, brokenCode: saved.broken ? String(saved.code || '') : '',
             busy: hasInflight(key, () => otherFrameKeys(root, frame)) });
     }
     return list;
@@ -1645,12 +1666,21 @@ export function builtinImageReady() { return getSettings().builtinImageEnabled =
 // 聊天开了分支／改了名以后，图可能存在旧聊天名的键下：先把那份搬到当前键，之后翻历史、重画都对着当前键。
 function adoptSavedKey(key, claimed = null, legacyKey = '') {
     const own = readSaved(key);
-    if (own.broken || own.record) return;
+    if (own.broken) return;
     const other = savedKeyFor(key, claimed, legacyKey);
     if (!other || other === key) return;
     const moved = readSaved(other).record;
     if (!moved) return;
-    const { history = [], ...current } = moved;
+    let { history = [], ...current } = moved;
+    // 自己键下也有图（挪开那段时间里在别的序号下重画过、那张更晚换上）：换成那张，自己这边原来的几张并进历史，不丢。
+    if (own.record) {
+        if (!builtinImageKeysShifted(key, other)) return;
+        const { history: ownHistory = [], ...ownCurrent } = own.record;
+        const id = entry => JSON.stringify([entry?.path || entry?.url || entry?.dataUrl, entry?.generatedAt || '', entry?.promptMetadata?.seed ?? null]);
+        const seen = new Set([id(current)]);
+        history = [...history].reverse().concat([ownCurrent, ...[...ownHistory].reverse()])
+            .filter(entry => { const k = id(entry); if (seen.has(k)) return false; seen.add(k); return true; }).reverse();
+    }
     // 搬过来以后旧键下那份删掉：同一组图不在本机存两份（含整张图的 data: 存档会直接翻倍）。
     // 同一聊天里的旧键（没记楼层、序号挪了）搬过来以后删掉，不存两份；分支／改名前那个聊天的那份只读不删。
     const sameChat = other !== legacyKey && (builtinImageKeysCompatible(key, other) || builtinImageKeysShifted(key, other));
@@ -1683,6 +1713,7 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
     if (!original) throw Object.assign(new Error('这个图框里没有提示词，没法重画。'), { code: 'no_prompt' });
     const key = storageKey(root, frame, original);
     if (hasInflight(key, () => otherFrameKeys(root, frame))) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
+    supersedeShiftedImageJobs(key, () => otherFrameKeys(root, frame));
     adoptSavedKey(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
     const savedState = readSaved(key);
     if (savedState.broken && savedState.code !== 'image_version_unconfirmed') throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
@@ -1740,6 +1771,7 @@ export function showBuiltinImageVersion(root, frame, index) {
     const selectedOwner = captureMirrorImageOwner(key);
     const automatic = automaticFrameState(frame);
     if (selectedOwner) supersedeImageJobs(selectedOwner);
+    supersedeShiftedImageJobs(key, () => otherFrameKeys(root, frame));
     if (automatic) automatic.states.set(automatic.slot, { output: automatic.output, key, record: next });
     if (frame.isConnected) { ensureFrameBox(frame); paint(frame, next, root, key); }
     return next;

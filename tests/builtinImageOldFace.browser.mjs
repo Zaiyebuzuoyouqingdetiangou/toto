@@ -1,4 +1,5 @@
-// 这次打开之前生成的面：插图记录找不到时不自动重画，只留「重新生图」；这次打开后生成的面照旧自动画。
+// 这次打开之前生成的面：插图记录找不到时不自动重画，只留「重新生图」；这次打开后确实成功生成的面照旧自动画。
+// 1.78.8 起自动生图只跟随成功的新输出拿到的许可（markFreshDrawSlot），不再凭存档或正文的生成时间判断。
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
@@ -75,7 +76,7 @@ let checks = 0;
 await mount(10);
 await page.waitForTimeout(200);
 assert.equal(await calls(), 0); checks++;
-assert.match(await status(), /不自动重画/); checks++;
+assert.match(await status(), /暂停自动补画/); checks++;
 const rerolled = await page.evaluate(() => { const button = [...document.querySelectorAll('[data-rm-draw-status] button')].find(node => node.textContent.includes('重新生图')); button?.click(); return !!button; });
 assert.ok(rerolled, '留着重新生图按钮'); checks++;
 await page.waitForTimeout(200);
@@ -89,31 +90,32 @@ await page.waitForTimeout(200);
 assert.equal(await calls(), 2); checks++;
 await page.evaluate(async () => { for (const run of window.__release.splice(0)) run(); await new Promise(resolve => setTimeout(resolve, 50)); });
 
-// 3 没有兔子镜存档、写在回复正文里的面：按那条回复生成的时间算，早于这次打开就不画
+// 3 没有兔子镜存档、写在回复正文里的面：早于这次打开生成的，不画
 await mountInline(14, '正文里的面：灯下翻书的少女');
 await page.waitForTimeout(200);
 assert.equal(await calls(), 2); checks++;
-assert.match(await status(), /不自动重画/); checks++;
+assert.match(await status(), /暂停自动补画/); checks++;
 
-// 4 第 16 层：没有生成时间、也没有存档（不知道是什么时候的）：照旧自动画
+// 4 第 16 层：没有生成时间、也没有存档（不知道是什么时候的）：没有这次成功生成给的许可，不自动画
 await mount(16);
 await page.waitForTimeout(200);
-assert.equal(await calls(), 3); checks++;
+assert.equal(await calls(), 2); checks++;
+assert.match(await status(), /暂停自动补画/); checks++;
 
 // 5 以前生成的多面（没在这次打开后为它发过生成）：不自动画
 await mount(18);
 await page.waitForTimeout(200);
-assert.equal(await calls(), 3); checks++;
-assert.match(await status(), /不自动重画/); checks++;
+assert.equal(await calls(), 2); checks++;
+assert.match(await status(), /暂停自动补画/); checks++;
 
 // 6 多面里只重说了第 2 面：只有第 2 面自动画，其他面不画
 await page.evaluate(() => fresh.markFreshDrawSlot('chat:c', 18, 0, 1));
 await mount(18, [0, 1, 2]);
 await page.waitForTimeout(200);
-assert.equal(await calls(), 4); checks++;
-assert.match(await status(0), /不自动重画/); checks++;
-assert.doesNotMatch(await status(1), /不自动重画/); checks++;
-assert.match(await status(2), /不自动重画/); checks++;
+assert.equal(await calls(), 3); checks++;
+assert.match(await status(0), /暂停自动补画/); checks++;
+assert.doesNotMatch(await status(1), /暂停自动补画/); checks++;
+assert.match(await status(2), /暂停自动补画/); checks++;
 await page.evaluate(async () => { for (const run of window.__release.splice(0)) run(); await new Promise(resolve => setTimeout(resolve, 50)); });
 
 // 单面镜子（没有面序号）：按整条算，不当成第 1 面
@@ -124,7 +126,7 @@ assert.equal(await page.evaluate(() => fresh.isFreshDrawSlot('chat:c', 18, 0, nu
 await page.evaluate(() => fresh.markFreshDrawSlot('chat:c', 18, 0));
 await mount(18, [0, 2]);
 await page.waitForTimeout(200);
-assert.equal(await calls(), 6); checks++;
+assert.equal(await calls(), 5); checks++;
 
 // 8 旧面里图框套在模型写的折叠里：按最外层那一面的归属算，照样不自动画
 await page.evaluate(() => {
@@ -133,14 +135,18 @@ await page.evaluate(() => {
     images.fillBuiltinImageFrames(document.querySelector('details'));
 });
 await page.waitForTimeout(200);
-assert.equal(await calls(), 6); checks++;
-assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /不自动重画/); checks++;
+assert.equal(await calls(), 5); checks++;
+assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /暂停自动补画/); checks++;
 
-// 9 这次打开以后才生成的回复，正文里的面：照旧自动画（酒馆记的生成时间是 Date）
+// 9 正文的生成时间写着「这次打开以后」也不算许可（时间可能被改写或比本机钟快）；这条回复真的生成成功、拿到许可后，正文里的面照旧自动画
 await page.evaluate(() => { window.__ctx.chat[16].gen_started = new Date(); });
 await mountInline(16, '正文里的面：新回复里的雨巷');
 await page.waitForTimeout(200);
-assert.equal(await calls(), 7); checks++;
+assert.equal(await calls(), 5, '只凭生成时间不画'); checks++;
+await page.evaluate(() => fresh.markFreshDrawSlot('chat:c', 16, 0));
+await mountInline(16, '正文里的面：新回复里的雨巷');
+await page.waitForTimeout(200);
+assert.equal(await calls(), 6); checks++;
 // 画好的图记在所在那条消息上（面上没写归属也按那条消息记），刷新、本机存储被清也找得回来
 await page.evaluate(async () => { for (const run of window.__release.splice(0)) run(); await new Promise(resolve => setTimeout(resolve, 80)); });
 assert.ok(await page.evaluate(() => Object.values(window.__ctx.chat[16].extra?.rabbitMirrorImages || {}).some(v => /雨巷/.test(v?.current?.prompt || ''))), '存进了消息'); checks++;
@@ -161,14 +167,15 @@ await page.evaluate(async query => {
 }, query);
 await page.waitForTimeout(800);
 assert.equal(await page.evaluate(() => window.__midStatus), ''); checks++;
-assert.equal(await calls(), 7); checks++;
+assert.equal(await calls(), 6); checks++;
 assert.match(await page.evaluate(() => document.querySelector('img[data-rm-draw-result]')?.getAttribute('src') || ''), /saved\.png/); checks++;
 
-// 11 刚生成没多久（5 分钟前）App 就被重启：图还没画，照常补画
+// 11 刚生成没多久（5 分钟前）App 就被重启：重启前的许可不带回来，不凭「半小时内生成过」自动补画，只留「重新生图」
 const before11 = await calls();
 await mount(17);
 await page.waitForTimeout(200);
-assert.equal(await calls(), before11 + 1); checks++;
+assert.equal(await calls(), before11); checks++;
+assert.match(await status(), /暂停自动补画/); checks++;
 
 assert.deepEqual(pageErrors, []); checks++;
 await browser.close();
