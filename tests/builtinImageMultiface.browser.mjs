@@ -1,4 +1,5 @@
 // 多面镜子来回翻看时不重画：画好的图在归属写上前后都能找回；同一张正在画时跟着那一次，不另发请求。
+// 1.78.8 起只有确实成功的新输出才自动生图：每层放一条真回复，要自动画的那层先按真实流程拿到许可（markFreshDrawSlot）。
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
@@ -31,7 +32,7 @@ await page.goto(origin);
 const query = JSON.parse(await readFile(path.join(rootDir, 'manifest.json'), 'utf8')).js.split('?')[1];
 await page.evaluate(async query => {
     localStorage.clear();
-    const ctx = { chat: [], chatId: 'c', getCurrentChatId: () => 'c' };
+    const ctx = { chat: Array.from({ length: 60 }, (_, i) => ({ mes: '回复' + i, swipe_id: 0, extra: {} })), chatId: 'c', getCurrentChatId: () => 'c', chatMetadata: { other: 1 } };
     window.SillyTavern = { getContext: () => ctx };
     window.__calls = 0;
     window.__release = [];
@@ -41,7 +42,18 @@ await page.evaluate(async query => {
         generate: () => { window.__calls += 1; const n = window.__calls; return new Promise(resolve => window.__release.push(() => resolve({ path: `/user/images/p${n}.png` }))); },
     };
     window.images = await import('/src/builtinImage.js?' + query);
+    window.fresh = await import('/src/freshDrawSlots.js?' + query);
 }, query);
+const grant = (...floors) => page.evaluate(floors => { for (const mes of floors) fresh.markFreshDrawSlot('chat:c', mes, 0); }, floors);
+// 切走聊天再切回来：酒馆重新读一份聊天（消息是新对象，带着存进聊天的附加数据）。
+const reloadChat = () => page.evaluate(async () => {
+    document.body.innerHTML = '';
+    const ctx = window.SillyTavern.getContext();
+    const saved = JSON.parse(JSON.stringify(ctx.chat));
+    ctx.chat = [];
+    const ext = await import('/extensions.js'); ext.getContext().chat = [];
+    ctx.chat = saved;
+});
 
 const face = (n, stamped, mes = 12) => `<details open${stamped ? ` data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="${mes}" data-rabbit-mirror-owner-swipe="0"` : ''}><summary>第${n}面</summary>
   <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第${n}面的画面：雨夜里撑伞的少年站在石桥上</p></figure></details>`;
@@ -55,6 +67,7 @@ const calls = () => page.evaluate(() => window.__calls);
 let checks = 0;
 
 // 1 外壳挂好、这一面还没写上归属时就开始画：键按外壳的归属算
+await grant(12);
 await mountHost(false);
 await page.waitForTimeout(100);
 assert.equal(await calls(), 3); checks++;
@@ -81,18 +94,20 @@ assert.equal(await calls(), 3); checks++;
 assert.equal(await painted(), '/user/images/p1.png /user/images/p2.png /user/images/p3.png'); checks++;
 assert.equal(await page.evaluate(() => images.listBuiltinImageFrames(document.querySelectorAll('details')[1]).map(item => item.versions.length).join(',')), '1'); checks++;
 
-// 4 同一张正在画（键还没记楼层）时重挂：跟着那一次，不另发请求
+// 4 同一张正在画（这一面还没写上归属，键按外壳算）时写上归属重挂：跟着那一次，不另发请求
+// （1.78.7 起请求要绑定原消息，连楼层都认不出的面不发请求，所以这里放在外壳里。）
 await page.evaluate(() => localStorage.clear());
+await grant(9);
 await page.evaluate(html => {
-    document.body.innerHTML = html;
+    document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="9" data-rm-owner-swipe="0">${html}</div>`;
     images.fillBuiltinImageFrames(document.querySelector('details'));
-}, face(9, false));
+}, face(9, false, 9));
 await page.waitForTimeout(80);
 assert.equal(await calls(), 4); checks++;
 await page.evaluate(html => {
-    document.body.innerHTML = html;
+    document.body.innerHTML = `<div data-rabbit-mirror-external-source="true" data-rm-source="independent" data-rm-owner-chat="chat:c" data-rm-owner-mesid="9" data-rm-owner-swipe="0">${html}</div>`;
     images.fillBuiltinImageFrames(document.querySelector('details'));
-}, face(9, true));
+}, face(9, true, 9));
 await page.waitForTimeout(80);
 assert.equal(await calls(), 4); checks++;
 await release();
@@ -100,14 +115,11 @@ assert.equal(await painted(), '/user/images/p4.png'); checks++;
 
 // 5 已经发出去的请求还没画完时切走聊天、再切回来（酒馆换了一份聊天数组）：跟着那一次等结果、存下，不另发一次
 await page.evaluate(() => localStorage.clear());
+await grant(13);
 await mountHost(true, 13);
 await page.waitForTimeout(100);
 assert.equal(await calls(), 7); checks++;
-await page.evaluate(async () => {
-    document.body.innerHTML = '';
-    window.SillyTavern.getContext().chat = [];
-    const ext = await import('/extensions.js'); ext.getContext().chat = [];
-});
+await reloadChat();
 await mountHost(true, 13);
 await page.waitForTimeout(150);
 assert.equal(await calls(), 7); checks++;
@@ -119,6 +131,7 @@ assert.equal(await calls(), 7); checks++;
 
 // 6 重新进聊天时这一面前面少了一个图框，序号挪了：同一楼层、同一段提示词的图照样找回，不重画
 await page.evaluate(() => localStorage.clear());
+await grant(20, 21);
 const twoFrames = (withFirst, mes = 20) => `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="${mes}" data-rabbit-mirror-owner-swipe="0"><summary>两格</summary>
   ${withFirst ? '<figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第一格：清晨的码头上海鸥落在缆桩</p></figure>' : ''}
   <figure data-rm-draw-frame="2"><p data-rm-draw-prompt="1" hidden>第二格：傍晚的码头上渔船靠岸卸货</p></figure></details>`;
@@ -142,11 +155,7 @@ await page.evaluate(() => localStorage.clear());
 await mountFace(twoFrames(true, 21));
 await page.waitForTimeout(100);
 assert.equal(await calls(), 11); checks++;
-await page.evaluate(async () => {
-    document.body.innerHTML = '';
-    window.SillyTavern.getContext().chat = [];
-    const ext = await import('/extensions.js'); ext.getContext().chat = [];
-});
+await reloadChat();
 await mountFace(twoFrames(false, 21));
 await page.waitForTimeout(150);
 assert.equal(await calls(), 11); checks++;
@@ -189,6 +198,7 @@ await page.evaluate(() => {
 });
 const fullFace = text => `<details open data-rabbit-mirror-owner-chat="chat:c" data-rabbit-mirror-owner-mesid="40" data-rabbit-mirror-owner-swipe="0"><summary>满</summary>
   <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>${text}</p></figure></details>`;
+await grant(40, 41);
 let base = await calls();
 await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸'));
 await page.waitForTimeout(100);
@@ -199,18 +209,18 @@ await page.waitForTimeout(150);
 assert.equal(await calls(), base + 1); checks++;
 assert.equal(await painted(), `/user/images/p${base + 1}.png`); checks++;
 
-// 10 提示词每次读出来都不一样又存不下：同一个图框 10 分钟内最多自动画两次，第三次留按钮，点了才画
-await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸（二）'));
+// 10 提示词每次读出来都不一样又存不下：1.78.8 起同一成品的图框说明文字变了，仍是原来那张、原来那次请求，
+// 不再换个键自动重画（以前还容许 10 分钟内自动画两次）；要新图得自己点重画。
+for (const suffix of ['（二）', '（三）']) {
+    await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸' + suffix));
+    await page.waitForTimeout(150);
+    await release();
+    assert.equal(await calls(), base + 1, '说明文字变了也不另发请求'); checks++;
+    assert.equal(await painted(), `/user/images/p${base + 1}.png`, '放回原来那张'); checks++;
+}
+await page.evaluate(() => { void images.rerollBuiltinImage(document.querySelector('details'), document.querySelector('[data-rm-draw-frame]')); });
 await page.waitForTimeout(100);
-await release();
-assert.equal(await calls(), base + 2); checks++;
-await mountFace(fullFace('长廊尽头一盏灯笼在风里摇晃，地上落着红绸（三）'));
-await page.waitForTimeout(150);
-assert.equal(await calls(), base + 2); checks++;
-assert.match(await page.evaluate(() => document.querySelector('[data-rm-draw-status]')?.textContent || ''), /已经自动画过两次/); checks++;
-await page.evaluate(() => [...document.querySelectorAll('[data-rm-draw-status] button')].find(button => button.textContent === '重新生图').click());
-await page.waitForTimeout(100);
-assert.equal(await calls(), base + 3); checks++;
+assert.equal(await calls(), base + 2, '手动重画照样能用'); checks++;
 await release();
 
 // 11 整份存不下、只存地址存得下：刷新后图还在
@@ -222,7 +232,10 @@ await mountFace(smallFace);
 await page.waitForTimeout(100);
 await release();
 assert.equal(await calls(), base + 1); checks++;
-assert.equal(await page.evaluate(() => Object.keys(localStorage).filter(key => key.includes(':builtin:chat:c:41:0:0:')).map(key => JSON.parse(localStorage.getItem(key)).current.path).join(',')), `/user/images/p${base + 1}.png`); checks++;
+// 有消息可存时插图记录跟着消息存进聊天（不占本机存储），刷新后从消息上读回。
+assert.equal(await page.evaluate(() => Object.entries(window.SillyTavern.getContext().chat[41].extra?.rabbitMirrorImages || {}).map(([, value]) => value.current.path).join(',')), `/user/images/p${base + 1}.png`); checks++;
+// 本机那份（存储满时只存得下地址）也在。
+assert.equal(await page.evaluate(() => Object.keys(localStorage).filter(key => /:builtin:(chat:)?c:41:0:/.test(key)).map(key => JSON.parse(localStorage.getItem(key)).current.path).join(',')), `/user/images/p${base + 1}.png`); checks++;
 await page.evaluate(() => { Storage.prototype.setItem = window.__realSetItem; window.__imageQuota = ''; });
 
 // 11b 这次画过的一面，用户在面板里换回更早的一张：重新挂上时放用户选的那张
@@ -245,6 +258,7 @@ assert.equal(pickedBack.replace(origin, ''), '/user/images/older.png'); checks++
 
 // 12 融合在回复里的镜面（键里没记楼层）：不同楼层各自自动画，不会挤在一个位置上被拦
 base = await calls();
+await grant(3, 5, 7);
 await page.evaluate(() => {
     document.body.innerHTML = [3, 5, 7].map(n => `<div class="mes" mesid="${n}"><details open><summary>第${n}层</summary>
       <figure data-rm-draw-frame="1"><p data-rm-draw-prompt="1" hidden>第${n}层的画面：渡口的船夫撑篙离岸</p></figure></details></div>`).join('');

@@ -1,18 +1,18 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.78.6';
-import { getSettings } from './settings.js?rmv=1.78.6';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.78.6';
-import { loadMirrorImage, saveMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.78.6';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.6';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.6';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.78.6';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=1.78.6';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.78.6';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.79.0';
+import { getSettings } from './settings.js?rmv=1.79.0';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.79.0';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.79.0';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.79.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.79.0';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.79.0';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=1.79.0';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.79.0';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
-const jobs = new Map();
-const pendingSaves = new Map();
-const sessionDrafts = new Map();
+const jobs = new Set();
+const pendingSaves = new Set();
+const sessionDrafts = new Set();
 const regions = new WeakMap();
 const mountedRoots = new WeakMap();
 const regionOwners = new WeakMap();
@@ -44,7 +44,7 @@ function targetFor(root) {
     catch { return null; }
 }
 function current(target) {
-    try { return target?.assertCurrent?.() !== false; } catch { return false; }
+    try { return !!target && target.assertCurrent?.() !== false; } catch { return false; }
 }
 function el(doc, tag, text, attrs = {}) {
     const node = doc.createElement(tag);
@@ -76,8 +76,13 @@ function makeImage(doc, record) {
     return image;
 }
 function stored(key) {
-    try { return { record: loadMirrorImage(key), draft: sessionDrafts.get(key) || loadMirrorImageDraft(key) }; }
-    catch { return { record: null, draft: null, error: '此设备的图片存档暂时无法读取；不会覆盖原存档。' }; }
+    const session = ownedForTarget(sessionDrafts, { key });
+    try {
+        const savedDraft = loadMirrorImageDraft(key);
+        const draft = savedDraft?.imageOwnerReceipt && !mirrorImageOwnerMatchesKey(savedDraft.imageOwnerReceipt, key) ? null : savedDraft;
+        return { record: loadMirrorImage(key), draft: session?.draft || draft };
+    }
+    catch { return { record: null, draft: session?.draft || null, error: '此设备的图片存档暂时无法读取；不会覆盖原存档。' }; }
 }
 // 本面的插图：先按当前内容找；找不到时（比如维修兔修过，内容变了）再按最初那一版找。只读，不搬存档。
 function storedForTarget(target) {
@@ -89,45 +94,80 @@ function storedForTarget(target) {
     }
     return primary;
 }
-function rememberDraft(key, draft) {
+function rememberDraft(key, draft, owner) {
+    if (!owner) throw new Error('target_changed');
     const value = { ...draft, updatedAt: Date.now() };
-    sessionDrafts.set(key, value);
-    // 本机存储满了草稿写不进去：这次打开页面里还记着，不让面板报错。
-    try { saveMirrorImageDraft(key, value); } catch (error) { console.warn('[RabbitMirror] 提示词草稿没能存进本机', error); }
+    const previous = [...sessionDrafts].find(entry => sameOwner(entry.owner, owner));
+    if (previous) previous.draft = value;
+    else sessionDrafts.add({ owner, draft: value });
+    // A paid plan may finish after switching chats. Keep it for that owner in
+    // memory, without overwriting a draft at a now-reused numeric key.
+    if (!mirrorImageOwnerMatchesKey(owner, key)) return;
+    // The owner session already has the draft. Report a durable write failure
+    // to the caller instead of falsely displaying “saved”.
+    saveMirrorImageDraft(key, { ...value, imageOwnerReceipt: mirrorImageOwnerReceipt(owner) });
 }
-function pendingImage(key, saved) {
-    const records = pendingSaves.get(key)?.records;
+function sameOwner(left, right) {
+    return left.token === right.token && left.entry === right.entry && left.chat === right.chat && left.source === right.source
+        && (left.scope || '') === (right.scope || '');
+}
+function ownedForTarget(entries, target) {
+    if (!target || !current(target)) return null;
+    for (const entry of entries) if (mirrorImageOwnerMatchesKey(entry.owner, target.key)) return entry;
+    return null;
+}
+function pendingForOwner(key, owner) {
+    for (const pending of pendingSaves) {
+        if (sameOwner(pending.owner, owner)) return pending;
+    }
+    const pending = { key, owner, records: [] };
+    pendingSaves.add(pending);
+    return pending;
+}
+function samePaidImage(left, right) {
+    return (left?.url || left?.path || left?.dataUrl) === (right?.url || right?.path || right?.dataUrl)
+        && left?.generatedAt === right?.generatedAt;
+}
+function pendingImage(pending, saved) {
+    const records = pending?.records;
     if (!records?.length) return saved;
     const { history = [], ...currentSaved } = saved || {};
-    return { ...records.at(-1), history: [...history, ...(saved ? [currentSaved] : []), ...records.slice(0, -1)] };
+    // A failed durable write may already have updated the live message. Keep
+    // each paid result once in the preview while its save remains retryable.
+    const previous = [...history, ...(saved ? [currentSaved] : [])]
+        .filter(record => !records.some(paid => samePaidImage(record, paid)));
+    return { ...records.at(-1), history: [...previous, ...records.slice(0, -1)] };
 }
-function flushPendingImages(key) {
-    const pending = pendingSaves.get(key);
+function flushPendingImages(pending) {
+    let saved = null;
     while (pending?.records.length) {
         // Remove only a confirmed saved prefix. A later failure keeps every
         // remaining paid result available, in original generation order.
-        saveMirrorImage(key, pending.records[0]);
+        saved = saveMirrorImageForOwner(pending.key, pending.records[0], pending.owner);
         pending.records.shift();
     }
-    if (pending && !pending.records.length) pendingSaves.delete(key);
-    return loadMirrorImage(key);
+    if (pending && !pending.records.length) pendingSaves.delete(pending);
+    return saved;
 }
 
 export function mountMirrorImage(root) {
     if (!root?.isConnected) return;
     const anchor = root.closest('toto') || root;
-    if (mountedRoots.get(root) === anchor.parentElement) return;
+    const mounted = mountedRoots.get(root);
+    if (mounted?.parent === anchor.parentElement && current(mounted.target)) return;
     for (const sibling of Array.from(anchor.parentElement?.children || [])) {
-        if (sibling.hasAttribute('data-rm-image-region') && !regionOwners.get(sibling)?.isConnected) sibling.remove();
+        const owner = regionOwners.get(sibling);
+        if (sibling.hasAttribute('data-rm-image-region') && (!owner?.root.isConnected || !current(owner.target))) sibling.remove();
     }
-    if (!pendingSaves.size && !hasStoredImages()) { mountedRoots.set(root, anchor.parentElement); return; }
+    if (!pendingSaves.size && !hasStoredImages()) return;
     const target = targetFor(root);
     const previous = regions.get(root);
     if (!target) { previous?.remove(); regions.delete(root); return; }
-    mountedRoots.set(root, anchor.parentElement);
+    mountedRoots.set(root, { parent: anchor.parentElement, target });
     const state = storedForTarget(target);
-    const record = pendingImage(target.key, state.record);
-    if (!record) return;
+    const pending = ownedForTarget(pendingSaves, target);
+    const record = pendingImage(pending, state.record);
+    if (!record) { previous?.remove(); regions.delete(root); return; }
     // Remove only our sibling region. Never alter generated mirror HTML.
     if (previous?.isConnected && previous.dataset.rmImageKey === target.key && previous.dataset.rmImageStamp === String(record.generatedAt || '')) return;
     previous?.remove();
@@ -140,13 +180,13 @@ export function mountMirrorImage(root) {
     region.dataset.rmImageKey = target.key;
     region.dataset.rmImageStamp = String(record.generatedAt || '');
     region.style.cssText = 'display:block;clear:both;max-width:100%;box-sizing:border-box;margin:8px 0;padding:10px;border:1px solid var(--SmartThemeBorderColor,#cfdae5);border-radius:12px;';
-    const summary = el(doc, 'summary', pendingSaves.has(target.key) ? '🖼 查看本面插图（尚未保存）' : '🖼 查看本面插图');
+    const summary = el(doc, 'summary', pending ? '🖼 查看本面插图（尚未保存）' : '🖼 查看本面插图');
     const open = el(doc, 'button', '查看／编辑提示词', { type: 'button' });
     open.addEventListener('click', () => openMirrorImagePanel(root, { opener: open }));
     disclosure.append(summary, makeImage(doc, record), open); region.append(disclosure);
     anchor.after(region);
     regions.set(root, region);
-    regionOwners.set(region, root);
+    regionOwners.set(region, { root, target });
 }
 
 function closePanel() {
@@ -167,6 +207,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     const doc = root.ownerDocument;
     const target = targetFor(root);
     const state = target ? storedForTarget(target) : {};
+    const panelJobs = new Set();
     const host = el(doc, 'dialog', '', { 'data-rm-image-portal': '', 'data-rm-tool-ui': 'true', 'aria-label': '兔子镜生图' });
     host.style.cssText = 'position:fixed;inset:0;margin:0;border:0;max-width:none;max-height:none;min-width:0;min-height:0;z-index:2147483646;background:#0007;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));box-sizing:border-box;overflow:hidden;';
     applyAppearanceTheme(host);
@@ -276,7 +317,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     }
     function renderState() {
         if (!host.isConnected) return;
-        const busy = target && jobs.has(target.key);
+        const busy = ownedForTarget(jobs, target);
         const enabled = getSettings().imageEnabled === true;
         box.setAttribute('aria-busy', String(!!busy));
         for (const node of fields.querySelectorAll('input,textarea,select')) node.disabled = !!busy;
@@ -287,19 +328,27 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
         buttons.draw.disabled ||= !drawablePrompt.trim();
         buttons.saveDraft.disabled = !target || !!busy;
         buttons.cancel.hidden = !busy;
-        buttons.saveOnly.hidden = !target || !pendingSaves.has(target.key);
+        buttons.saveOnly.hidden = !ownedForTarget(pendingSaves, target);
         buttons.generate.hidden = !!localRecord || !!inputs.prompt.value.trim();
         buttons.draw.textContent = localRecord ? '按当前提示词重新生图' : '按当前提示词生图';
         if (!enabled && target) status.textContent = '镜面生图尚未开启。请在兔子镜「设置 → 镜面生图」启用；已保存图片仍可查看。';
     }
     function notify() {
-        if (panel?.target?.key === target?.key) panel.renderState();
+        panel?.renderState();
     }
     async function run(kind) {
-        if (!target || !getSettings().imageEnabled || jobs.has(target.key)) return;
+        if (!target || !getSettings().imageEnabled || ownedForTarget(jobs, target)) return;
         if (!current(target)) { status.textContent = '聊天或这一面已变化，请回到对应镜面重新打开生图。'; return; }
+        let owner = null;
+        try { owner = captureMirrorImageOwner(target.key); } catch { /* No paid request without an owner. */ }
+        if (!owner || !mirrorImageOwnerMatchesKey(owner, target.key)) {
+            status.textContent = '这面兔子镜暂时无法绑定保存位置。请等待聊天加载完成后重新打开；本次没有发起请求。'; return;
+        }
         const controller = new AbortController();
-        jobs.set(target.key, controller); renderState();
+        const job = { owner, controller, allowNextDispatch: true };
+        const assertCallerCurrent = () => { if (!job.allowNextDispatch) throw new Error('panel_closed'); };
+        jobs.add(job); panelJobs.add(job); renderState();
+        let completedDraft = null, draftSaveFailed = false;
         try {
             if (kind !== 'reconceive') {
                 const connection = await getImageBackendStatus();
@@ -309,62 +358,77 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
             if (kind !== 'draw') {
                 status.textContent = `正在构思画面（一次${planningLabel()}请求）…`;
                 const publicCharacters = await getImageCharacters({ floor: target.floor });
-                draft = await target.plan({ publicCharacters, promptFormat: format.value, compositionMode: composition.value }, { signal: controller.signal });
-                // Draft persistence is local only. A failed draft save must not
-                // discard the completed plan or trigger a second paid request.
-                try { rememberDraft(target.key, draft); } catch { status.textContent = '画面已构思，但草稿未能保存；当前页面仍可编辑。'; }
+                if (!current(target) || !mirrorImageOwnerMatchesKey(owner, target.key)) throw new Error('target_changed');
+                assertCallerCurrent();
+                const retainCompleted = value => {
+                    completedDraft = value;
+                    try { rememberDraft(target.key, value, owner); } catch { draftSaveFailed = true; }
+                };
+                draft = await target.plan({ publicCharacters, promptFormat: format.value, compositionMode: composition.value }, {
+                    signal: controller.signal, onCompleted: retainCompleted, assertCallerCurrent,
+                });
+                // Older action bridges may only return their completed plan.
+                if (completedDraft !== draft) retainCompleted(draft);
+                if (!current(target) || !mirrorImageOwnerMatchesKey(owner, target.key)) throw new Error('target_changed');
                 if (host.isConnected) fillDraft(draft);
             }
             if (kind === 'reconceive') {
-                if (!host.isConnected && panel?.target?.key === target.key) panel.receive(localRecord, draft);
-                status.textContent = `构思完成。请检查提示词，点击生图才会调用${drawingLabel()}。`; return;
+                if (!host.isConnected && current(panel?.target) && mirrorImageOwnerMatchesKey(owner, panel?.target?.key)) panel.receive(localRecord, draft);
+                status.textContent = draftSaveFailed ? '构思完成，但草稿未能保存；当前页面仍可编辑，请另行复制保留。'
+                    : `构思完成。请检查提示词，点击生图才会调用${drawingLabel()}。`; return;
             }
-            if (!current(target)) throw new Error('target_changed');
+            if (!current(target) || !mirrorImageOwnerMatchesKey(owner, target.key)) throw new Error('target_changed');
             if (controller.signal.aborted) throw new Error('aborted');
-            if (kind === 'draw') { try { rememberDraft(target.key, draft); } catch { /* Retain exact edited draft in this page even if storage is full. */ } }
+            assertCallerCurrent();
+            if (kind === 'draw') { try { rememberDraft(target.key, draft, owner); } catch { /* Retain exact edited draft in this page even if storage is full. */ } }
             status.textContent = `正在调用${drawingLabel()}（一次生图调用）…`;
             const record = await generateMirrorImage(draft, { signal: controller.signal, character: target.group,
                 ...(size.value ? { size: size.value } : {}), assertCurrent: target.assertCurrent,
                 onProgress: progress => { if (host.isConnected) status.textContent = drawingLabel() + '：' + ({ queued:'排队中', generating:'绘制中', 'queued-remote':'远端排队中', retrying:'按生图渠道规则重试中', saving:'保存中' }[progress?.phase] || '处理中'); } });
-            // Even after a chat switch, save only under the frozen original key.
-            const pending = pendingSaves.get(target.key) || { records: [], target };
-            pending.records.push(record); pendingSaves.set(target.key, pending);
+            // Paid completion belongs to the captured message, even after its
+            // numeric floor has moved or been reused by another message.
+            const pending = pendingForOwner(target.key, owner);
+            pending.records.push(record);
             savedImagesExist = true;
             try {
-                localRecord = flushPendingImages(target.key); status.textContent = '图片已保存到对应镜面。';
+                localRecord = flushPendingImages(pending); status.textContent = '图片已保存到对应镜面。';
             } catch {
-                localRecord = pendingImage(target.key, stored(target.key).record);
+                localRecord = pendingImage(pending, current(target) && mirrorImageOwnerMatchesKey(owner, target.key) ? storedForTarget(target).record : null);
                 status.textContent = '图片已生成，但此设备保存失败。请点击“只保存已生成图片”按顺序保存全部待存图片，或打开原图另存；不会再次生图。';
             }
-            if (host.isConnected) showRecord(localRecord);
-            else if (panel?.target?.key === target.key) panel.receive(localRecord, draft);
-            if (current(target) && root.isConnected) { mountedRoots.delete(root); mountMirrorImage(root); }
+            if (current(target) && mirrorImageOwnerMatchesKey(owner, target.key) && host.isConnected) showRecord(localRecord);
+            else if (current(panel?.target) && mirrorImageOwnerMatchesKey(owner, panel?.target?.key)) panel.receive(localRecord, draft);
+            if (current(target) && mirrorImageOwnerMatchesKey(owner, target.key) && root.isConnected) { mountedRoots.delete(root); mountMirrorImage(root); }
         } catch (error) {
+            if (completedDraft && panel?.host !== host && current(panel?.target) && mirrorImageOwnerMatchesKey(owner, panel?.target?.key)) panel.receive(localRecord, completedDraft);
             // Never display arbitrary provider error bodies (may contain secrets).
-            status.textContent = error?.message === 'target_changed' ? '聊天或镜面已变化，未继续生图。' : controller.signal.aborted ? '已请求取消；本次调用结算完成后才能再次生成。原图保留。' : `本次未完成。请检查${planningLabel()}／${drawingLabel()}连接或提示词；原图保留，没有自动补发。`;
+            status.textContent = completedDraft && (!current(target) || !mirrorImageOwnerMatchesKey(owner, target.key))
+                ? '聊天或镜面已变化，完成的构思已为原镜面保留，未继续生图。'
+                : completedDraft && (controller.signal.aborted || !job.allowNextDispatch) ? '已停止后续绘制，完成的构思已保留。'
+                : error?.message === 'target_changed' ? '聊天或镜面已变化，未继续生图。' : controller.signal.aborted ? '已请求取消；本次调用结算完成后才能再次生成。原图保留。' : `本次未完成。请检查${planningLabel()}／${drawingLabel()}连接或提示词；原图保留，没有自动补发。`;
         } finally {
-            jobs.delete(target.key); notify();
+            jobs.delete(job); panelJobs.delete(job); notify();
         }
     }
     button('generate', '构思并生成插图', () => run('generate'));
     button('reconceive', '重新构思（仅文本）', () => run('reconceive'));
     button('draw', '按当前提示词生图', () => run('draw'));
     button('saveDraft', '保存提示词草稿', () => {
-        if (!target) return;
-        try { rememberDraft(target.key, readDraft()); status.textContent = '草稿已保存，没有发起请求。'; }
+        if (!current(target)) return;
+        try { rememberDraft(target.key, readDraft(), captureMirrorImageOwner(target.key)); status.textContent = '草稿已保存，没有发起请求。'; }
         catch { status.textContent = '草稿保存失败，当前输入仍保留。'; }
     });
     button('cancel', '取消本次请求', () => {
-        jobs.get(target?.key)?.abort(); status.textContent = '已请求取消，正在等待本次调用结束；不会自动重试。';
+        ownedForTarget(jobs, target)?.controller.abort(); status.textContent = '已请求取消，正在等待本次调用结束；不会自动重试。';
     });
     button('saveOnly', '只保存已生成图片', () => {
-        const pending = pendingSaves.get(target?.key); if (!pending) return;
+        const pending = ownedForTarget(pendingSaves, target); if (!pending) return;
         try {
-            localRecord = flushPendingImages(target.key);
+            localRecord = flushPendingImages(pending);
             showRecord(localRecord); status.textContent = '图片已保存，没有调用模型。';
             if (current(target)) { mountedRoots.delete(root); mountMirrorImage(root); }
         } catch {
-            localRecord = pendingImage(target.key, stored(target.key).record); showRecord(localRecord);
+            localRecord = pendingImage(pending, storedForTarget(target).record); showRecord(localRecord);
             status.textContent = '保存仍未全部完成。已保存的图片与剩余待存图片均保留；请重试保存或打开原图另存，不会重新生成。';
         }
         renderState();
@@ -395,11 +459,14 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     host.addEventListener('cancel', event => { event.preventDefault(); event.stopPropagation(); closePanel(); });
     host.addEventListener('click', event => { if (event.target === host) closePanel(); event.stopPropagation(); });
     panel = { host, target, opener, onClose, renderState, receive: (record, draft) => { localRecord = record; fillDraft(draft); showRecord(record); }, cleanup: () => {
+        // Closing keeps already-dispatched work and its lock alive, but cannot
+        // start the next paid step when that work returns.
+        for (const job of panelJobs) job.allowNextDispatch = false;
         doc.defaultView.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('resize', fit); doc.defaultView.visualViewport?.removeEventListener('scroll', fit);
         builtin?.cleanup();
     } };
-    const pending = target && pendingSaves.get(target.key);
-    if (pending) localRecord = pendingImage(target.key, localRecord);
+    const pending = ownedForTarget(pendingSaves, target);
+    if (pending) localRecord = pendingImage(pending, localRecord);
     // 从存档还原时连人物外貌一起还原；旧记录没存人物就用实际发出去的整段（见 draftFromSavedImage）。
     const latestDraft = state.draft && (!localRecord || Number(state.draft.updatedAt || 0) >= (Date.parse(localRecord.generatedAt || '') || 0))
         ? state.draft : draftFromSavedImage(localRecord) || state.draft || {};
@@ -425,8 +492,9 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
 
 // 「这一面的插图」：一面里每个内置图框各自的历史，选哪张就在镜面上显示哪张；「再画一张」只发一次生图请求。
 // 关面板不会取消正在画的那张（画完照样存进去）；要停就点「取消这次」。
-const builtinJobs = new Map();
+const builtinJobs = new Set();
 function buildBuiltinSection(doc, root, initial) {
+    const sectionTarget = targetFor(root);
     let frames = initial;
     let selected = 0;
     let editing = false;
@@ -466,15 +534,16 @@ function buildBuiltinSection(doc, root, initial) {
 
     const provider = () => getSettings().imageBackend === 'chatu8' ? '智绘姬' : '柏宝绘';
     const currentFrame = () => frames[Math.min(selected, frames.length - 1)];
+    const frameJob = item => current(sectionTarget) && item ? ownedForTarget(builtinJobs, { key: item.key }) : null;
     const refresh = () => { frames = listBuiltinImageFrames(root); if (!frames.length) frames = initial; };
     // 关掉面板再打开：正在画的那张还在画，新面板接着看进度、画完也刷新。
     const mine = { onText: text => { if (section.isConnected) statusLine.textContent = text; }, done: () => { if (section.isConnected) { refresh(); render(); } } };
     function render() {
         if (!section.isConnected && section.parentNode) return;
         const item = currentFrame();
-        const job = builtinJobs.get(item.key);
+        const job = frameJob(item);
         if (job) job.listeners.add(mine);
-        const ready = builtinImageReady();
+        const ready = builtinImageReady() && current(sectionTarget);
         const firstDraw = item.busy && !job; // 这一面自己的首画还在跑
         headNote.textContent = `内置生图 · 共 ${frames.length} 张`;
         tabs.replaceChildren();
@@ -492,14 +561,18 @@ function buildBuiltinSection(doc, root, initial) {
             image.style.opacity = job ? '.55' : '1';
             image.addEventListener('error', () => { image.remove(); if (!view.firstChild) view.append(el(doc, 'span', '这张图读不到了，可以再画一张。')); }, { once: true });
             view.append(image);
-        } else view.append(el(doc, 'span', item.broken ? '这张图的存档读不出来。' : '这张图还没画。'));
+        } else view.append(el(doc, 'span', item.broken && item.brokenCode === 'image_version_unconfirmed' ? '这张图认不出是哪一版，原档保留着。' : item.broken ? '这张图的存档读不出来。' : '这张图还没画。'));
         const total = item.versions.length;
         counter.textContent = total ? `${item.current + 1} / ${total}` : '0 / 0';
-        prev.disabled = !!job || firstDraw || item.current <= 0;
-        next.disabled = !!job || firstDraw || item.current >= total - 1;
+        const gone = !!sectionTarget && !current(sectionTarget);
+        prev.disabled = gone || !!job || firstDraw || item.current <= 0;
+        next.disabled = gone || !!job || firstDraw || item.current >= total - 1;
         nav.hidden = total < 2;
         roll.hidden = !!job; cancel.hidden = !job;
-        roll.disabled = !ready || firstDraw || item.broken; edit.disabled = !ready || !!job || firstDraw || item.broken; editGo.disabled = !ready || !!job || firstDraw || item.broken;
+        // 只认不出原图是哪一版（旧分支）：原档留着，手动再画一张照样能存进这个分支，和图框里的「重新生图」一样能用。
+        const unconfirmed = item.broken && item.brokenCode === 'image_version_unconfirmed';
+        const blocked = item.broken && !unconfirmed;
+        roll.disabled = !ready || firstDraw || blocked; edit.disabled = !ready || !!job || firstDraw || blocked; editGo.disabled = !ready || !!job || firstDraw || blocked;
         editor.hidden = !editing;
         if (editing && !editBox.dataset.forKey) { editBox.value = item.editPrompt || item.prompt; editBox.dataset.forKey = item.key; }
         const reusable = builtinImageReusable(shown);
@@ -509,6 +582,7 @@ function buildBuiltinSection(doc, root, initial) {
         sourceLine.hidden = !sources;
         hint.textContent = !ready
             ? '内置生图没有开启：在兔子镜设置里打开后才能重画；已经画好的图照样能翻看、切换。'
+            : unconfirmed ? `这张图的存档认不出是哪一版（旧分支留下的），原档保留不动；再画一张会存进这个分支，花一次${provider()}额度。`
             : item.broken ? '这张图的存档读不出来，重画的结果会存不进去，所以先不让画。'
             : reusable ? `同一段提示词，换随机种子再画一次，花一次${provider()}额度，不调用语言模型。最多留 5 张。`
             : `这张是旧版本画的，没留下当时的提示词：再画会按这一面写的画面重新准备一次提示词${imageLlmConfigured(getSettings()) ? '（会调用一次生图 LLM）' : ''}，再花一次${provider()}额度。`;
@@ -516,10 +590,15 @@ function buildBuiltinSection(doc, root, initial) {
     }
     async function start(edited) {
         const item = currentFrame();
-        if (builtinJobs.has(item.key)) return;
+        if (!current(sectionTarget) || frameJob(item)) return;
+        let owner = null;
+        try { owner = captureMirrorImageOwner(item.key); } catch { /* Wait for a usable save owner. */ }
+        if (!owner || !mirrorImageOwnerMatchesKey(owner, item.key)) {
+            statusLine.textContent = '这面兔子镜暂时无法绑定保存位置，请重新打开当前镜面；本次没有发起请求。'; return;
+        }
         const controller = new AbortController();
-        const job = { controller, text: '', listeners: new Set([mine]) };
-        builtinJobs.set(item.key, job);
+        const job = { owner, controller, text: '', listeners: new Set([mine]) };
+        builtinJobs.add(job);
         message = ''; render();
         try {
             const { painted, saveError } = await rerollBuiltinImage(root, item.frame, { prompt: edited, signal: controller.signal,
@@ -531,16 +610,19 @@ function buildBuiltinSection(doc, root, initial) {
             message = controller.signal.aborted ? '已取消，原来的图没动。'
                 : `这次没画成，原来的图没动。${String(error?.message || '').slice(0, 120)}`;
         } finally {
-            builtinJobs.delete(item.key);
+            builtinJobs.delete(job);
             refresh();
             for (const listener of job.listeners) { try { listener.done?.(); } catch { /* 面板已关 */ } }
         }
     }
     roll.addEventListener('click', () => start(''));
-    cancel.addEventListener('click', () => { const job = builtinJobs.get(currentFrame().key); if (!job) { refresh(); render(); return; } job.controller.abort(); statusLine.textContent = '已请求取消，等这次调用结束；不会自动重试。'; });
+    cancel.addEventListener('click', () => { const job = frameJob(currentFrame()); if (!job) { refresh(); render(); return; } job.controller.abort(); statusLine.textContent = '已请求取消，等这次调用结束；不会自动重试。'; });
     edit.addEventListener('click', () => { editing = !editing; editBox.dataset.forKey = ''; render(); });
     editGo.addEventListener('click', () => { const text = editBox.value.trim(); if (text.length < 4) { statusLine.textContent = '提示词太短了。'; return; } start(text); });
+    // 面板打开以后，这一层换成了别的消息（删楼、重新生成）：旧面板不再切图，免得改到新消息的插图。
+    const stale = () => !!sectionTarget && !current(sectionTarget);
     const step = delta => {
+        if (stale()) { message = '这一面已经换成别的回复了，这个面板不能再切图；请关掉面板，在现在这一面上重新打开。'; render(); return; }
         const item = currentFrame();
         const target = item.current + delta;
         if (target < 0 || target >= item.versions.length) return;

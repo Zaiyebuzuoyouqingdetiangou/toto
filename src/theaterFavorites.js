@@ -1,8 +1,8 @@
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.78.6';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.78.6';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.78.6';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.78.6';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.78.6';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.79.0';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.79.0';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.79.0';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.79.0';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.79.0';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -169,6 +169,7 @@ function normalizeRecord(value) {
         chatKey: String(value.chatKey || '').slice(0, 180),
         mesid: Number.isInteger(value.mesid) && value.mesid >= 0 ? value.mesid : null,
         swipe: Number.isInteger(value.swipe) && value.swipe >= 0 ? value.swipe : null,
+        faceIndex: Number.isInteger(value.faceIndex) && value.faceIndex >= 0 ? value.faceIndex : null,
         sourceHash: String(value.sourceHash || '').slice(0, 80),
         characterId,
         characterName,
@@ -461,6 +462,7 @@ export async function saveTheaterFavorite(input) {
         chatKey: input?.chatKey,
         mesid: input?.mesid,
         swipe: input?.swipe,
+        faceIndex: input?.faceIndex,
         sourceHash: input?.sourceHash,
         characterId: input?.characterId || character.characterId,
         characterName: input?.characterName || character.characterName,
@@ -490,7 +492,7 @@ export async function deleteTheaterFavorite(id) {
 // 查和写在同一个事务里；记录里存下内容指纹，以后查重不用再解析。
 async function favoriteImagesFor(captured) {
     if (!Number.isInteger(captured?.mesid) || !Number.isInteger(captured?.swipe)) return null;
-    try { return (await import('./imageStore.js?rmv=1.78.6')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || ''); } catch { return null; }
+    try { return (await import('./imageStore.js?rmv=1.79.0')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || ''); } catch { return null; }
 }
 
 export async function toggleTheaterFavorite(input, intent = 'auto') {
@@ -503,7 +505,7 @@ export async function toggleTheaterFavorite(input, intent = 'auto') {
     const character = currentTheaterFavoriteCharacter();
     const record = normalizeRecord({
         id, title: captured?.title, mode: captured?.mode, html, chatKey: captured?.chatKey,
-        mesid: captured?.mesid, swipe: captured?.swipe, sourceHash: captured?.sourceHash,
+        mesid: captured?.mesid, swipe: captured?.swipe, faceIndex: captured?.faceIndex, sourceHash: captured?.sourceHash,
         characterId: captured?.characterId || character.characterId,
         characterName: captured?.characterName || character.characterName,
         createdAt: Date.now(), contentKey,
@@ -600,7 +602,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
     // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
-    const atlases = await import('./favoriteAtlases.js?rmv=1.78.6');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.79.0');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};
@@ -651,6 +653,22 @@ export function captureTheaterFavoriteFromRoot(root, owner = {}) {
     if (!html) return null;
     const title = theaterFavoriteTitleFromDetails(details) || String(details.querySelector?.(':scope > summary')?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
     const character = currentTheaterFavoriteCharacter();
+    // 单独收藏第 N 面后，收藏容器中只剩一面；必须保留它原来的面序号，不能重新算成第 0 面。
+    const faceNumber = value => value !== undefined && value !== null && String(value).trim() !== ''
+        && Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+    let faceIndex = faceNumber(owner.faceIndex) ?? faceNumber(details.dataset?.rmImageOwnerFace)
+        ?? faceNumber(details.dataset?.rabbitMirrorFaceIndex);
+    if (faceIndex === null) {
+        const ordinal = faceNumber(details.closest?.('toto[data-rm-face]')?.getAttribute?.('data-rm-face'));
+        if (ordinal !== null && ordinal > 0) faceIndex = ordinal - 1;
+    }
+    if (faceIndex === null) {
+        const scope = details.closest?.('[data-rabbit-mirror-external-source="true"]') || details.closest?.('.mes');
+        const faces = [...(scope?.querySelectorAll?.('details') || [])]
+            .filter(face => !face.parentElement?.closest?.('details') && !isTheaterFavoritePlaceholder(face));
+        const at = faces.indexOf(details);
+        if (at >= 0) faceIndex = at;
+    }
     return {
         id: theaterFavoriteToggleId(html),
         title: title || '未命名兔子镜',
@@ -659,6 +677,7 @@ export function captureTheaterFavoriteFromRoot(root, owner = {}) {
         chatKey: String(owner.chatKey || details.dataset?.rabbitMirrorOwnerChat || ''),
         mesid: Number.isInteger(owner.mesid) ? owner.mesid : Number(details.dataset?.rabbitMirrorOwnerMesid),
         swipe: Number.isInteger(owner.swipe) ? owner.swipe : Number(details.dataset?.rabbitMirrorOwnerSwipe),
+        faceIndex,
         sourceHash: String(owner.sourceHash || details.dataset?.rabbitMirrorOwnerSourceHash || ''),
         characterId: String(owner.characterId || character.characterId || ''),
         characterName: String(owner.characterName || character.characterName || UNCATEGORIZED_CHARACTER_NAME),

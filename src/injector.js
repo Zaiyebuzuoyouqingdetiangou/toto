@@ -1,20 +1,20 @@
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=1.78.6';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=1.79.0';
 import { extension_settings } from '../../../../extensions.js';
-import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.78.6';
+import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=1.79.0';
 import {
     buildFeedbackCatFinalCheck,
     buildFeedbackCatPrompt,
     clearFeedbackCatExtensionPrompt,
     getActiveFeedbackForCurrentChat,
     markFeedbackCatInjected,
-} from './feedbackCat.js?rmv=1.78.6';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.78.6';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.78.6';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.78.6';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.78.6';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.78.6';
+} from './feedbackCat.js?rmv=1.79.0';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=1.79.0';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=1.79.0';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=1.79.0';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.79.0';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.79.0';
 
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 
@@ -22,6 +22,7 @@ let generationInvocationSequence = 0;
 let independentGenerationIntentSequence = 0;
 let promptBuilderPromise = null;
 let generationGuardPromise = null;
+let loadedGenerationGuard = null;
 let lastFollowExternalPreflightFailure = null;
 
 export function getLastFollowExternalPreflightFailure() { return lastFollowExternalPreflightFailure; }
@@ -202,6 +203,37 @@ function cancelReplacedIndependentManualIntents(type) {
 // exact boundary until MESSAGE_SENT, rather than treating an old reply as new.
 let independentManualHostStart = null;
 let independentSwipeHostStart = null;
+// END has no type/owner payload. Keep only this page's bounded nesting of real
+// starts so a quiet request's END cannot settle the surrounding main reply.
+let followHostStarts = [];
+let followHostSequence = 0;
+
+function followHostTarget(chat) {
+    const index = chat.length && chat.at(-1)?.is_user !== true ? chat.length - 1 : chat.length;
+    const anchor = chat[index - 1] || null;
+    return { index, anchor, source: String(anchor?.mes || ''), swipe: Number(anchor?.swipe_id || 0) };
+}
+function sameFollowHostTarget(a, b) {
+    return a?.index === b?.index && a?.anchor === b?.anchor && a?.source === b?.source && a?.swipe === b?.swipe;
+}
+function currentFollowHostEventId(chat, type) {
+    if (!INDEPENDENT_GENERATION_INTENT_TYPES.has(String(type || 'normal').trim().toLowerCase())) return null;
+    const latest = [...followHostStarts].reverse().find(start => start.chat === chat && INDEPENDENT_GENERATION_INTENT_TYPES.has(start.type));
+    if (!latest) return null;
+    // Some hosts emit START before adding the user's message. At interception
+    // the real request target is available; stale ancestors from another reply
+    // must not consume this request's END. A nested call to the same target stays.
+    const target = followHostTarget(chat);
+    const retained = followHostStarts.filter(start => start.chat !== chat || start.id >= latest.id || sameFollowHostTarget(start.target, target));
+    const pruned = retained.length !== followHostStarts.length;
+    followHostStarts = retained;
+    latest.target = target;
+    if (pruned) {
+        latest.ancestors = retained.filter(start => start.chat === chat && start.id < latest.id).map(start => start.id);
+        loadedGenerationGuard?.settleRabbitMirrorFollowSingle?.(chat, 'started', latest);
+    }
+    return retained.find(start => start.chat === chat && INDEPENDENT_GENERATION_INTENT_TYPES.has(start.type))?.id ?? null;
+}
 
 // ST removes the assistant being swiped from coreChat before calling prompt
 // interceptors. Capture its raw owner at START; a prompt ending in a user row
@@ -733,6 +765,16 @@ export function initIndependentGenerationIntentBridge() {
     destroyIndependentGenerationIntentBridge();
     const bindings = [
         [event_types?.GENERATION_STARTED, (...args) => {
+            const chat = currentIndependentIntentChat();
+            const type = String(args[0] || 'normal').trim().toLowerCase(), dryRun = args[2] === true;
+            const target = followHostTarget(chat);
+            if (!dryRun && INDEPENDENT_GENERATION_INTENT_TYPES.has(type)) {
+                followHostStarts = followHostStarts.filter(start => start.chat !== chat || sameFollowHostTarget(start.target, target));
+            }
+            const start = { chat, id: ++followHostSequence, type, dryRun, target,
+                ancestors: followHostStarts.filter(item => item.chat === chat).map(item => item.id) };
+            if (!start.dryRun) { followHostStarts.push(start); if (followHostStarts.length > 16) followHostStarts.shift(); }
+            loadedGenerationGuard?.settleRabbitMirrorFollowSingle?.(chat, 'started', start);
             beginIndependentSwipeHostGeneration(...args);
             beginIndependentManualHostGeneration(...args);
         }],
@@ -740,11 +782,18 @@ export function initIndependentGenerationIntentBridge() {
         // END/STOP carries no message owner. Only the exact previously bound
         // operation may use END to reconcile its non-tool/final-render proof.
         [event_types?.GENERATION_ENDED, () => {
+            const chat = currentIndependentIntentChat();
+            const matching = [...followHostStarts].reverse().find(start => start.chat === chat);
+            const index = matching ? followHostStarts.lastIndexOf(matching) : -1;
+            const start = index >= 0 ? followHostStarts.splice(index, 1)[0] : null;
+            loadedGenerationGuard?.settleRabbitMirrorFollowSingle?.(chat, 'ended', start);
             independentManualHostStart = null;
             independentSwipeHostStart = null;
             markIndependentGenerationIntentTerminal('generation-ended');
         }],
         [event_types?.GENERATION_STOPPED, () => {
+            followHostStarts = [];
+            loadedGenerationGuard?.settleRabbitMirrorFollowSingle?.(currentIndependentIntentChat(), 'stopped');
             independentManualHostStart = null;
             independentSwipeHostStart = null;
             markIndependentGenerationIntentTerminal('generation-stopped');
@@ -752,8 +801,8 @@ export function initIndependentGenerationIntentBridge() {
         }],
         [event_types?.STREAM_TOKEN_RECEIVED, text => { recordIndependentEarlyToken(text); recordIndependentManualToken(); }],
         [event_types?.MESSAGE_RECEIVED, payload => { markIndependentGenerationIntentReceived(payload); bindIndependentManualIntent(payload); }],
-        [event_types?.CHARACTER_MESSAGE_RENDERED, payload => { markIndependentGenerationIntentCompleted(payload, 'character-rendered'); bindIndependentManualIntent(payload); }],
-        [event_types?.CHAT_CHANGED, clearIndependentGenerationIntents],
+        [event_types?.CHARACTER_MESSAGE_RENDERED, payload => { loadedGenerationGuard?.settleRabbitMirrorFollowSingle?.(currentIndependentIntentChat(), 'rendered', payload); markIndependentGenerationIntentCompleted(payload, 'character-rendered'); bindIndependentManualIntent(payload); }],
+        [event_types?.CHAT_CHANGED, () => { followHostStarts = []; loadedGenerationGuard?.settleRabbitMirrorFollowSingle?.(currentIndependentIntentChat(), 'chat-changed'); clearIndependentGenerationIntents(); }],
     ].filter(([event]) => !!event);
     for (const [event, handler] of bindings) {
         try {
@@ -769,6 +818,7 @@ export function initIndependentGenerationIntentBridge() {
 
 export function destroyIndependentGenerationIntentBridge({ clearIntents = false } = {}) {
     stopManualEntryDiagnostic();
+    followHostStarts = [];
     independentManualHostStart = null;
     independentSwipeHostStart = null;
     cancelIndependentCoreRuntimeWake();
@@ -792,7 +842,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=1.78.6').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=1.79.0').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -802,7 +852,7 @@ function loadPromptBuilder() {
 
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=1.78.6').catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=1.79.0').then(module => { loadedGenerationGuard = module; return module; }).catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -959,6 +1009,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
         attachRabbitMirrorGenerationSelection,
         beginRabbitMirrorGenerationAttempt,
         registerRabbitMirrorFollowBatch,
+        registerRabbitMirrorFollowSingle,
     }] = await Promise.all([
         loadPromptBuilder(),
         loadGenerationGuard(),
@@ -998,7 +1049,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=1.78.6');
+                repository = await import('./externalWorldBook/store.js?rmv=1.79.0');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -1021,7 +1072,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=1.78.6');
+                const appearance = await import('./appearanceReference.js?rmv=1.79.0');
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);
                 assertFollowPrefetchOwner(prefetchOwner, _chat); assertAppearanceOwner();
@@ -1108,6 +1159,13 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             return;
         }
     }
+    // Shared single/batch image proof uses the live host array and real END/render
+    // events; neither session snapshots nor the historical scanner can create it.
+    registerRabbitMirrorFollowSingle(currentIndependentIntentChat(), generationScopeKey, type || 'normal',
+        { faceCount: promptDetails.batchPlan?.requestedFaceCount || 1,
+            // A nested interceptor may replace the plan for this same reply,
+            // but only the enclosing main operation's END makes it final.
+            hostEventId: currentFollowHostEventId(currentIndependentIntentChat(), type) });
     recordRabbitMirrorInjection({
         prompt,
         basePrompt,

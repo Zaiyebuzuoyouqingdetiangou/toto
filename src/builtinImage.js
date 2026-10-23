@@ -1,12 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.78.6';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.78.6';
-import { imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, saveMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.78.6';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.78.6';
-import { isFreshDrawSlot } from './freshDrawSlots.js?rmv=1.78.6';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.78.6';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.78.6';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.78.6';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.78.6';
+import { getSettings } from './settings.js?rmv=1.79.0';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.79.0';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.79.0';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.79.0';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.79.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.79.0';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.79.0';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.79.0';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.79.0';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.79.0';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -220,6 +221,7 @@ function isBangsTag(tag) {
     return /(?:^|[^a-z])bangs(?:$|[^a-z])/.test(bare) || /(?:^|[^a-z])fringe\s*$/.test(bare) || bare === 'hair between eyes';
 }
 const TAG_TRAITS = [
+    ['gender', bare => /^(?:1\s*(?:boy|girl|other)|male|female|man|woman|boy|girl|non[-\s]?binary|agender|genderfluid|trans(?:gender)?\s+(?:man|woman|male|female))$/.test(bare)],
     ['hair-color', bare => /\bhair$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+hair$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim())],
     ['eye-color', bare => bare === 'heterochromia' || (/\b(?:eyes|pupils|irises)$/.test(bare) && new RegExp(`^${TAG_COLOR}\\s+(?:eyes|pupils|irises)$`).test(bare.replace(TAG_STYLE, ' ').replace(/\s+/g, ' ').trim()))],
     ['hair-length', bare => /\bhair$/.test(bare) && TAG_LENGTH.test(bare)],
@@ -251,6 +253,7 @@ function withoutClaimedLooks(part, claimed) {
     const traits = tagTraits(part);
     const clash = traits.filter(trait => claimed.has(trait));
     if (!clash.length) return part;
+    if (clash.includes('gender')) return '';
     if (/[{}()[\]]|::/.test(part) || clash.includes('eye-color') && /heterochromia/i.test(part) || clash.includes('bangs')) return '';
     // black_hair 这种下划线写法：按空格认词，去完再换回下划线。
     const underscored = /_/.test(part);
@@ -277,29 +280,24 @@ function mergeTagLists(...lists) {
         }).join(', ');
 }
 
-function storageKey(root, frame, prompt) {
-    const details = frame.closest?.('details');
-    const ctx = getContext();
-    // 收藏夹里打开的那一面不属于当前聊天：用收藏时记下的聊天、楼层和 swipe 找回当时画好的图。
-    const image = details?.dataset || {};
-    // 独立 API 的多面镜子：每一面的归属（楼层、swipe）要等外壳挂好后才写到这一面上，可画图在那之前就开始了。
-    // 这一面还没写上时，直接读外壳上的归属，免得同一张图前后用了两个键（先存在「楼层空」下，之后找不到又画一遍）。
-    const shell = details?.parentElement?.matches?.('[data-rabbit-mirror-external-source="true"]') ? details.parentElement.dataset : {};
-    const pick = (...values) => { for (const value of values) if (value !== undefined && value !== null && String(value) !== '') return String(value); return ''; };
-    const chat = pick(image.rmImageOwnerChat, details?.dataset?.rabbitMirrorOwnerChat, shell.rmOwnerChat)
-        || String(ctx.getCurrentChatId?.() ?? ctx.chatId ?? '');
-    let mes = image.rmImageOwnerMesid ?? pick(details?.dataset?.rabbitMirrorOwnerMesid, shell.rmOwnerMesid, shell.rmExternalOwnerMessage);
-    let swipe = image.rmImageOwnerSwipe ?? pick(details?.dataset?.rabbitMirrorOwnerSwipe, shell.rmOwnerSwipe);
-    // 归属还没写上（刚生成、外壳还在挂）：按所在的那条消息记楼层和 swipe。以前这时键里楼层是空的，
-    // 图只能存在本机、存不进聊天记录，刷新 App（本机存储被清）就找不到了。收藏夹里的面（带 rmImageOwner*）不走这里。
-    if (!image.rmImageOwnerChat && (mes === '' || mes == null)) {
-        const at = frame.closest?.('.mes[mesid]')?.getAttribute('mesid');
-        const msg = /^\d+$/.test(String(at || '')) ? ctx.chat?.[Number(at)] : null;
-        if (msg && !msg.is_user) { mes = String(at); if (swipe === '' || swipe == null) swipe = String(Number.isInteger(msg.swipe_id) ? msg.swipe_id : 0); }
-    }
-    const frames = [...(root.querySelectorAll?.('[data-rm-draw-frame]') || [])];
+function rawStorageKey(root, frame, prompt) {
+    const owner = resolveFrameOwner(frame);
+    const details = owner?.details || root;
+    const frames = [...(details?.querySelectorAll?.('[data-rm-draw-frame]') || [])];
     const index = Math.max(0, frames.indexOf(frame));
-    return `builtin:${chat}:${mes}:${swipe}:${index}:${hashText(prompt)}`;
+    return `builtin:${owner?.chat || ''}:${owner?.mes ?? ''}:${owner?.swipe ?? ''}:f${owner?.faceIndex ?? 'u'}.${index}:${hashText(prompt)}`;
+}
+
+function storageKey(root, frame, prompt) {
+    const key = rawStorageKey(root, frame, prompt);
+    const previous = automaticFrameState(frame)?.previous;
+    if (!previous || previous.key === key) return key;
+    // Exact saved ownership wins if a frame moved. Otherwise all controls and
+    // remounts of this accepted frame share the original attempt's prompt key.
+    const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
+    if (saved.record || saved.broken) return key;
+    // Rebase on the current owner coordinates if messages moved in the chat.
+    return key.slice(0, key.lastIndexOf(':') + 1) + previous.key.slice(previous.key.lastIndexOf(':') + 1);
 }
 
 // 这一面里别的图框各自的键：序号挪了去找旧图时，不拿别的图框自己的那张。
@@ -308,34 +306,66 @@ function otherFrameKeys(root, frame) {
     for (const other of root?.querySelectorAll?.('[data-rm-draw-frame]') || []) {
         if (other === frame) continue;
         const text = readPrompt(other);
-        if (text) keys.add(storageKey(root, other, text));
+        if (text) keys.add(rawStorageKey(root, other, text));
     }
     return keys;
 }
 
 function readSaved(key) {
     try { return { record: loadMirrorImage(key) }; }
-    catch { return { broken: true }; }
+    catch (error) { return { broken: true, code: error?.code }; }
 }
 
 // 当前键下没有这张图时：先找同一聊天里兼容的键（当时还没记上楼层），再看是不是聊天开了分支／改了名，图还存在旧名字下。
 // 还找不到时：同一聊天、同一楼层、同一 swipe、同一段提示词，只是图框序号变了（重新进聊天时这一面的结构被整理过、
 // 前面多了或少了一个图框）——也是那一张。claimed 是这一面里别的图框自己的键，被它们占着的不拿。
+function shownTime(record) { const at = Number(record?.shownAt); return Number.isFinite(at) ? at : 0; }
 function savedKeyFor(key, claimed = null, legacyKey = '') {
     const own = readSaved(key);
-    if (own.broken || own.record) return key;
+    if (own.broken) return key;
+    if (own.record) {
+        // 图框挪过位置、在挪开的那段时间里重画过：新图存在挪开时的键下，挪回原位后原键下还是旧图。
+        // 同一楼层、同一段提示词、别的序号下有更晚换上镜面的那张（别的图框占着的不算），就用那一张。
+        const moved = findShiftedBuiltinImageKey(key, claimed);
+        if (moved && moved !== key) {
+            const other = readSaved(moved);
+            if (other.record && shownTime(other.record) > shownTime(own.record)) return moved;
+        }
+        return key;
+    }
     for (const other of [legacyKey, findCompatibleBuiltinImageKey(key), findBuiltinImageKeyFromOtherChat(key), findShiftedBuiltinImageKey(key, claimed)]) {
-        if (other && other !== key && readSaved(other).record) return other;
+        if (other && other !== key) {
+            const saved = readSaved(other);
+            if (saved.record || saved.broken) return other;
+        }
     }
     return key;
 }
 // 没写画面说明、拿标题和旁边的字凑提示词的图框：1.74.2 以前相邻文字按 innerText 算，键可能不同。算一个旧键只用来找回。
 function legacyKeyFor(root, frame) {
-    if (hasModelPrompt(frame)) return '';
-    // 1.74.2 以前：标题按整条标题条（含插件挂上的按钮字）、旁边文字按 innerText 算的键，只用来找回那时存下的图。
-    const legacy = readPrompt(frame, { legacyCaption: true, legacyTitleText: true });
-    return legacy ? storageKey(root, frame, legacy) : '';
+    const owner = resolveFrameOwner(frame), prompt = readPrompt(frame);
+    const key = rawStorageKey(root, frame, prompt);
+    if (owner?.favorite && owner.details?.dataset?.rmImageOwnerFace === undefined) return findUnambiguousBuiltinImageKey(key);
+    // Legacy keys omitted the face. A full stored output or a complete mounted
+    // face collection must show that this prompt belongs to only one frame.
+    const saved = owner?.ctx?.chatMetadata?.rabbit_mirror_independent_outputs_v2?.owners?.[`${owner.mes}:${owner.swipe}`]?.html;
+    const source = String(saved || owner?.msg?.swipes?.[owner.swipe] || owner?.msg?.mes || '');
+    const sourceFrames = (source.match(/data-rm-draw-frame(?:\s|=|>)/g) || []).length;
+    const boundary = owner?.shell || frame.closest?.('.mes[mesid]');
+    const mounted = [...(boundary?.querySelectorAll?.('[data-rm-draw-frame]') || [])];
+    const declared = Number(owner?.shell?.dataset?.rmFaceCount || 0);
+    const complete = !declared || [...(boundary?.querySelectorAll?.('details') || [])].filter(face => !face.parentElement?.closest?.('details')).length >= declared;
+    const uniqueSource = sourceFrames === 1 || (prompt && source.split(prompt).length === 2);
+    const uniqueMounted = complete && mounted.length > 0 && mounted.filter(other => readPrompt(other) === prompt).length === 1;
+    if (!uniqueSource && !uniqueMounted) return '';
+    let found = findUnambiguousBuiltinImageKey(key, { legacyOnly: true });
+    if (!found && !hasModelPrompt(frame)) {
+        const legacy = readPrompt(frame, { legacyCaption: true, legacyTitleText: true });
+        if (legacy) found = findUnambiguousBuiltinImageKey(rawStorageKey(root, frame, legacy), { legacyOnly: true });
+    }
+    return found;
 }
+
 function readSavedAnyChat(key, claimed = null, legacyKey = '') {
     const where = savedKeyFor(key, claimed, legacyKey);
     return where === key ? readSaved(key) : readSaved(where);
@@ -354,16 +384,13 @@ function liveEntry(entry) {
 }
 // claimed：这一面里别的图框自己的键（或算出它的函数），序号挪了去认正在画的那一次时不认别人的。
 function inflightKeyFor(key, claimed = null) {
-    if (liveEntry(inflight.get(key))) return key;
-    for (const [other, entry] of inflight) if (other !== key && liveEntry(entry) && builtinImageKeysCompatible(key, other)) return other;
-    let taken = null;
-    for (const [other, entry] of inflight) {
-        if (other === key || !liveEntry(entry) || !builtinImageKeysShifted(key, other)) continue;
-        taken ||= (typeof claimed === 'function' ? claimed() : claimed) || new Set();
-        if (!taken.has(other)) return other;
-    }
-    return key;
+    for (const [other, entry] of inflight) if (liveEntry(entry) && mirrorImageOwnerMatchesKey(entry.owner, key)) return other;
+    const taken = (typeof claimed === 'function' ? claimed() : claimed) || new Set();
+    for (const [other, entry] of inflight) if (liveEntry(entry) && builtinImageKeysShifted(key, other)
+        && !taken.has(other) && mirrorImageOwnerMatchesKey(entry.owner, key, { matchEntry: false })) return other;
+    return '';
 }
+function hasInflight(key, claimed = null) { return !!inflightKeyFor(key, claimed); }
 
 function frameImageSize(frame) {
     const width = frame.clientWidth;
@@ -421,103 +448,138 @@ function fitFrameImage(image, record) {
 const unreadable = new Set();
 // 这次打开页面里画好的图：本机存储满了没存进去时，这一面重新挂上（切面、刷新工具、重新渲染）还能放回去，不再画一遍。
 const sessionRecords = new Map();
-// 同一个图框位置（聊天、楼层、swipe、第几个图框）自动画了几次：10 分钟内自动画满 2 次就不再自动画，
-// 改成留「重新生图」按钮。存不进去、提示词每次读出来不一样这类毛病，最多多花一次，不会一直画下去。
-// 这次打开页面（App 启动、刷新）的时刻。
-const PAGE_OPENED_AT = (() => {
-    try { const at = Number(globalThis.performance?.timeOrigin); if (Number.isFinite(at) && at > 0) return at; } catch { /* 拿不到就用模块加载时 */ }
-    return Date.now();
-})();
-const RECENT_FACE_MS = 30 * 60 * 1000;
-function timeOf(value) {
-    const at = value instanceof Date ? value.getTime() : typeof value === 'number' ? value : Date.parse(String(value ?? ''));
-    return Number.isFinite(at) && at > 0 ? at : 0;
+// One automatic attempt belongs to an accepted output and frame, not its mutable
+// caption/hash. The message weak key releases this state when the chat unloads.
+const automaticFrames = new WeakMap();
+// A late paid completion remains in history but must not override a later
+// request or an explicit history selection for the same message entry.
+function imageJobIdentity(owner, matchEntry = true) {
+    return JSON.stringify([owner.scope || `chat:${owner.chat}`, owner.token, owner.swipe, matchEntry ? owner.entry : null, owner.source]);
+}
+// 用户在挪过位置的图框上手动重画／选图：挪开前那个序号下还没回音的旧请求，也是这一格的，一并作废（晚回来只进历史）。
+// 这一面别的图框自己的键不算。
+function supersedeShiftedImageJobs(key, claimed = null) {
+    let taken = null;
+    for (const [other, entry] of inflight) {
+        if (!builtinImageKeysShifted(key, other) || !mirrorImageOwnerMatchesKey(entry.owner, key, { matchEntry: false })) continue;
+        taken ||= (typeof claimed === 'function' ? claimed() : claimed) || new Set();
+        if (!taken.has(other)) entry.superseded = true;
+    }
+}
+function supersedeImageJobs(owner) {
+    const identity = imageJobIdentity(owner);
+    // Compare the persisted owner, not the current in-memory message object.
+    // Mark before replacing an inflight key: an older timed-out entry retains
+    // this decision even after the newer request has completed and cleaned up.
+    for (const entry of inflight.values()) {
+        if (entry.followedOwners?.has(identity) || imageJobIdentity(entry.owner) === identity) entry.superseded = true;
+    }
 }
 // 图框属于哪一面、哪条回复：按最外层的那一面算（图框可能套在模型写的折叠里），
 // 先看这一面和外壳上的归属，没有（写在回复正文里的面）就看所在的那条消息。图键里的楼层不一定记着，不用它。
-function frameOwner(frame) {
-    let face = frame?.closest?.('details') || null;
-    while (face?.parentElement?.closest?.('details')) face = face.parentElement.closest('details');
-    const ctx = getContext();
-    const current = String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? '').replace(/^chat:/, '');
-    const own = face?.dataset || {};
-    const shell = face?.parentElement?.matches?.('[data-rabbit-mirror-external-source="true"]') ? face.parentElement.dataset : {};
-    const pick = (...values) => { for (const value of values) if (value !== undefined && value !== null && String(value) !== '') return String(value); return ''; };
-    let chat = pick(own.rabbitMirrorOwnerChat, shell.rmOwnerChat);
-    let mes = pick(own.rabbitMirrorOwnerMesid, shell.rmOwnerMesid, shell.rmExternalOwnerMessage);
-    let swipe = pick(own.rabbitMirrorOwnerSwipe, shell.rmOwnerSwipe);
-    if (!/^\d+$/.test(mes)) mes = String(frame?.closest?.('.mes[mesid]')?.getAttribute('mesid') || '');
-    if (!/^\d+$/.test(mes)) return null;
-    const msg = ctx?.chat?.[Number(mes)];
-    if (!/^\d+$/.test(swipe)) swipe = String(Number.isInteger(msg?.swipe_id) ? msg.swipe_id : 0);
-    if (!chat) chat = current;
-    if (!current || chat.replace(/^chat:/, '') !== current) return null;
-    const faceIndex = own.rabbitMirrorFaceIndex;
-    return { ctx, chat, mes: Number(mes), swipe: Number(swipe), msg, faceIndex: faceIndex === undefined || faceIndex === '' ? null : Number(faceIndex) };
+function resolveFrameOwner(frame) {
+    let details = frame?.closest?.('details') || null;
+    while (details?.parentElement?.closest?.('details')) details = details.parentElement.closest('details');
+    const ctx = getContext(), current = String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? '').replace(/^chat:/, '');
+    const own = details?.dataset || {};
+    const shellNode = details?.closest?.('[data-rabbit-mirror-external-source="true"]');
+    const shell = shellNode?.dataset || {};
+    const pick = (...values) => values.find(value => value !== undefined && value !== null && String(value) !== '') ?? '';
+    const chat = String(pick(own.rmImageOwnerChat, own.rabbitMirrorOwnerChat, shell.rmOwnerChat, current));
+    let mes = String(pick(own.rmImageOwnerMesid, own.rabbitMirrorOwnerMesid, shell.rmOwnerMesid, shell.rmExternalOwnerMessage));
+    let swipe = String(pick(own.rmImageOwnerSwipe, own.rabbitMirrorOwnerSwipe, shell.rmOwnerSwipe));
+    if (!own.rmImageOwnerChat && !/^\d+$/.test(mes)) mes = String(frame?.closest?.('.mes[mesid]')?.getAttribute('mesid') ?? '');
+    const msg = chat.replace(/^chat:/, '') === current && /^\d+$/.test(mes) ? ctx?.chat?.[Number(mes)] : null;
+    if (!/^\d+$/.test(swipe) && msg) swipe = String(Number.isInteger(msg.swipe_id) ? msg.swipe_id : 0);
+    let faceIndex = pick(own.rmImageOwnerFace, own.rabbitMirrorFaceIndex);
+    const toto = details?.closest?.('toto[data-rabbit-mirror="true"]');
+    if (faceIndex === '' && /^\d+$/.test(toto?.getAttribute?.('data-rm-face') || '')) faceIndex = Number(toto.getAttribute('data-rm-face')) - 1;
+    if (faceIndex === '') {
+        const boundary = shellNode || frame?.closest?.('.mes[mesid]');
+        const faces = [...(boundary?.querySelectorAll?.('details') || [])].filter(face => !face.parentElement?.closest?.('details'));
+        faceIndex = Math.max(0, faces.indexOf(details));
+    }
+    return { ctx, chat, details, shell: shellNode, msg, favorite: !!own.rmImageOwnerChat,
+        mes: /^\d+$/.test(mes) ? Number(mes) : null, swipe: /^\d+$/.test(swipe) ? Number(swipe) : null,
+        faceIndex: own.rmImageOwnerChat && own.rmImageOwnerFace === undefined ? null
+            : Number.isInteger(Number(faceIndex)) && Number(faceIndex) >= 0 ? Number(faceIndex) : 0 };
 }
-// 插图记录找不到时，这一面是不是这次打开以前就生成好的（是的话不自动重画，免得整个聊天一起重画、白花额度）。
-// 这次打开以后为这层发过生成请求的（整条或这一面）不算；兔子镜存档里有这层、或这条回复是以前生成的，才算以前的。
-function faceFromEarlierSession(frame) {
+function frameOwner(frame) {
+    const owner = resolveFrameOwner(frame);
+    return owner?.msg && !owner.favorite && Number(owner.msg.swipe_id || 0) === owner.swipe ? owner : null;
+}
+
+function automaticFrameState(frame) {
     const owner = frameOwner(frame);
-    if (!owner) return false;
-    if (isFreshDrawSlot(owner.chat, owner.mes, owner.swipe, owner.faceIndex)) return false;
-    const owners = owner.ctx?.chatMetadata?.rabbit_mirror_independent_outputs_v2?.owners;
-    const saved = owners && typeof owners === 'object' ? owners[`${owner.mes}:${owner.swipe}`] : null;
-    // 刚生成不久（半小时内）就刷新、App 被系统重启了：图多半还没来得及画，照常补画，不算以前的。
-    if (saved && typeof saved === 'object' && saved.deleted !== true && saved.html) return !(timeOf(saved.ts) > Date.now() - RECENT_FACE_MS);
-    // 写在回复正文里的面（没有兔子镜存档）：看那条回复是什么时候生成的。
-    const msg = owner.msg;
-    if (!msg || typeof msg !== 'object' || msg.is_user) return false;
-    const generatedAt = Math.max(timeOf(msg.gen_started), timeOf(msg.gen_finished));
-    return generatedAt > 0 && generatedAt < PAGE_OPENED_AT && generatedAt < Date.now() - RECENT_FACE_MS;
+    if (!owner || owner.msg.is_user) return null;
+    // Host timestamps survive reload and can be rewritten or ahead of the local
+    // clock. Only the live successful-generation chain can authorize spending.
+    const output = freshDrawSlotIdentity(owner.chat, owner.mes, owner.swipe, owner.faceIndex);
+    if (!output) return null;
+    const frames = [...(owner.details?.querySelectorAll?.('[data-rm-draw-frame]') || [])];
+    const index = frames.indexOf(frame);
+    if (index < 0) return null;
+    let states = automaticFrames.get(owner.msg);
+    if (!states) { states = new Map(); automaticFrames.set(owner.msg, states); }
+    const slot = `${String(owner.chat).replace(/^chat:/, '')}|${owner.swipe}|${owner.faceIndex}|${index}`;
+    let previous = states.get(slot);
+    if (previous?.output !== output) previous = null;
+    const hash = previous?.key?.slice(previous.key.lastIndexOf(':') + 1);
+    if (hash && hash !== hashText(readPrompt(frame))) {
+        const prefix = slot.slice(0, slot.lastIndexOf('|') + 1);
+        const known = [...states].filter(([name, value]) => name.startsWith(prefix) && value.output === output).length;
+        const moved = frames.some(other => other !== frame && hashText(readPrompt(other)) === hash);
+        // A genuinely added frame may get its first image. An existing set of
+        // frames whose order/prompt both changed has no such new permission.
+        if (moved && frames.length > known) previous = null;
+        else if (moved || frames.length > 1 || known > 1) previous = {
+            output, key: rawStorageKey(owner.details, frame, readPrompt(frame)), record: null,
+        };
+    }
+    return { states, slot, output, previous: previous?.output === output ? previous : null };
+}
+function rememberAutomaticImage(frame, key, record) {
+    const state = automaticFrameState(frame);
+    if (state && !state.previous?.entry) state.states.set(state.slot, { output: state.output, key, record });
 }
 // 聊天还没加载完整时读不到消息上的插图记录：等它加载好再读一次（最多等 15 秒），不当成没画过。
 const CHAT_LOAD_WAIT_MS = 15000;
-const waitingForChat = new WeakSet();
-function retryWhenChatLoaded(target, key, run) {
-    if (waitingForChat.has(target)) return true;
-    if (!mirrorImageChatLoading(key)) return false;
-    waitingForChat.add(target);
-    const started = Date.now();
+const waitingForChat = new WeakMap();
+function clearChatLoadWait(target) {
+    const waiting = waitingForChat.get(target);
+    if (waiting?.timer) clearTimeout(waiting.timer);
+    waitingForChat.delete(target);
+}
+function retryWhenChatLoaded(target, key, run, { isCurrent = () => true, onTimeout = () => {} } = {}) {
+    let waiting = waitingForChat.get(target);
+    const cancel = () => clearChatLoadWait(target);
+    if (waiting && waiting.key !== key) { cancel(); waiting = null; }
+    if (!target.isConnected || !isCurrent()) { cancel(); return true; }
+    if (!mirrorImageChatLoading(key)) { cancel(); return false; }
+    // 留下超时状态：工具重挂或 fillFrame 再入不能重新开始一个 15 秒周期。
+    // 之后资料真的就绪时，上面的分支会清掉状态，正常恢复或手动操作仍然可用。
+    if (waiting) return true;
+    waiting = { key, deadline: Date.now() + CHAT_LOAD_WAIT_MS, timer: null };
+    waitingForChat.set(target, waiting);
     const tick = () => {
-        if (!target.isConnected) { waitingForChat.delete(target); return; }
-        if (mirrorImageChatLoading(key) && Date.now() - started < CHAT_LOAD_WAIT_MS) { setTimeout(tick, 300); return; }
-        waitingForChat.delete(target);
-        run();
+        if (waitingForChat.get(target) !== waiting) return;
+        waiting.timer = null;
+        if (!target.isConnected || !isCurrent()) { cancel(); return; }
+        if (!mirrorImageChatLoading(key)) { cancel(); run(); return; }
+        const remaining = waiting.deadline - Date.now();
+        if (remaining <= 0) { onTimeout(); return; }
+        waiting.timer = setTimeout(tick, Math.min(300, remaining));
     };
-    setTimeout(tick, 300);
+    waiting.timer = setTimeout(tick, 300);
     return true;
 }
-const AUTO_DRAW_WINDOW_MS = 10 * 60 * 1000;
-const AUTO_DRAW_LIMIT = 2;
-const autoDraws = new Map();
 // 最近一次画好却一点也没存进去的键：重新挂上时放这次画的那张，不放存档里更旧的。换版本、存成功后去掉。
 const unsavedKeys = new Set();
-// 位置不看提示词：聊天、楼层、swipe（取自键），再加这一面在这条消息里是第几面、图框是这一面的第几个。
-function frameSlot(key, frame) {
-    const parts = String(key).split(':');
-    const details = frame?.closest?.('details');
-    const face = details?.parentElement ? [...details.parentElement.children].filter(node => node.matches?.('details')).indexOf(details) : 0;
-    const frames = details ? [...details.querySelectorAll('[data-rm-draw-frame]')] : [];
-    const own = Math.max(0, frames.indexOf(frame));
-    // 融合在回复里的镜面键里没记楼层：从所在的那条消息取；还取不到就把提示词指纹算进位置，免得各楼层挤在一个位置上互相拦。
-    let mes = parts.length >= 6 ? parts[parts.length - 4] : '';
-    if (!mes) mes = String(frame?.closest?.('.mes[mesid]')?.getAttribute('mesid') || '');
-    const swipe = parts.length >= 6 ? parts[parts.length - 3] : '';
-    const chat = parts.length >= 6 ? parts.slice(1, -4).join(':').replace(/^chat:/, '') : String(key);
-    return `${chat}:${mes || `#${parts[parts.length - 1] || ''}`}:${swipe}:${face}:${own}`;
-}
-function recentAutoDraws(slot) {
-    const now = Date.now();
-    const list = (autoDraws.get(slot) || []).filter(at => now - at < AUTO_DRAW_WINDOW_MS);
-    autoDraws.set(slot, list);
-    return list;
-}
 function sessionRecordFor(key) {
-    if (sessionRecords.has(key)) return sessionRecords.get(key);
-    for (const [other, record] of sessionRecords) if (builtinImageKeysCompatible(key, other) || builtinImageKeysShifted(key, other)) return record;
+    for (const value of sessionRecords.values()) if (mirrorImageOwnerMatchesKey(value.owner, key)) return value.record;
     return null;
 }
+
 // 以前存档里存过带主机的完整网址（比如在家用局域网地址画的）：换个地址打开酒馆（手机、外网）时主机对不上，
 // 但文件还在这台酒馆上，所以同一路径再按当前地址试一次。
 function sameHostAlternative(url) {
@@ -551,6 +613,7 @@ function paint(frame, record, root = null, key = '') {
     if (isRabbitMirrorLinkedAvatarFrame(frame)) return false;
     const url = safeImageUrl(record?.url || record?.path || record?.dataUrl);
     if (!url) return false;
+    clearChatLoadWait(frame);
     const promptNode = frame.querySelector?.('[data-rm-draw-prompt]');
     if (promptNode) promptNode.hidden = true;
     hideFrameExtraMedia(frame);
@@ -605,14 +668,20 @@ function anyWaiterConnected(key) {
     return false;
 }
 
-function imageRequestOwner() {
+function imageRequestOwner(frame) {
+    const original = resolveFrameOwner(frame);
+    const source = original?.msg ? String(Number(original.msg.swipe_id || 0) === original.swipe ? original.msg.mes ?? '' : original.msg.swipes?.[original.swipe] ?? '') : '';
+    const appearance = JSON.stringify([readPrompt(frame), readTags(frame), readCharacters(frame)]);
     const context = getContext();
     const chat = context?.chat;
     const identity = rabbitMirrorAvatarPromptIdentity(context);
     return () => {
         const settings = getSettings(), current = getContext();
         return settings.builtinImageEnabled === true && settings.enabled !== false && settings.mode !== 'off'
-            && current?.chat === chat && rabbitMirrorAvatarPromptIdentity(current) === identity;
+            && current?.chat === chat && rabbitMirrorAvatarPromptIdentity(current) === identity
+            && !!original?.msg && Number(original.msg.swipe_id || 0) === original.swipe && resolveFrameOwner(frame)?.msg === original.msg && resolveFrameOwner(frame)?.swipe === original.swipe
+            && String(Number(original.msg.swipe_id || 0) === original.swipe ? original.msg.mes ?? '' : original.msg.swipes?.[original.swipe] ?? '') === source
+            && JSON.stringify([readPrompt(frame), readTags(frame), readCharacters(frame)]) === appearance;
     };
 }
 
@@ -820,8 +889,13 @@ function stripHairColor(text) {
 // 发色只去颜色词（长短留着），瞳色去瞳色词；皮肤、痣疤、身材、脸去掉写这一项的那一小句（同一句里写着衣着的不动）。
 // 英文标签同样处理（hair ornament、closed eyes 不动；带权重括号的整串不拆）。fields 可以是 { hair, eye } 或一组项名。
 // 一段字里写某几项的那几个词去掉（发色、瞳色、长短、刘海、肤色、痣），别的照留。
-function stripFieldWords(text, set) {
+function stripFieldWords(text, set, name = '') {
     let rest = String(text || '');
+    if (set.has('gender')) {
+        for (const span of explicitGenderStatements(rest, name).filter(span => span.kind === 'identity').reverse()) {
+            rest = rest.slice(0, span.start) + rest.slice(span.end);
+        }
+    }
     if (set.has('hair')) rest = stripHairColor(rest).replace(EN_HAIR_COLOR_WORDS, '');
     if (set.has('eye')) rest = rest.replace(EN_EYE_COLOR_WORDS, '');
     // 发色没定、只定了长短时：「白色短发」去掉长短留下「白色发」里的发色（留个「发」字，不让颜色悬空）。
@@ -839,9 +913,12 @@ function stripModelLooks(person, fields) {
     // 皮肤、痣疤只去写这一项的那几个词（「黝黑皮肤」「左眼下一颗黑痣」），同一句里的动作、表情照留。
     // 身材、脸常和动作写在一起（「高挑的身材倚在门边」「眉眼含笑」），不去。
     // 英文去完词后留下的双空格、悬空的 and / with 一起收拾掉。
-    const rest = stripFieldWords(person.text, set).replace(/[ \t]{2,}/g, ' ')
+    const rest = stripFieldWords(person.text, set, person.name).replace(/[ \t]{2,}/g, ' ')
         .replace(/\b(?:and|with)\s*(?=[,.;]|$)/gi, '').replace(/(^|[,.;]\s*)(?:and|with)\b\s*/gi, '$1').replace(/\s+([,.;])/g, '$1').trim();
     person.text = rest.replace(/(^|[，,、。；;])\s*的/g, '$1').replace(/([，,、])\s*(?=[，,、。；;]|$)/g, '').replace(/^[，,、。；;\s]+/, '').trim();
+    // 单个完整权重标签也能安全丢掉；跨逗号的半个权重组仍不拆，避免破坏语法。
+    if (set.has('gender') && person.modelTag) person.modelTag = String(person.modelTag).split(',')
+        .filter(tag => !tagTraits(tag.trim()).includes('gender')).map(tag => tag.trim()).filter(Boolean).join(', ');
     const tags = String(person.modelTag || '');
     if (tags && !/[{}()[\]]/.test(tags)) {
         const claimed = new Set([set.has('hair') && 'hair-color', set.has('eye') && 'eye-color', set.has('hairlen') && 'hair-length', set.has('bangs') && 'bangs'].filter(Boolean));
@@ -862,9 +939,10 @@ function tagHasLooks(tags) {
 // 前面写了的项以前面为准，前面没写的项由后面的来源补。角色卡只写了黑发时，世界书里的粉色眼睛、肤色、泪痣照样补得进来，
 // 模型写错的蓝眼睛也会被世界书的粉色眼睛顶掉。
 // 头发分成三项：发色、长短直卷、刘海。角色卡只写了「黑发」时，世界书里的「及腰长直发、齐刘海」照样补得进来。
-const LOOK_FIELDS = ['hair', 'hairlen', 'bangs', 'eye', 'skin', 'mark', 'build', 'face'];
+const LOOK_FIELDS = ['gender', 'hair', 'hairlen', 'bangs', 'eye', 'skin', 'mark', 'build', 'face'];
 const HAIR_COLOR_EN = new RegExp(`\\b${TAG_COLOR}[-\\s_]+(?:[a-z]+[-\\s_]+)?hair\\b`, 'i');
 const LOOK_FIELD_TESTS = [
+    ['gender', (text, name) => isExplicitGenderStatement(text, name) || tagTraits(String(text).trim(), true).includes('gender')],
     ['hair', text => HAS_HAIR.test(text) || HAIR_COLOR_EN.test(text)],
     ['hairlen', text => /及腰|齐肩|及肩|过肩|[长短卷直]发|长直|\b(?:long|short|medium|shoulder[-\s_]length|wavy|curly|straight)[-\s_]+(?:[a-z]+[-\s_]+)?hair\b/i.test(text)],
     ['bangs', text => /刘海|\b(?:bangs|fringe)\b/i.test(text)],
@@ -876,13 +954,13 @@ const LOOK_FIELD_TESTS = [
     // 只认写长相的说法（「脸红了」「皱眉」不算）。
     ['face', text => /脸型|[瓜子鹅蛋圆方尖娃]脸|面容|面庞|五官|容貌|相貌|眉眼|眉目|柳叶眉|剑眉|浓眉|细眉|薄唇|丹唇|高鼻|鼻梁|\b(?:face|eyebrows|lips|jawline)\b/i.test(text)],
 ];
-const lookFieldsOf = clause => LOOK_FIELD_TESTS.filter(([, test]) => test(String(clause || ''))).map(([name]) => name);
+const lookFieldsOf = (clause, name = '') => LOOK_FIELD_TESTS.filter(([, test]) => test(String(clause || ''), name)).map(([field]) => field);
 const splitLookClauses = text => String(text || '').split(/(?<=[。；;！!？?\n])|[，,、]|(?<=\.)\s+/).map(part => part.trim()).filter(part => /[\p{L}\p{N}]/u.test(part));
 // 一段长相（或一串标签）写到了哪几项。纯衣着的句子不算「其他」长相。
-function lookFieldsOfText(text) {
+function lookFieldsOfText(text, name = '') {
     const fields = new Set();
     for (const clause of splitLookClauses(text)) {
-        const found = lookFieldsOf(clause);
+        const found = lookFieldsOf(clause, name);
         found.forEach(field => fields.add(field));
     }
     return fields;
@@ -891,23 +969,25 @@ const looksComplete = person => LOOK_FIELDS.every(field => (person?.looksFields 
 // 从一个来源的长相里只取这个人还缺的那几项，补到这个人身上；一项都不缺或这段一项也补不上时什么都不改，返回 false。
 function fillLooksFrom(person, looks, label) {
     const covered = new Set(person.looksFields || []);
+    const ownGender = !covered.has('gender') && isExplicitGenderStatement(looks, person.name);
     const added = new Set();
     const keep = [];
     for (const clause of splitLookClauses(looks)) {
-        const found = lookFieldsOf(clause);
+        const found = lookFieldsOf(clause, person.name);
+        const birthContext = ownGender && explicitGenderStatements(clause, person.name).some(span => span.kind === 'birth');
         // 认不出是哪一项的句子（「性格温柔」「平时爱看书」）不算长相，不补。
         const fresh = found.filter(field => !covered.has(field));
         // 纯衣着句：照旧作兜底衣着带上（这一面写了衣着时下面会去掉），不占哪一项。
-        if (!fresh.length && !(found.length === 0 && SCENE_KINDS.some(kind => hasKindText(kind, clause)) && !covered.has('clothing'))) continue;
+        if (!fresh.length && !birthContext && !(found.length === 0 && SCENE_KINDS.some(kind => hasKindText(kind, clause)) && !covered.has('clothing'))) continue;
         let piece = clause;
         // 同一句里既有已定下的发色／瞳色、又有新的项（「黑发粉眼」而发色前面已定）：只去掉已定的那几个词。
         // 「黝黑肤色眼下泪痣」而肤色前面已定：去掉肤色那几个词，泪痣照补。
-        piece = stripFieldWords(piece, new Set(found.filter(field => covered.has(field))));
+        piece = stripFieldWords(piece, new Set(found.filter(field => covered.has(field))), person.name);
         piece = piece.replace(/^[的，,、\s]+/, '').trim();
         if (!piece) continue;
         keep.push(piece);
         fresh.forEach(field => added.add(field));
-        if (!found.length && !fresh.length) added.add('clothing');
+        if (!found.length && !fresh.length && !birthContext) added.add('clothing');
     }
     if (!keep.length || ![...added].some(field => field !== 'clothing')) return false;
     stripModelLooks(person, added);
@@ -954,7 +1034,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.6');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.0');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -1030,7 +1110,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.78.6'), import('./independentApi/connection.js?rmv=1.78.6')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.79.0'), import('./independentApi/connection.js?rmv=1.79.0')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1045,7 +1125,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.78.6');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.0');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1086,7 +1166,7 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         const looks = tagHasLooks(entry.tag);
         const nlLooks = { hair: HAS_HAIR.test(entry.nl || ''), eye: HAS_EYE.test(entry.nl || '') };
         // 建档写到了哪几项：这几项以建档为准（兔子镜写的同一项去掉），没写的项（比如只写了发色）后面的角色卡、世界书照样补。
-        const fields = new Set([...lookFieldsOfText(entry.nl || ''), ...lookFieldsOfText(String(entry.tag || '').replace(/,/g, '，'))]);
+        const fields = new Set([...lookFieldsOfText(entry.nl || '', entry.name), ...lookFieldsOfText(String(entry.tag || '').replace(/,/g, '，'), entry.name)]);
         if (looks.hair || nlLooks.hair) fields.add('hair');
         if (looks.eye || nlLooks.eye) fields.add('eye');
         if (!tagsOnly) stripModelLooks(next, fields);
@@ -1102,7 +1182,7 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
         if (merged.length >= 4 || merged.some(person => person.name === name || looseNameMatch(person.name, name))) continue;
         if (!library.has(name) || !mentionedIn(prompt, name, [...library.keys(), ...ambiguous, ...merged.map(person => person.name)])) continue;
         const entry = library.get(name);
-        const fields = [...new Set([...lookFieldsOfText(entry?.nl || ''), ...lookFieldsOfText(String(entry?.tag || '').replace(/,/g, '，'))])];
+        const fields = [...new Set([...lookFieldsOfText(entry?.nl || '', name), ...lookFieldsOfText(String(entry?.tag || '').replace(/,/g, '，'), name)])];
         merged.push({ name, text: mergeAppearance(entry, '', tagsOnly), libraryTag: String(entry?.tag || ''), fromLibrary: true, looksSource: '建档', looksFields: fields });
     }
     return merged.filter(person => person.text || person.libraryTag || person.modelTag);
@@ -1167,7 +1247,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         // 「跳过的标签」也管千千结档案里的文字。
         let cleanRef = value => value;
-        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.78.6')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.79.0')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
@@ -1192,8 +1272,14 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
 
 function startJob(key, prompt, frame, isCurrent, options = {}) {
     const existing = inflight.get(key);
-    if (liveEntry(existing)) return existing.job;
-    const entry = { job: null, isCurrent, sent: false };
+    if (liveEntry(existing) && mirrorImageOwnerMatchesKey(existing.owner, key)) return existing.job;
+    const owner = captureMirrorImageOwner(key);
+    if (!owner) throw staleImageRequest();
+    const entry = { job: null, isCurrent, sent: false, owner };
+    const automatic = automaticFrameState(frame);
+    supersedeImageJobs(owner);
+    const attempt = automatic ? { output: automatic.output, key, entry, record: null } : null;
+    if (attempt) automatic.states.set(automatic.slot, attempt);
     const job = (async () => {
         if (!isCurrent()) throw staleImageRequest();
         // 模型没写画面、插件拿标题和旁边的字凑的：发给生图的那段用干净的标题（不带标题条上的按钮字）。
@@ -1283,32 +1369,38 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             // 这里通过就是真要发请求了：记下来，之后切走聊天也等它画完、存下，不再另发一次。
             assertCurrent: () => {
                 const ok = isCurrent() && anyWaiterConnected(key);
-                if (ok) { entry.sent = true; entry.sentAt = Date.now(); if (options.slot && !options.reuse && !options.direct && !options.manual) recentAutoDraws(options.slot).push(Date.now()); }
+                if (ok) { entry.sent = true; entry.sentAt = Date.now(); }
                 return ok;
             },
             onProgress: event => {
                 const phase = { queued: '排队中', generating: '绘制中', 'queued-remote': '远端排队中', retrying: '按渠道规则重试中', saving: '保存中' }[event?.phase];
                 // 切走又切回来时这一次的归属已过期，进度照样报给回来后跟着等的那个图框（各图框自己再看归属）。
                 // 还在报进度（排队、绘制中）就不算卡住：重新计那 10 分钟。
-                if (entry.sent) entry.sentAt = Date.now();
-                if (phase && (isCurrent() || entry.sent)) reportProgress(key, `${provider}：${phase}…`);
+                if (entry.sent && !entry.superseded) entry.sentAt = Date.now();
+                if (phase && !entry.superseded && (isCurrent() || entry.sent)) reportProgress(key, `${provider}：${phase}…`);
             },
         });
         const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}), ...(options.direct ? { editedPrompt: true } : {}) };
-        if (inflight.get(key) === entry) {
+        const superseded = entry.superseded === true;
+        Object.defineProperty(record, 'superseded', { value: superseded, enumerable: false });
+        if (attempt) attempt.record = record;
+        {
+            // 已付费的结果无论任务是否被新owner占位，都保留到原owner。
             // 只记看图要的那份（有文件路径时不留整张图的 data:），最多记 200 张。
             const { dataUrl, ...light } = record;
-            sessionRecords.delete(key);
-            sessionRecords.set(key, record.path ? light : record);
+            if (!superseded) {
+                for (const [savedKey, saved] of sessionRecords) if (saved.owner.scope === owner.scope && saved.owner.token === owner.token && saved.owner.entry === owner.entry && saved.owner.source === owner.source) sessionRecords.delete(savedKey);
+                sessionRecords.set(owner, { record: record.path ? light : record, owner });
+            }
             if (sessionRecords.size > 200) sessionRecords.delete(sessionRecords.keys().next().value);
-            try { saveMirrorImage(key, record); unsavedKeys.delete(key); }
+            try { saveMirrorImageForOwner(key, record, owner, { preserveCurrent: superseded }); if (!superseded) unsavedKeys.delete(key); }
             catch (error) {
                 // 存不下整份：只存看图要的（地址、时间、种子），刷新后至少图还在、不会再画一遍。
                 let minimalSaved = false;
                 try {
                     const meta = record.promptMetadata || {};
-                    saveMirrorImage(key, { url: record.url, path: record.path, ...(record.path ? {} : { dataUrl: record.dataUrl }), generatedAt: record.generatedAt,
-                        provider: record.provider, builtinImageFit: record.builtinImageFit, promptMetadata: { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size } });
+                    saveMirrorImageForOwner(key, { url: record.url, path: record.path, ...(record.path ? {} : { dataUrl: record.dataUrl }), generatedAt: record.generatedAt,
+                        provider: record.provider, builtinImageFit: record.builtinImageFit, promptMetadata: { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size } }, owner, { preserveCurrent: superseded });
                     minimalSaved = true;
                 } catch { /* 还是存不下 */ }
                 console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error);
@@ -1323,6 +1415,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
     if (inflight.get(key) !== entry) progress.delete(key);
     inflight.set(key, entry);
     const cleanup = () => {
+        entry.settled = true;
         if (inflight.get(key) === entry) { inflight.delete(key); progress.delete(key); }
     };
     job.then(cleanup, cleanup);
@@ -1330,7 +1423,8 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
 }
 
 async function fillFrame(root, frame, { manual = false } = {}) {
-    const isCurrent = imageRequestOwner();
+    const isCurrent = imageRequestOwner(frame);
+    if (manual) clearChatLoadWait(frame);
     // A saved pair may still be hydrating on reload. Resolve that local-only
     // bridge before an avatar placeholder can spend a drawing request.
     if (await prepareRabbitMirrorAvatarFrame(frame)) return;
@@ -1342,17 +1436,22 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     if (!prompt) return;
     const key = storageKey(root, frame, prompt);
     const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
-    if (!saved.record && !saved.broken && !manual && retryWhenChatLoaded(frame, key, () => { void fillFrame(root, frame); })) return;
-    if (saved.broken) {
-        note(frame, '这一面的画面存档读不出来，没有重新生图。', root);
+    if (!saved.record && !saved.broken && !manual && retryWhenChatLoaded(frame, key, () => { void fillFrame(root, frame); }, {
+        isCurrent: () => isCurrent() && root.isConnected && storageKey(root, frame, readPrompt(frame)) === key,
+        onTimeout: () => note(frame, '聊天图片资料等了 15 秒仍未加载完成，已停止等待，没有重新生图。资料就绪后可重新打开恢复；也可手动重新生图（会花额度）。', root),
+    })) return;
+    if (saved.broken && (!manual || saved.code !== 'image_version_unconfirmed')) {
+        note(frame, saved.code === 'image_version_unconfirmed'
+            ? '这一面的旧图版本暂时无法确认，没有自动补画。需要新图时可点「重新生图」（会使用生图额度）。'
+            : '这一面的画面存档读不出来，没有重新生图。', root);
         return;
     }
     // 读不到的那张不再反复拿出来：按「重新生图」后直接发请求。
     // 这次打开页面里画过、比存档里的新（重画了却没存进去）：放这张，不再画。
     const remembered = !manual && !unreadable.has(key) ? sessionRecordFor(key) : null;
     const newer = remembered && (!saved.record || unsavedKeys.has(key));
-    if (newer && paint(frame, remembered, root, key)) return;
-    if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) return;
+    if (newer && paint(frame, remembered, root, key)) { rememberAutomaticImage(frame, key, remembered); return; }
+    if (saved.record && !unreadable.has(key) && paint(frame, saved.record, root, key)) { rememberAutomaticImage(frame, key, saved.record); return; }
     if (!manual && unreadable.has(key)) {
         // 读不到的那张：只留「重新生图」按钮，不自动再画（同一页面里重挂多少次都不画）。
         note(frame, '这一面画好的图读不到了（链接失效，或图片文件不在这台酒馆上）。点「重新生图」会再画一次，要花一次额度。', root);
@@ -1367,26 +1466,29 @@ async function fillFrame(root, frame, { manual = false } = {}) {
         note(frame, failed.get(key), root);
         return;
     }
-    if (!manual && !liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame)))) && faceFromEarlierSession(frame)) {
-        note(frame, '这一面是这次打开之前生成的，插图记录没找到，不自动重画（免得整个聊天一起重画、白花额度）。要画就点「重新生图」，要花一次额度。', root);
+    const automatic = !manual ? automaticFrameState(frame) : null;
+    const prior = automatic?.previous;
+    if (prior) {
+        if (prior.record && !unreadable.has(prior.key) && paint(frame, prior.record, root, prior.key)) return;
+        if (prior.entry && !prior.entry.settled && liveEntry(prior.entry)) return void joinInflight(root, frame, prior.key, isCurrent, prior.entry);
+        note(frame, '这个图框已经画过或尝试过，重新挂载不会再自动生图。需要再画时请点「重新生图」（会使用生图额度）。', root);
+        return;
+    }
+    if (!manual && !hasInflight(key, () => otherFrameKeys(root, frame)) && !automatic) {
+        note(frame, '插图存档暂未找到，已暂停自动补画，避免重复花费。需要新图时可点「重新生图」（会使用生图额度）。', root);
         return;
     }
     const joined = inflightKeyFor(key, () => otherFrameKeys(root, frame));
-    if (joined !== key) return void joinInflight(root, frame, joined, isCurrent);
-    const slot = frameSlot(key, frame);
-    if (!manual && !liveEntry(inflight.get(key)) && recentAutoDraws(slot).length >= AUTO_DRAW_LIMIT) {
-        note(frame, '这个图框 10 分钟内已经自动画过两次，为免重复花额度，先不再自动画（画好的图在柏宝绘图库里）。要再画一张就点「重新生图」。', root);
-        return;
-    }
+    if (joined && joined !== key) return void joinInflight(root, frame, joined, isCurrent);
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     const waiter = { frame, isCurrent };
     nodes.add(waiter);
     if (progress.has(key)) note(frame, progress.get(key));
     try {
-        const record = await startJob(key, prompt, frame, isCurrent, { manual, slot });
+        const record = await startJob(key, prompt, frame, isCurrent, { manual });
         unreadable.delete(key);
-        if (isCurrent() && frame.isConnected) paint(frame, record, root, key);
+        if (!record.superseded && isCurrent() && frame.isConnected) paint(frame, record, root, key);
     } catch (error) {
         const code = error?.code;
         if (code === 'stale_owner' || !isCurrent()) {
@@ -1408,9 +1510,22 @@ async function fillFrame(root, frame, { manual = false } = {}) {
 }
 
 // 跟着另一个键下正在画的那一次：画好就放进这个图框；画不成的提示交给那一次的调用方，这里只留「重新生图」。
-async function joinInflight(root, frame, key, isCurrent) {
-    const entry = inflight.get(key);
+async function joinInflight(root, frame, key, isCurrent, capturedEntry = null) {
+    const entry = capturedEntry || inflight.get(key);
     if (!entry?.job) return;
+    // A proven join moves this same task to another entry. Remember that exact
+    // owner so a later explicit redraw supersedes its old waiter too, even on
+    // historical messages with no automatic-generation grant.
+    const followedOwner = captureMirrorImageOwner(storageKey(root, frame, readPrompt(frame)));
+    if (followedOwner && imageJobIdentity(followedOwner, false) === imageJobIdentity(entry.owner, false)) {
+        (entry.followedOwners ||= new Set()).add(imageJobIdentity(followedOwner));
+    }
+    const automatic = automaticFrameState(frame);
+    const attempt = automatic ? { output: automatic.output, key, entry, record: null } : null;
+    // Following an existing paid request also occupies this frame's new slot.
+    // Register before awaiting so later reorders cannot spend again, including
+    // when that request ultimately fails or this particular DOM is detached.
+    if (attempt) automatic.states.set(automatic.slot, attempt);
     let nodes = waiters.get(key);
     if (!nodes) { nodes = new Set(); waiters.set(key, nodes); }
     const waiter = { frame, isCurrent };
@@ -1418,7 +1533,8 @@ async function joinInflight(root, frame, key, isCurrent) {
     if (progress.has(key)) note(frame, progress.get(key));
     try {
         const record = await entry.job;
-        if (isCurrent() && frame.isConnected) paint(frame, record, root, key);
+        if (attempt) attempt.record = record;
+        if (!record.superseded && isCurrent() && frame.isConnected) paint(frame, record, root, key);
     } catch {
         if (frame.isConnected && !frame.querySelector?.('img[data-rm-draw-result][src]')) note(frame, '这一面的画面这次没有画成。', root);
     } finally {
@@ -1476,6 +1592,8 @@ function ensureFrameBox(frame) {
 export function restoreSavedBuiltinImages(root) {
     if (!root?.querySelectorAll) return 0;
     adoptDrawNotes(root);
+    const context = getContext(), chat = context?.chat;
+    const identity = rabbitMirrorAvatarPromptIdentity(context);
     let restored = 0;
     for (const frame of root.querySelectorAll('[data-rm-draw-frame]')) {
         if (isRabbitMirrorLinkedAvatarFrame(frame)) continue;
@@ -1483,15 +1601,12 @@ export function restoreSavedBuiltinImages(root) {
         const prompt = readPrompt(frame);
         if (!prompt) continue;
         let saved = readSavedAnyChat(storageKey(root, frame, prompt), () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
-        // 收藏的是多面里的某一面时，图框在原来那条消息里的序号可能和收藏里不同：同一段提示词按序号挨个找。
-        if (!saved.record && frame.closest?.('details')?.dataset?.rmImageOwnerChat) {
-            const base = storageKey(root, frame, prompt).split(':');
-            for (let index = 0; index < 16 && !saved.record; index += 1) {
-                base[base.length - 2] = String(index);
-                saved = readSaved(base.join(':'));
-            }
-        }
-        if (!saved.record && retryWhenChatLoaded(frame, storageKey(root, frame, prompt), () => { if (root.isConnected) restoreSavedBuiltinImages(root); })) continue;
+        const key = storageKey(root, frame, prompt);
+        if (!saved.record && retryWhenChatLoaded(frame, key, () => { restoreSavedBuiltinImages(root); }, {
+            isCurrent: () => root.isConnected && getContext()?.chat === chat && rabbitMirrorAvatarPromptIdentity(getContext()) === identity
+                && storageKey(root, frame, readPrompt(frame)) === key,
+            onTimeout: () => note(frame, '聊天图片资料等了 15 秒仍未加载完成，已停止等待，没有重新生图。资料就绪后可重新打开恢复。'),
+        })) continue;
         if (!saved.record) {
             // 找不到存下的图时，不留一个破图标在那里。
             for (const broken of frame.querySelectorAll?.('img[data-rm-draw-result]:not([src])') || []) broken.remove();
@@ -1540,8 +1655,8 @@ export function listBuiltinImageFrames(root) {
         const key = storageKey(root, frame, prompt);
         const saved = readSavedAnyChat(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
         const { list: versions, current } = saved.broken ? { list: [], current: -1 } : versionsOf(saved.record);
-        list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken,
-            busy: liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame)))) });
+        list.push({ frame, key, prompt, editPrompt: hasModelPrompt(frame) ? prompt : (readPrompt(frame, { cleanTitle: true }) || prompt), versions, current, broken: !!saved.broken, brokenCode: saved.broken ? String(saved.code || '') : '',
+            busy: hasInflight(key, () => otherFrameKeys(root, frame)) });
     }
     return list;
 }
@@ -1551,15 +1666,24 @@ export function builtinImageReady() { return getSettings().builtinImageEnabled =
 // 聊天开了分支／改了名以后，图可能存在旧聊天名的键下：先把那份搬到当前键，之后翻历史、重画都对着当前键。
 function adoptSavedKey(key, claimed = null, legacyKey = '') {
     const own = readSaved(key);
-    if (own.broken || own.record) return;
+    if (own.broken) return;
     const other = savedKeyFor(key, claimed, legacyKey);
     if (!other || other === key) return;
     const moved = readSaved(other).record;
     if (!moved) return;
-    const { history = [], ...current } = moved;
+    let { history = [], ...current } = moved;
+    // 自己键下也有图（挪开那段时间里在别的序号下重画过、那张更晚换上）：换成那张，自己这边原来的几张并进历史，不丢。
+    if (own.record) {
+        if (!builtinImageKeysShifted(key, other)) return;
+        const { history: ownHistory = [], ...ownCurrent } = own.record;
+        const id = entry => JSON.stringify([entry?.path || entry?.url || entry?.dataUrl, entry?.generatedAt || '', entry?.promptMetadata?.seed ?? null]);
+        const seen = new Set([id(current)]);
+        history = [...history].reverse().concat([ownCurrent, ...[...ownHistory].reverse()])
+            .filter(entry => { const k = id(entry); if (seen.has(k)) return false; seen.add(k); return true; }).reverse();
+    }
     // 搬过来以后旧键下那份删掉：同一组图不在本机存两份（含整张图的 data: 存档会直接翻倍）。
     // 同一聊天里的旧键（没记楼层、序号挪了）搬过来以后删掉，不存两份；分支／改名前那个聊天的那份只读不删。
-    const sameChat = other === legacyKey || builtinImageKeysCompatible(key, other) || builtinImageKeysShifted(key, other);
+    const sameChat = other !== legacyKey && (builtinImageKeysCompatible(key, other) || builtinImageKeysShifted(key, other));
     try { replaceMirrorImageVersions(key, current, history); if (sameChat) removeMirrorImage(other, { keepSlotOf: key }); } catch { /* 存不下就照旧对着旧键 */ }
 }
 
@@ -1583,14 +1707,16 @@ export function builtinImageReusable(record) { return !!reusablePlan(record); }
 
 export async function rerollBuiltinImage(root, frame, { prompt: edited = '', signal = null, onText = null } = {}) {
     if (!builtinImageReady()) throw Object.assign(new Error('内置生图没有开启，在兔子镜设置里打开后才能重画。'), { code: 'disabled' });
-    const isCurrent = imageRequestOwner();
+    clearChatLoadWait(frame);
+    const isCurrent = imageRequestOwner(frame);
     const original = readPrompt(frame);
     if (!original) throw Object.assign(new Error('这个图框里没有提示词，没法重画。'), { code: 'no_prompt' });
     const key = storageKey(root, frame, original);
-    if (liveEntry(inflight.get(inflightKeyFor(key, () => otherFrameKeys(root, frame))))) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
+    if (hasInflight(key, () => otherFrameKeys(root, frame))) throw Object.assign(new Error('这张正在画，等它画完再重画。'), { code: 'busy' });
+    supersedeShiftedImageJobs(key, () => otherFrameKeys(root, frame));
     adoptSavedKey(key, () => otherFrameKeys(root, frame), legacyKeyFor(root, frame));
     const savedState = readSaved(key);
-    if (savedState.broken) throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
+    if (savedState.broken && savedState.code !== 'image_version_unconfirmed') throw Object.assign(new Error('这张图的存档读不出来，重画的结果会存不进去，先没有画。'), { code: 'broken' });
     const saved = savedState.record;
     const text = String(edited || '').replace(/\s+/g, ' ').trim();
     const reuse = !text ? reusablePlan(saved) : null;
@@ -1605,7 +1731,7 @@ export async function rerollBuiltinImage(root, frame, { prompt: edited = '', sig
         // 没存进去时本机存档还是旧图：镜面上照样换成新画的这张，只是翻不回来、刷新后会变回旧的。
         if (!generated?.saveError) { try { record = loadMirrorImage(key); } catch { record = null; } }
         if (!record) record = generated;
-        const painted = !!(record && frame.isConnected && isCurrent());
+        const painted = !!(!generated?.superseded && record && frame.isConnected && isCurrent());
         if (painted) { ensureFrameBox(frame); paint(frame, record, root, key); }
         return { record, painted, saveError: generated?.saveError || null };
     } finally {
@@ -1639,8 +1765,14 @@ export function showBuiltinImageVersion(root, frame, index) {
     try { next = replaceMirrorImageVersions(key, picked, list.filter((_, i) => i !== index)); }
     catch (error) { throw Object.assign(new Error('本机存储写不进去（多半是满了），没能换成这张。'), { code: 'quota', cause: error }); }
     // 用户自己选了这张：这次画的那张不再盖过它。
-    sessionRecords.delete(key); unsavedKeys.delete(key);
+    for (const [savedKey, value] of sessionRecords) if (mirrorImageOwnerMatchesKey(value.owner, key)) sessionRecords.delete(savedKey);
+    unsavedKeys.delete(key);
     unreadable.delete(key);
+    const selectedOwner = captureMirrorImageOwner(key);
+    const automatic = automaticFrameState(frame);
+    if (selectedOwner) supersedeImageJobs(selectedOwner);
+    supersedeShiftedImageJobs(key, () => otherFrameKeys(root, frame));
+    if (automatic) automatic.states.set(automatic.slot, { output: automatic.output, key, record: next });
     if (frame.isConnected) { ensureFrameBox(frame); paint(frame, next, root, key); }
     return next;
 }
