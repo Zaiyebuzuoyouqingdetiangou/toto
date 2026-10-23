@@ -1,11 +1,11 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.78.3';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.78.3';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.78.3';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.78.3';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.78.3';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.78.3';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.78.3';
-import { slimMirrorImagesForQuota } from './imageStore.js?rmv=1.78.3';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.78.4';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.78.4';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.78.4';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.78.4';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.78.4';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.78.4';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.78.4';
+import { slimMirrorImagesForQuota } from './imageStore.js?rmv=1.78.4';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -1902,6 +1902,14 @@ function historyHasBatchFace(history, batchId, faceIndex) {
         item && item.batchId === batchId && item.faceIndex === faceIndex);
 }
 
+// 上一次避重记录没写进去的原因（给提示用）：空字符串表示上一次写成了。
+let lastComboHistoryFailure = '';
+export function describeComboHistoryFailure() {
+    if (!lastComboHistoryFailure) return '';
+    if (lastComboHistoryFailure === 'BATCH_STORAGE_QUOTA_EXCEEDED') return `本机存储满了，腾了兔子镜自己的缓存也没写进去。${describeRabbitMirrorStorageUsage()}`;
+    if (lastComboHistoryFailure === 'BATCH_STORAGE_CHANGED') return '写的时候记录正好被别处改了（多开了页面？）。';
+    return `写入失败（${String(lastComboHistoryFailure).slice(0, 60)}）。`;
+}
 function commitComboToHistory(combo, visual = {}, options = {}) {
     if (!combo || typeof combo !== 'object') return false;
     const { visualSignature = '', visualSkeleton = '', riskFlags = [], paletteFingerprint = null, interactionFamily = null } = visual || {};
@@ -1959,24 +1967,32 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         });
         if (hasDrawCursor) {
             historyPayload = JSON.stringify(history.slice(-MAX_STORED));
-            return writeOwnedTransaction([
+            // 本机存储满了时，先按顺序腾出兔子镜自己的缓存（样本箱、插图旧提示词、已存进聊天的镜面缓存……）再写，不再直接失败。
+            const written = writeOwnedTransaction([
                 { key: STORAGE_KEY, before: previousHistoryRaw, after: historyPayload },
                 ...faceDrawCursorChanges([combo]),
-            ]);
+            ], { onRejected: code => { lastComboHistoryFailure = code; } }, true);
+            if (written) lastComboHistoryFailure = '';
+            return written;
         } else if (batchId || historyId) {
             historyPayload = JSON.stringify(history.slice(-MAX_STORED));
-            if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) return false;
-            localStorage.setItem(STORAGE_KEY, historyPayload);
+            if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) { lastComboHistoryFailure = 'BATCH_STORAGE_CHANGED'; return false; }
+            if (!writeOwnedTransaction([{ key: STORAGE_KEY, before: previousHistoryRaw, after: historyPayload }],
+                { onRejected: code => { lastComboHistoryFailure = code; } }, true)) return false;
             const confirmedRaw = localStorage.getItem(STORAGE_KEY);
             if (confirmedRaw !== historyPayload || (batchId && !historyHasBatchFace(JSON.parse(confirmedRaw), batchId, faceIndex))) {
                 throw new Error('Batch history read-back mismatch');
             }
         } else {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_STORED)));
+            const before = localStorage.getItem(STORAGE_KEY);
+            if (!writeOwnedTransaction([{ key: STORAGE_KEY, before, after: JSON.stringify(history.slice(-MAX_STORED)) }],
+                { onRejected: code => { lastComboHistoryFailure = code; } }, true)) return false;
         }
+        lastComboHistoryFailure = '';
         return true;
     } catch (error) {
         if ((batchId || historyId) && historyPayload) restoreOwnedStorageWrite(STORAGE_KEY, historyPayload, previousHistoryRaw);
+        lastComboHistoryFailure = isStorageQuotaError(error) ? 'BATCH_STORAGE_QUOTA_EXCEEDED' : String(error?.message || 'unknown');
         console.warn('[RabbitMirror] Failed to write combo history:', error);
         return false;
     }

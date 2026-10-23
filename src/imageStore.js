@@ -127,7 +127,7 @@ function requestChatSave(mes) {
         const chat = ctx.chat;
         const index = Number.isInteger(saveMes) && chat[saveMes] ? saveMes : chat.length - 1;
         if (index < 0) return;
-        import('./independentApi/persistence.js?rmv=1.78.3')
+        import('./independentApi/persistence.js?rmv=1.78.4')
             .then(module => module.requestSafeChatSave?.(ctx, index, chat[index]))
             .catch(() => { /* 存不上就等酒馆下次自己存 */ });
     }, 1500);
