@@ -4,6 +4,11 @@ const PREFIX = 'rabbitMirror:image:v1:';
 // 只记看图要的（图片地址、时间、种子、提示词），整张图的 data: 不放进聊天记录。
 // 本机存储只在这几种时候还用：图只有 data:（没能存成文件）、键还没记上楼层、或不是当前聊天（收藏夹另带一份）。
 const EXTRA_KEY = 'rabbitMirrorImages';
+const OWNER_KEY = 'rabbitMirrorImageOwner';
+const REMOVED_KEY = 'rabbitMirrorImagesRemoved';
+let ownerSequence = 0;
+function imageSource(msg, swipe) { return String(Number(msg?.swipe_id || 0) === swipe ? msg?.mes ?? '' : msg?.swipes?.[swipe] ?? ''); }
+function imageSourceHash(text) { let hash = 2166136261; for (const char of String(text)) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619); return (hash >>> 0).toString(36); }
 // 1.77.0 放在聊天信息里的那一格：读到就搬到对应的消息上。
 const LEGACY_META_KEY = 'rabbitMirrorImages';
 
@@ -17,6 +22,38 @@ function liveContext() {
 }
 function stripChat(value) { return String(value ?? '').replace(/^chat:/, ''); }
 function currentChatName(ctx) { return stripChat(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? ''); }
+// Host branches copy message extras, including our token. Their integrity is
+// new, while a rename keeps it; an archive must belong to that chat as well.
+function archiveScope(ctx) {
+    const integrity = ctx?.chatMetadata?.integrity;
+    return typeof integrity === 'string' && integrity ? `integrity:${integrity}` : `chat:${currentChatName(ctx)}`;
+}
+function ownerArchiveKey(token, scope, entry, source = '') {
+    return `owner:${token}:scope:${encodeURIComponent(scope)}:${source ? `retired:${source}:` : ''}${entry}`;
+}
+function inheritedArchiveScope(token, entry) { return token.archiveScopes?.[entry] || token.archiveScope || ''; }
+function rememberArchiveScope(extra, token, entry, scope, mes = null, current = null, history = null) {
+    const marker = extra?.[OWNER_KEY];
+    if (marker?.id !== token) return;
+    const version = current ? imageSourceHash(imageIdentity(current)) : '';
+    const historyVersions = Array.isArray(history) ? history.slice(-4).map(item => imageSourceHash(imageIdentity(item))) : null;
+    if (inheritedArchiveScope(marker, entry) === scope && (!version || marker.archiveVersions?.[entry] === version)
+        && (!historyVersions || JSON.stringify(marker.archiveHistoryVersions?.[entry]) === JSON.stringify(historyVersions))) return;
+    if (inheritedArchiveScope(marker, entry) !== scope) (marker.archiveScopes ||= {})[entry] = scope;
+    if (version) (marker.archiveVersions ||= {})[entry] = version;
+    if (historyVersions) (marker.archiveHistoryVersions ||= {})[entry] = historyVersions;
+    keyNamesGen += 1;
+    if (Number.isInteger(mes)) requestChatSave(mes);
+}
+function imageRemoved(target) {
+    return !!target && swipeExtras(target.msg, target.swipe).some(extra => extra?.[REMOVED_KEY]?.[target.entry] === true);
+}
+function clearImageRemoved(target) {
+    for (const extra of swipeExtras(target.msg, target.swipe).filter(Boolean)) if (extra[REMOVED_KEY]?.[target.entry] === true) {
+        delete extra[REMOVED_KEY][target.entry];
+        keyNamesGen += 1;
+    }
+}
 // 聊天加载完整（群聊加载中途会先放一个空的聊天信息，那时不读不写）。
 function chatReady(ctx) {
     const metadata = ctx?.chatMetadata;
@@ -97,7 +134,7 @@ function messageSlot(key, create = false) {
         }
         stores.push(store);
     }
-    if (!stores.length) return null;
+    if (!stores.length && !extras.some(extra => extra[OWNER_KEY]?.id)) return null;
     return { ctx, mes, msg, swipe, entry: slot.entry, stores };
 }
 // 聊天记录里那份：去掉有地址时多余的 data: 副本；只有 data: 的整张图不放（太大），这时返回 null。
@@ -114,21 +151,33 @@ function chatCopy(value) {
     if (!current) return null;
     return { version: 1, current, history: (Array.isArray(value.history) ? value.history : []).map(light).filter(Boolean) };
 }
-// 请酒馆找个安全的时候把聊天存一次（不在生成、还是这条聊天、聊天加载完整时）。几次合成一次，到点时取当时的聊天。
+// 请酒馆找个安全的时候把聊天存一次。合并同一时段的写入，但保存目标始终是写入时的聊天与消息。
+// 切换／重新加载后不保存已卸载的旧聊天，也不拿当前聊天冒充；本机副本继续兜底。
 let saveTimer = 0;
-let saveMes = -1;
+let saveRequest = null;
+function liveChatSaveContext(request) {
+    const ctx = liveContext();
+    return request && chatReady(ctx) && ctx.chat === request.chat && ctx.chatMetadata === request.metadata
+        && currentChatName(ctx) === request.name && ctx.chat[request.mes] === request.msg ? ctx : null;
+}
 function requestChatSave(mes) {
-    saveMes = mes;
+    const ctx = liveContext();
+    if (!chatReady(ctx) || !Number.isInteger(mes) || !ctx.chat[mes]) return;
+    const name = currentChatName(ctx);
+    if (!name) return;
+    saveRequest = { chat: ctx.chat, metadata: ctx.chatMetadata, name, mes, msg: ctx.chat[mes] };
     if (saveTimer) return;
     saveTimer = setTimeout(() => {
         saveTimer = 0;
-        const ctx = liveContext();
-        if (!chatReady(ctx)) return;
-        const chat = ctx.chat;
-        const index = Number.isInteger(saveMes) && chat[saveMes] ? saveMes : chat.length - 1;
-        if (index < 0) return;
-        import('./independentApi/persistence.js?rmv=1.78.6')
-            .then(module => module.requestSafeChatSave?.(ctx, index, chat[index]))
+        const request = saveRequest;
+        saveRequest = null;
+        if (!liveChatSaveContext(request)) return;
+        import('./independentApi/persistence.js?rmv=1.78.9')
+            .then(module => {
+                // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
+                const live = liveChatSaveContext(request);
+                if (live) module.requestSafeChatSave?.(live, request.mes, request.msg);
+            })
             .catch(() => { /* 存不上就等酒馆下次自己存 */ });
     }, 1500);
 }
@@ -145,6 +194,7 @@ function writeMessageImage(key, value) {
     }
     const target = messageSlot(key, true);
     if (!target) return false;
+    clearImageRemoved(target);
     target.stores.forEach(store => { pruneCopied(store, target.swipe); store[target.entry] = { ...structuredCloneSafe(copy), swipe: target.swipe }; });
     keyNamesGen += 1;
     requestChatSave(target.mes);
@@ -155,13 +205,223 @@ function structuredCloneSafe(value) {
 }
 function readMessageImage(key) {
     const target = messageSlot(key);
-    if (!target) return null;
+    if (!target || imageRemoved(target)) return null;
+    let current = null;
     for (const store of target.stores) {
         const value = store[target.entry];
-        if (ownEntry(value, target.swipe)) { const { swipe, ...record } = value; return record; }
+        if (ownEntry(value, target.swipe) && recordMatchesMessage(value, target.msg, target.swipe, false)) { const { swipe, ...record } = value; current = record; break; }
     }
-    return null;
+    // The owner archive also records explicit version selections. It is the
+    // authoritative local completion when a server snapshot still has old art.
+    for (const extra of swipeExtras(target.msg, target.swipe).filter(Boolean)) {
+        const token = extra[OWNER_KEY];
+        if (!token?.id || Number(token.swipe) !== target.swipe) continue;
+        try {
+            const scope = archiveScope(target.ctx);
+            const scopedKey = ownerArchiveKey(token.id, scope, target.entry);
+            const readArchive = name => {
+                const text = globalThis.localStorage.getItem(storageKey(name, 'images'));
+                if (text === null) return null;
+                const value = JSON.parse(text);
+                if (!value || value.version !== 1 || !value.current || !Array.isArray(value.history) || value.current.imageOwner?.token !== token.id)
+                    throw new TypeError('图片存档格式或归属无法识别，原存档已保留。');
+                return value;
+            };
+            let retained = readArchive(scopedKey);
+            // A completion whose source changed while it was in flight is kept
+            // separately. It may restore only its exact source and an empty slot.
+            if (!retained && !current) retained = readArchive(ownerArchiveKey(token.id, scope, target.entry, imageSourceHash(imageSource(target.msg, target.swipe))));
+            let scoped = !!retained;
+            if (!retained) {
+                // Inherit a copied message's existing art once. A different
+                // branch's later completion must not supersede its snapshot.
+                const fromScope = inheritedArchiveScope(token, target.entry);
+                const inherited = fromScope && fromScope !== scope
+                    ? readArchive(ownerArchiveKey(token.id, fromScope, target.entry)) : null;
+                let legacy = !inherited ? readArchive(`owner:${token.id}:${target.entry}`) : null;
+                if (!inherited && !legacy && !current) legacy = readArchive(`owner:${token.id}:retired:${imageSourceHash(imageSource(target.msg, target.swipe))}:${target.entry}`);
+                let source = inherited || legacy;
+                if (source?.current?.imageOwner?.token === token.id) {
+                    const sourceVersions = [...source.history, source.current];
+                    const sameLegacyChat = !inherited && (!source.owner?.scope || source.owner.scope === scope)
+                        && stripChat(source.owner?.chat) === currentChatName(target.ctx);
+                    // A checkpoint may first open after its parent redrew.
+                    // Its small saved version stamp identifies the inherited
+                    // data-only result without copying base64 into the chat.
+                    const version = token.archiveVersions?.[target.entry];
+                    if (!current && !sameLegacyChat && !version) {
+                        throw Object.assign(new TypeError('这张旧图片在分支创建时的版本无法确认，原存档已保留；可手动重新生图。'), { code: 'image_version_unconfirmed' });
+                    }
+                    if (!current && !sameLegacyChat && version && imageSourceHash(imageIdentity(source.current)) !== version) {
+                        const chosen = source.history.find(item => imageSourceHash(imageIdentity(item)) === version);
+                        if (!chosen) throw new TypeError('这张图片原有版本暂未找到，已有存档已保留，没有改用其他图片。');
+                        source = { ...source, current: chosen, history: imageHistory([...source.history, source.current], chosen) };
+                    }
+                    retained = source;
+                    if (!sameLegacyChat) {
+                        const selected = current?.current || source.current;
+                        const historyVersions = token.archiveHistoryVersions?.[target.entry];
+                        const available = [...sourceVersions, ...(current?.history || [])];
+                        // A copied checkpoint carries only small version stamps.
+                        // Parent selections can reorder history, so neither its
+                        // current order nor its later drawings belong here.
+                        const history = Array.isArray(historyVersions)
+                            ? historyVersions.map(version => available.find(item => imageSourceHash(imageIdentity(item)) === version)).filter(Boolean)
+                            : current?.history || [];
+                        retained = { ...source, ...(current || {}), current: selected, history: imageHistory(history, selected) };
+                    }
+                    retained = { ...retained, owner: { ...source.owner, chat: currentChatName(target.ctx), scope } };
+                    // A failed local safety copy must not hide an already
+                    // readable image. The original archive is never changed.
+                    try { globalThis.localStorage.setItem(storageKey(scopedKey, 'images'), JSON.stringify(retained)); scoped = true; } catch { /* Return the readable inherited image. */ }
+                }
+            }
+            if (retained?.current?.imageOwner?.token !== token.id) continue;
+            if (scoped) rememberArchiveScope(extra, token.id, target.entry, scope, target.mes, retained.current, retained.history);
+            if (JSON.stringify(chatCopy(current)) !== JSON.stringify(chatCopy(retained))) {
+                const copy = chatCopy(retained);
+                if (copy) {
+                    const store = extra[EXTRA_KEY] ||= {};
+                    store[target.entry] = { ...copy, swipe: target.swipe };
+                    requestChatSave(target.mes);
+                }
+            }
+            return retained;
+        } catch (error) {
+            // With no readable message copy this is a broken paid archive,
+            // not evidence that the frame has never been drawn.
+            if (!current) throw error;
+        }
+    }
+    return current;
 }
+
+function recordMatchesMessage(value, msg, swipe, matchSource = true) {
+    const owner = value?.current?.imageOwner;
+    if (!owner) return true; // Legacy records already carried by their message.
+    return swipeExtras(msg, swipe).some(extra => extra?.[OWNER_KEY]?.id === owner.token && Number(extra?.[OWNER_KEY]?.swipe) === swipe)
+        && (!matchSource || owner.source === imageSourceHash(imageSource(msg, swipe)));
+}
+
+function imageIdentity(entry) { return JSON.stringify([entry?.path || entry?.url || entry?.dataUrl, entry?.generatedAt || '', entry?.promptMetadata?.seed ?? null]); }
+function imageHistory(entries, current) {
+    const seen = new Set([imageIdentity(current)]), result = [];
+    for (const entry of [...entries].reverse()) { const id = imageIdentity(entry); if (seen.has(id)) continue; seen.add(id); result.unshift(slimEntry(entry)); }
+    return result.slice(-4);
+}
+
+/** Capture before dispatch; never re-resolve a completed request by floor alone. */
+export function captureMirrorImageOwner(key) {
+    const target = messageSlot(key, true);
+    if (!target) return null;
+    let extra = swipeExtras(target.msg, target.swipe).find(Boolean);
+    let token = extra[OWNER_KEY];
+    const sourceHash = imageSourceHash(imageSource(target.msg, target.swipe));
+    if (!token?.id || Number(token.swipe) !== target.swipe) {
+        // Some host versions temporarily alias a newly copied swipe's extra to
+        // the old swipe. Give only the new swipe a copy before changing tokens.
+        const infos = Array.isArray(target.msg.swipe_info) ? target.msg.swipe_info : [];
+        if (token?.id && Number(token.swipe) !== target.swipe && infos.some((info, index) => index !== target.swipe && info?.extra === extra)) {
+            const old = extra; extra = structuredCloneSafe(extra);
+            if (Number(target.msg.swipe_id || 0) === target.swipe) target.msg.extra = extra;
+            if (infos[target.swipe]?.extra === old) infos[target.swipe].extra = extra;
+        }
+        token = { id: `${Date.now().toString(36)}-${(++ownerSequence).toString(36)}-${Math.random().toString(36).slice(2)}`, swipe: target.swipe, source: sourceHash, archiveScope: archiveScope(target.ctx) };
+        extra[OWNER_KEY] = token;
+        requestChatSave(target.mes);
+    }
+    return { chat: currentChatName(target.ctx), message: target.msg, entry: target.entry,
+        token: token.id, source: imageSource(target.msg, target.swipe), swipe: target.swipe, scope: archiveScope(target.ctx),
+        extra, originalMes: target.mes };
+}
+
+function ownedTarget(owner, { matchSource = true } = {}) {
+    const ctx = liveContext();
+    if (!owner || !chatReady(ctx) || currentChatName(ctx) !== owner.chat || (owner.scope && archiveScope(ctx) !== owner.scope)) return null;
+    const matches = [];
+    ctx.chat.forEach((msg, mes) => {
+        const swipes = new Set([Number(msg?.swipe_id || 0), ...(Array.isArray(msg?.swipe_info) ? msg.swipe_info.map((_, index) => index) : [])]);
+        for (const swipe of swipes) for (const extra of swipeExtras(msg, swipe).filter(Boolean)) {
+            const sourceMatches = !matchSource || (typeof owner.source === 'string' ? imageSource(msg, swipe) === owner.source
+                : typeof owner.sourceHash === 'string' && imageSourceHash(imageSource(msg, swipe)) === owner.sourceHash);
+            if (extra[OWNER_KEY]?.id === owner.token && Number(extra[OWNER_KEY]?.swipe) === swipe && sourceMatches) matches.push({ ctx, msg, mes, swipe, extra });
+        }
+    });
+    const exact = matches.filter(target => target.msg === owner.message);
+    return exact.length === 1 ? exact[0] : matches.length === 1 ? matches[0] : null;
+}
+
+// Small read-only receipt for locally saved drafts; do not serialize a whole
+// message or its source body into every draft. Paid saves require the full owner.
+export function mirrorImageOwnerReceipt(owner) {
+    if (!owner?.token || !owner.entry || !owner.chat || typeof owner.source !== 'string') return null;
+    return { chat: owner.chat, token: owner.token, entry: owner.entry, sourceHash: imageSourceHash(owner.source), ...(owner.scope ? { scope: owner.scope } : {}) };
+}
+
+export function mirrorImageOwnerMatchesKey(owner, key, { matchEntry = true } = {}) {
+    const slot = slotOfKey(key), target = ownedTarget(owner);
+    return !!slot && !!target && stripChat(slot.chat) === owner.chat && Number(slot.mes) === target.mes && Number(slot.swipe) === target.swipe && (!matchEntry || slot.entry === owner.entry);
+}
+
+/** Preserve every completed paid result under an owner token, including deleted
+ * or unloaded owners. The archive is never part of numeric/legacy key lookup. */
+export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = false } = {}) {
+    if (!owner?.message || !owner.extra || typeof owner.source !== 'string') throw new TypeError('图片请求缺少原始消息归属。');
+    const target = ownedTarget(owner);
+    const changedSource = !target && (ownedTarget(owner, { matchSource: false }) || imageSource(owner.message, owner.swipe) !== owner.source);
+    const scope = owner.scope || `chat:${owner.chat}`;
+    const retainedKey = ownerArchiveKey(owner.token, scope, owner.entry, changedSource ? imageSourceHash(owner.source) : '');
+    record = { ...record, imageOwner: { token: owner.token, source: imageSourceHash(owner.source) } };
+    // Refuse to overwrite an unreadable paid archive. The caller retains the
+    // new completion in its session and can report that durable saving failed.
+    let previous = loadMirrorImage(retainedKey);
+    const candidate = target?.extra[EXTRA_KEY]?.[owner.entry];
+    const messagePrevious = target && ownEntry(candidate, target.swipe) && recordMatchesMessage(candidate, target.msg, target.swipe, false) ? candidate : null;
+    if (!previous && preserveCurrent && messagePrevious) previous = { ...messagePrevious.current, history: messagePrevious.history || [] };
+    const keepCurrent = preserveCurrent && previous?.imageOwner?.token === owner.token;
+    const history = imageHistory(previous ? [...previous.history, keepCurrent ? record : storedRecord(previous)] : [], keepCurrent ? previous : record);
+    if (keepCurrent) record = storedRecord(previous);
+    const retained = { ...storedRecord(record), history };
+    const archive = { version: 1, current: storedRecord(retained), history: retained.history,
+        owner: { chat: owner.chat, message: owner.originalMes, swipe: owner.swipe, source: imageSourceHash(owner.source), scope } };
+    let archiveError = null;
+    try { write(retainedKey, 'images', archive); } catch (error) { archiveError = error; }
+    if (target) {
+        if (!archiveError) rememberArchiveScope(target.extra, owner.token, owner.entry, scope, target.mes, archive.current, archive.history);
+        if (!chatCopy(archive)) {
+            // data: payloads live once, under the owner archive. An older file
+            // record must not mask the newly completed data-only image.
+            if (archiveError) throw archiveError;
+            if (target.extra[EXTRA_KEY]) delete target.extra[EXTRA_KEY][owner.entry];
+            clearImageRemoved({ ...target, entry: owner.entry });
+            requestChatSave(target.mes);
+            return retained;
+        }
+        const parsed = parseBuiltinImageKey(key);
+        const manual = !parsed ? JSON.parse(key) : null;
+        const liveKey = parsed ? `builtin:${owner.chat}:${target.mes}:${target.swipe}:${parsed.index}:${parsed.hash}`
+            : JSON.stringify([manual[0], target.mes, target.swipe, ...manual.slice(3)]);
+        // Use the owner's existing versions, never an old local numeric occupant.
+        const history = keepCurrent ? retained.history : imageHistory([...(retained.history || []), ...(messagePrevious?.history || []), ...(messagePrevious?.current ? [messagePrevious.current] : [])], record);
+        const result = replaceMirrorImageVersions(liveKey, record, history);
+        // A chat save is only queued, not an acknowledgement of durable disk
+        // storage. Preserve the caller's session/unsaved warning if both local
+        // safety writes failed, even though the live message has the picture.
+        if (archiveError) throw archiveError;
+        return result;
+    }
+    // The original object can be reinserted/recovered during this session. Do
+    // not alter it after its content or swipe has changed into another output.
+    if (imageSource(owner.message, owner.swipe) === owner.source && owner.extra[OWNER_KEY]?.id === owner.token) {
+        if (!archiveError) rememberArchiveScope(owner.extra, owner.token, owner.entry, scope, null, archive.current, archive.history);
+        const store = owner.extra[EXTRA_KEY] ||= {};
+        const copy = chatCopy(archive);
+        if (copy) store[owner.entry] = { ...copy, swipe: owner.swipe };
+    }
+    if (archiveError) throw archiveError;
+    return retained;
+}
+
 function removeMessageImage(key) {
     const target = messageSlot(key);
     if (!target) return;
@@ -238,6 +498,8 @@ function migrateIntoMessages() {
         if (!copy) return false;
         const target = messageSlot(key, true);
         if (!target) return false;
+        if (imageRemoved(target)) return false;
+        if (!recordMatchesMessage(value, target.msg, target.swipe)) return false;
         if (target.stores.some(store => ownEntry(store[target.entry], target.swipe))) return true;
         target.stores.forEach(store => { pruneCopied(store, target.swipe); store[target.entry] = { ...structuredCloneSafe(copy), swipe: target.swipe }; });
         moved += 1; lastMes = target.mes;
@@ -278,8 +540,21 @@ function messageKeyNames(ctx) {
         if (Array.isArray(msg.swipe_info)) msg.swipe_info.forEach((_, index) => swipes.add(index));
         for (const swipe of swipes) for (const extra of swipeExtras(msg, swipe).filter(Boolean)) {
             const store = extra[EXTRA_KEY];
-            if (!store || typeof store !== 'object') continue;
-            for (const [entry, value] of Object.entries(store)) if (!entry.startsWith('manual:') && ownEntry(value, swipe)) names.push(`${head}builtin:${chat}:${mes}:${swipe}:${entry}`);
+            const entries = new Set();
+            if (store && typeof store === 'object') {
+                for (const [entry, value] of Object.entries(store)) if (!entry.startsWith('manual:') && ownEntry(value, swipe)) entries.add(entry);
+            }
+            // Data-only images have no message copy. Their small version index
+            // still belongs to this message token and swipe, and resolves through
+            // readMessageImage's scoped archive checks without scanning payloads.
+            const marker = extra[OWNER_KEY];
+            if (marker?.id && Number(marker.swipe) === swipe) {
+                for (const [entry, version] of Object.entries(marker.archiveVersions || {})) {
+                    const parsed = parseBuiltinImageKey(`builtin:${chat}:${mes}:${swipe}:${entry}`);
+                    if (typeof version === 'string' && version && parsed?.hash && parseBuiltinFrameIndex(parsed.index)) entries.add(entry);
+                }
+            }
+            for (const entry of entries) if (extra[REMOVED_KEY]?.[entry] !== true) names.push(`${head}builtin:${chat}:${mes}:${swipe}:${entry}`);
         }
     });
     keyNamesCache.set(ctx.chat, { signature, names });
@@ -294,6 +569,10 @@ function imageKeyNames() {
         const legacy = ctx.chatMetadata?.[LEGACY_META_KEY];
         if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) for (const key of Object.keys(legacy)) names.add(head + key);
     }
+    for (const [slot, entries] of borrowed) {
+        const parts = slot.split('|'), swipe = parts.pop(), mes = parts.pop(), chat = parts.join('|');
+        for (const entry of Object.keys(entries)) if (!entry.startsWith('manual:')) names.add(`${head}builtin:${chat}:${mes}:${swipe}:${entry}`);
+    }
     return [...names];
 }
 
@@ -303,11 +582,17 @@ function read(key, kind) {
         return text == null ? null : JSON.parse(text);
     }
     migrateIntoMessages();
+    if (imageRemoved(messageSlot(key))) return null;
     const fromMessage = readMessageImage(key);
     if (fromMessage) return fromMessage;
     const text = globalThis.localStorage.getItem(storageKey(key, kind));
     if (text != null) {
         const value = JSON.parse(text);
+        const slot = slotOfKey(key), ctx = liveContext();
+        if (value?.current?.imageOwner && slot && stripChat(slot.chat) === currentChatName(ctx)) {
+            const msg = ctx?.chat?.[Number(slot.mes)];
+            if (!msg || !recordMatchesMessage(value, msg, Number(slot.swipe))) return null;
+        }
         // 本机还有、消息上没有（楼层后来才记上）：搬到消息上。
         if (chatCopy(value)) writeMessageImage(key, value);
         return value;
@@ -365,7 +650,7 @@ function slimEntry(entry) {
     if (entry.editedPrompt === true) { const { dataUrl: ignored, ...rest } = entry; return entry.path ? rest : { ...entry }; }
     const promptHash = imagePromptFingerprint(entry);
     const meta = entry.promptMetadata && typeof entry.promptMetadata === 'object' ? entry.promptMetadata : {};
-    const out = { url: entry.url, path: entry.path, generatedAt: entry.generatedAt, provider: entry.provider, builtinImageFit: entry.builtinImageFit, looksSources: entry.looksSources };
+    const out = { url: entry.url, path: entry.path, generatedAt: entry.generatedAt, provider: entry.provider, builtinImageFit: entry.builtinImageFit, looksSources: entry.looksSources, imageOwner: entry.imageOwner };
     if (!entry.path && entry.dataUrl && entry.dataUrl !== entry.url) out.dataUrl = entry.dataUrl;
     const slimMeta = { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size };
     out.promptMetadata = Object.fromEntries(Object.entries(slimMeta).filter(([, value]) => value !== undefined));
@@ -424,6 +709,36 @@ function storedRecord(record) {
 
 /** 删掉一份插图存档（搬到新键以后清旧键用）。不存在也不报错。 */
 export function removeMirrorImage(key, { keepSlotOf = '' } = {}) {
+    if (!keepSlotOf) {
+        // Explicit deletion must also remove the matching retained completion,
+        // or the next read would restore the image just removed. Key migration
+        // uses keepSlotOf and preserves that paid safety archive.
+        const slot = slotOfKey(key), target = messageSlot(key), tokens = new Set();
+        if (slot) {
+            for (const extra of target ? swipeExtras(target.msg, target.swipe).filter(Boolean) : []) {
+                const token = extra[OWNER_KEY];
+                if (token?.id && Number(token.swipe) === target.swipe) tokens.add(token.id);
+                (extra[REMOVED_KEY] ||= {})[slot.entry] = true;
+                keyNamesGen += 1;
+            }
+            if (target) requestChatSave(target.mes);
+            try {
+                const value = JSON.parse(globalThis.localStorage.getItem(storageKey(key, 'images')) || 'null');
+                if (value?.current?.imageOwner?.token) tokens.add(value.current.imageOwner.token);
+            } catch { /* Preserve unreadable archives. */ }
+            for (const token of tokens) try {
+                const scope = target ? archiveScope(target.ctx) : `chat:${stripChat(slot.chat)}`;
+                const retiredPrefix = storageKey(`${ownerArchiveKey(token, scope, '')}retired:`, 'images');
+                const retired = [];
+                for (let index = 0; index < globalThis.localStorage.length; index += 1) {
+                    const name = globalThis.localStorage.key(index);
+                    if (name?.startsWith(retiredPrefix) && name.endsWith(`:${slot.entry}`)) retired.push(name);
+                }
+                globalThis.localStorage.removeItem(storageKey(ownerArchiveKey(token, scope, slot.entry), 'images'));
+                for (const name of retired) globalThis.localStorage.removeItem(name);
+            } catch { /* Keep the paid result if removal failed. */ }
+        }
+    }
     try { globalThis.localStorage.removeItem(storageKey(key, 'images')); } catch { /* 删不掉就留着 */ }
     // 旧键和新键指向消息上同一格（只是聊天名写法不同）：刚写进去的就是这一格，不能删。
     const a = slotOfKey(key), b = keepSlotOf ? slotOfKey(keepSlotOf) : null;
@@ -459,22 +774,10 @@ export function saveMirrorImage(key, record) {
     return { ...current, history };
 }
 
-// 聊天开了分支或改了名，聊天名变了，画好的图还存在旧名字下。同一楼层、同一 swipe、同一图框、
-// 同一段提示词的图就是那一张：找到就直接放回，不再花钱重画。只读，不搬也不删。
-export function findBuiltinImageKeyFromOtherChat(key) {
-    const storage = globalThis.localStorage;
-    const parts = String(key || '').split(':');
-    if (!storage || parts[0] !== 'builtin' || parts.length < 6 || !parts[parts.length - 1]) return '';
-    const suffix = `:${parts.slice(-4).join(':')}`;
-    const imagesPrefix = `${PREFIX}images:`;
-    const head = `${imagesPrefix}builtin:`;
-    const own = storageKey(key, 'images');
-    try {
-        for (const name of imageKeyNames()) {
-            if (!name || name === own || !name.startsWith(head) || !name.endsWith(suffix)) continue;
-            return name.slice(imagesPrefix.length);
-        }
-    } catch { /* 读不到就当没有 */ }
+// 仅凭楼层／swipe／图框／提示词相同，不能证明两个聊天是分支或改名关系。
+// 没有可信的跨聊天身份链时不借图；保留此入口供旧调用方使用。
+// 消息自己携带的图片、同聊天兼容键和收藏显式 lend 仍分别走原来的恢复路径。
+export function findBuiltinImageKeyFromOtherChat(_key) {
     return '';
 }
 
@@ -484,6 +787,26 @@ export function parseBuiltinImageKey(key) {
     if (parts[0] !== 'builtin' || parts.length < 6) return null;
     return { chat: parts.slice(1, -4).join(':'), mes: parts[parts.length - 4], swipe: parts[parts.length - 3], index: parts[parts.length - 2], hash: parts[parts.length - 1] };
 }
+export function parseBuiltinFrameIndex(value) {
+    const match = /^f(\d+)\.(\d+)$/.exec(String(value));
+    return match ? { face: Number(match[1]), frame: Number(match[2]), legacy: false }
+        : /^\d+$/.test(String(value)) ? { face: null, frame: Number(value), legacy: true } : null;
+}
+// Explicit caller-proven legacy migration or a favorite lacking its old face
+// ordinal. Never treats missing message/swipe as a wildcard, never picks first
+// among multiple possible frames, and never deletes the source record.
+export function findUnambiguousBuiltinImageKey(key, { legacyOnly = false } = {}) {
+    const wanted = parseBuiltinImageKey(key);
+    if (!wanted || !/^\d+$/.test(wanted.mes) || !/^\d+$/.test(wanted.swipe)) return '';
+    const matches = new Map(), head = `${PREFIX}images:`;
+    for (const name of imageKeyNames()) {
+        const candidate = name.slice(head.length), other = parseBuiltinImageKey(candidate);
+        if (!other || !sameChat(wanted.chat, other.chat) || wanted.mes !== other.mes || wanted.swipe !== other.swipe || wanted.hash !== other.hash) continue;
+        if (legacyOnly && !parseBuiltinFrameIndex(other.index)?.legacy) continue;
+        try { if (loadMirrorImage(candidate)) matches.set(`${other.index}:${other.hash}`, candidate); } catch { /* Preserve unreadable source. */ }
+    }
+    return matches.size === 1 ? matches.values().next().value : '';
+}
 
 // 两个键指的是不是同一张图：同一聊天、同一图框、同一段提示词；楼层和 swipe 一样，或其中一边当时还没记上（空）。
 // 多面镜子在归属写上之前就开始画，画好的图存在「楼层空」的键下，写上归属后再找就对不上，于是又画一遍。
@@ -492,7 +815,8 @@ const sameChat = (a, b) => String(a).replace(/^chat:/, '') === String(b).replace
 export function builtinImageKeysCompatible(a, b) {
     const x = parseBuiltinImageKey(a), y = parseBuiltinImageKey(b);
     if (!x || !y || !sameChat(x.chat, y.chat) || x.index !== y.index || x.hash !== y.hash || !x.hash) return false;
-    const same = (u, v) => u === v || u === '' || v === '';
+    const frame = parseBuiltinFrameIndex(x.index);
+    const same = (u, v) => u === v || (frame?.legacy && (u === '' || v === ''));
     return same(x.mes, y.mes) && same(x.swipe, y.swipe);
 }
 
@@ -523,8 +847,34 @@ export function findCompatibleBuiltinImageKey(key) {
 export function builtinImageKeysShifted(a, b) {
     const x = parseBuiltinImageKey(a), y = parseBuiltinImageKey(b);
     if (!x || !y || !x.hash || x.hash !== y.hash || x.index === y.index) return false;
+    const xi = parseBuiltinFrameIndex(x.index), yi = parseBuiltinFrameIndex(y.index);
+    if (!xi || !yi || xi.legacy !== yi.legacy || xi.face !== yi.face) return false;
     if (x.mes === '' || x.swipe === '' || x.mes !== y.mes || x.swipe !== y.swipe) return false;
     return sameChat(x.chat, y.chat);
+}
+
+function builtinKeyForOwnedArchive(name, target) {
+    if (!target) return '';
+    for (const extra of swipeExtras(target.msg, target.swipe).filter(Boolean)) {
+        const marker = extra[OWNER_KEY];
+        if (!marker?.id || Number(marker.swipe) !== target.swipe) continue;
+        const prefix = `${PREFIX}images:owner:${marker.id}:`;
+        if (!name.startsWith(prefix)) continue;
+        let entry = name.slice(prefix.length), scope = '';
+        const scoped = /^scope:([^:]+):/.exec(entry);
+        if (scoped) { scope = scoped[1]; entry = entry.slice(scoped[0].length); }
+        const retired = /^retired:([^:]+):/.exec(entry);
+        if (retired) {
+            if (retired[1] !== imageSourceHash(imageSource(target.msg, target.swipe))) continue;
+            entry = entry.slice(retired[0].length);
+        }
+        if (scope && scope !== encodeURIComponent(archiveScope(target.ctx)) && scope !== encodeURIComponent(inheritedArchiveScope(marker, entry))) continue;
+        if (extra[REMOVED_KEY]?.[entry] === true) continue;
+        // Only names are inspected here. Reading the candidate still validates
+        // ownership and the inherited version, including unconfirmed old forks.
+        return `builtin:${currentChatName(target.ctx)}:${target.mes}:${target.swipe}:${entry}`;
+    }
+    return '';
 }
 
 // 同一聊天、同一楼层、同一 swipe、同一段提示词，图框序号却不同：这一面重新挂上时结构被整理过，序号挪了，图还是那一张。
@@ -537,18 +887,20 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
     const imagesPrefix = `${PREFIX}images:`;
     const head = `${imagesPrefix}builtin:`;
     const suffix = `:${wanted.mes}:${wanted.swipe}:`;
+    const target = messageSlot(key);
     let best = '', bestDistance = Infinity;
     // claimed 可以是一个集合，也可以是算出集合的函数（真找到候选时才算，平常命中自己的键时不花这份工夫）。
     let claimedSet = null;
     const taken = () => claimedSet || (claimedSet = (typeof claimed === 'function' ? claimed() : claimed) || new Set());
     try {
         for (const name of imageKeyNames()) {
-            if (!name || !name.startsWith(head) || !name.endsWith(`:${wanted.hash}`) || !name.includes(suffix)) continue;
-            const candidate = name.slice(imagesPrefix.length);
+            if (!name || !name.endsWith(`:${wanted.hash}`)) continue;
+            const candidate = name.startsWith(head) ? name.slice(imagesPrefix.length) : builtinKeyForOwnedArchive(name, target);
+            if (!candidate.includes(suffix)) continue;
             const other = parseBuiltinImageKey(candidate);
             if (!other || !builtinImageKeysShifted(key, candidate)) continue;
-            if (taken().has(candidate)) continue;
-            const distance = Math.abs(Number(other.index) - Number(wanted.index));
+            if ([...taken()].some(key => builtinImageKeysCompatible(key, candidate))) continue;
+            const distance = Math.abs(parseBuiltinFrameIndex(other.index)?.frame - parseBuiltinFrameIndex(wanted.index)?.frame);
             if (Number.isFinite(distance) && distance < bestDistance) { best = candidate; bestDistance = distance; }
         }
     } catch { /* 读不到就当没有 */ }
@@ -559,7 +911,28 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
 export function replaceMirrorImageVersions(key, current, history) {
     migrateOldImageRecords();
     const value = { version: 1, current: storedRecord(current), history: (Array.isArray(history) ? history : []).filter(entry => entry && typeof entry === 'object').map(slimEntry) };
-    write(key, 'images', value);
+    const slot = slotOfKey(key), token = value.current.imageOwner?.token, target = messageSlot(key);
+    let archiveKey = '', archive = null;
+    if (slot && token) {
+        archiveKey = ownerArchiveKey(token, target ? archiveScope(target.ctx) : `chat:${stripChat(slot.chat)}`, slot.entry);
+        try { archive = JSON.parse(globalThis.localStorage.getItem(storageKey(archiveKey, 'images')) || 'null'); } catch { /* Preserve invalid archive. */ }
+        if (!archive && target) {
+            // Version selection can be the first write in a newly opened branch.
+            readMessageImage(key);
+            try { archive = JSON.parse(globalThis.localStorage.getItem(storageKey(archiveKey, 'images')) || 'null'); } catch { /* Preserve invalid archive. */ }
+        }
+    }
+    if (archive?.owner && !chatCopy(value)) {
+        write(archiveKey, 'images', { ...value, owner: archive.owner });
+        removeMessageImage(key);
+        if (target) clearImageRemoved(target);
+        try { globalThis.localStorage.removeItem(storageKey(key, 'images')); } catch { /* Retain an older safety copy. */ }
+    } else {
+        write(key, 'images', value);
+        if (archive?.owner) write(archiveKey, 'images', { ...value, owner: archive.owner });
+    }
+    if (archive?.owner && target) for (const extra of swipeExtras(target.msg, target.swipe).filter(Boolean))
+        rememberArchiveScope(extra, token, slot.entry, archiveScope(target.ctx), target.mes, value.current, value.history);
     slimmedClean = false;
     return { ...value.current, history: value.history };
 }
@@ -575,27 +948,44 @@ export function saveMirrorImageDraft(key, draft) {
 // 删楼层／删 swipe 后，把这个聊天的插图存档（内置生图与手动生图，含提示词草稿）搬到新楼层号。
 // mapper(楼层, swipe) 返回 "新楼层:新swipe"，被删掉的返回 null：那几层的图原样留在本机，不删。
 // 目标位置已经有别的存档时不覆盖，那一张留在原处。
-export function remapMirrorImageSlots(chat, mapper) {
+export function remapMirrorImageSlots(chat, mapper, options = {}) {
     const storage = globalThis.localStorage;
     if (!storage || typeof chat !== 'string' || !chat || typeof mapper !== 'function') return 0;
-    const builtinPrefix = `builtin:${chat}:`;
     const target = (index, swipe) => {
         const value = mapper(index, swipe);
         const match = /^(\d+):(\d+)$/.exec(String(value ?? ''));
         return match ? [Number(match[1]), Number(match[2])] : null;
     };
+    if (options.kind === 'swipe') {
+        const ctx = liveContext(), mes = Number(options.messageId), msg = ctx?.chat?.[mes];
+        if (stripChat(chat) === currentChatName(ctx) && msg) {
+            const extras = new Set([msg.extra, ...(msg.swipe_info || []).map(info => info?.extra)].filter(Boolean));
+            let changed = false;
+            const seen = new Set();
+            for (const extra of extras) {
+                const values = [extra[OWNER_KEY], ...Object.values(extra[EXTRA_KEY] || {})];
+                for (const value of values) {
+                    if (!value || seen.has(value) || !Number.isInteger(Number(value.swipe))) continue;
+                    seen.add(value);
+                    const moved = target(mes, Number(value.swipe));
+                    if (moved && value.swipe !== moved[1]) { value.swipe = moved[1]; changed = true; }
+                }
+            }
+            if (changed) { keyNamesGen += 1; requestChatSave(mes); }
+        }
+    }
     const nextKeyFor = key => {
-        if (key.startsWith(builtinPrefix)) {
-            const match = /^(\d+):(\d+):(.+)$/.exec(key.slice(builtinPrefix.length));
-            const moved = match && target(Number(match[1]), Number(match[2]));
-            return moved ? `${builtinPrefix}${moved[0]}:${moved[1]}:${match[3]}` : '';
+        const parsed = parseBuiltinImageKey(key);
+        if (parsed && sameChat(parsed.chat, chat) && /^\d+$/.test(parsed.mes) && /^\d+$/.test(parsed.swipe)) {
+            const moved = target(Number(parsed.mes), Number(parsed.swipe));
+            return moved ? `builtin:${parsed.chat}:${moved[0]}:${moved[1]}:${parsed.index}:${parsed.hash}` : `retired:${key}`;
         }
         if (key.startsWith('[')) {
             let parts;
             try { parts = JSON.parse(key); } catch { return ''; }
             if (!Array.isArray(parts) || parts[0] !== chat || !Number.isInteger(parts[1]) || !Number.isInteger(parts[2])) return '';
             const moved = target(parts[1], parts[2]);
-            return moved ? JSON.stringify([parts[0], moved[0], moved[1], ...parts.slice(3)]) : '';
+            return moved ? JSON.stringify([parts[0], moved[0], moved[1], ...parts.slice(3)]) : `retired:${key}`;
         }
         return '';
     };

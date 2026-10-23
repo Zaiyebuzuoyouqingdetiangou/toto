@@ -1,12 +1,12 @@
-import { presentationModeFields } from './presentationMode.js?rmv=1.78.6';
+import { presentationModeFields } from './presentationMode.js?rmv=1.78.9';
 import {
     commitPendingComboBatch,
     getCurrentChatKey,
     releasePendingComboBatch,
-} from './storage.js?rmv=1.78.6';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.78.6';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.78.6';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.78.6';
+} from './storage.js?rmv=1.78.9';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=1.78.9';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=1.78.9';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.78.9';
 
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
@@ -15,6 +15,9 @@ const MAX_SNAPSHOTS = 16;
 const MAX_SNAPSHOT_SOURCE_CHARS = 240000;
 const MAX_ACTIVE_FOLLOW_BATCHES = 8;
 const activeFollowBatches = new Map();
+// Only this page's installed follow prompts can mint image authority.
+// Snapshot/sessionStorage recovery deliberately never populates this table.
+const activeFollowSingles = new Map();
 
 function deeplyFreeze(value) {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -350,6 +353,94 @@ function followAnchor(chat, target) {
     };
 }
 
+export function registerRabbitMirrorFollowSingle(chat, attemptId, generationType = 'normal', { faceCount = 1, hostEventId = null } = {}) {
+    if (!Array.isArray(chat) || !attemptId || !['normal', 'continue', 'swipe', 'regenerate'].includes(String(generationType || 'normal'))) return false;
+    const chatKey = getCurrentChatKey(chat), target = followTargetFor(chat, generationType);
+    if (!chatKey) return false;
+    const message = target.existingTarget ? chat[target.targetMessageIndex] : null;
+    const anchor = chat[target.targetMessageIndex - 1] || null;
+    const initialSources = [...messageSourceCandidates(message).map(candidate => candidate.source), ...(Array.isArray(message?.swipes) ? message.swipes : [])]
+        .filter(source => typeof source === 'string').map(source => source.trim());
+    const initialMirrors = new Set(initialSources.flatMap(source => extractRabbitMirrorCandidates(source).map(candidate => candidate.isolatedSource)));
+    for (const [key, record] of activeFollowSingles) {
+        if (Date.now() - record.startedAt > SNAPSHOT_TTL_MS || (record.chat === chat && record.index === target.targetMessageIndex)) activeFollowSingles.delete(key);
+    }
+    while (activeFollowSingles.size >= MAX_ACTIVE_FOLLOW_BATCHES) activeFollowSingles.delete(activeFollowSingles.keys().next().value);
+    activeFollowSingles.set(String(attemptId), { attemptId: String(attemptId), chat, chatKey, index: target.targetMessageIndex,
+        initialMessage: message, initialSource: String(message?.mes || ''), initialSwipe: currentSwipeId(message), generationType, hostEventId,
+        initialSources: new Set(initialSources), initialMirrors, faceCount: Math.min(5, Math.max(1, Number(faceCount) || 1)),
+        anchor, anchorSource: String(anchor?.mes || ''), anchorSwipe: currentSwipeId(anchor), startedAt: Date.now(), terminal: false, completed: null });
+    return true;
+}
+
+function singleFollowMessage(record, chat) {
+    if (!record || record.chat !== chat || record.chatKey !== getCurrentChatKey(chat) || Date.now() - record.startedAt > SNAPSHOT_TTL_MS) return null;
+    const anchor = chat[record.index - 1] || null, message = chat[record.index];
+    if (anchor !== record.anchor || String(anchor?.mes || '') !== record.anchorSource || currentSwipeId(anchor) !== record.anchorSwipe) return null;
+    if (!message || message.is_user === true || (record.initialMessage && message !== record.initialMessage)) return null;
+    if (record.initialMessage && record.generationType !== 'swipe' && currentSwipeId(message) !== record.initialSwipe) return null;
+    if (String(message.mes || '') === record.initialSource) return null;
+    return message;
+}
+
+// Called only by the already installed light host-event bridge, not scan timers.
+export function settleRabbitMirrorFollowSingle(chat, event, payload = null) {
+    if (event === 'chat-changed') { activeFollowSingles.clear(); return; }
+    const hostType = String(payload?.type || 'normal').trim().toLowerCase();
+    if ((event === 'started' || event === 'ended') && (payload?.dryRun === true
+        || !['normal', 'continue', 'swipe', 'regenerate'].includes(hostType))) return;
+    const records = [...activeFollowSingles.values()].filter(record => record.chat === chat);
+    if (event === 'started' || event === 'stopped') {
+        // Completed output can still be waiting for its first DOM projection.
+        // A later operation cannot turn an incomplete old reply into a new one.
+        for (const record of records) {
+            const enclosingAttempt = event === 'started' && !record.terminal && record.hostEventId !== null
+                && Array.isArray(payload?.ancestors) && payload.ancestors.includes(record.hostEventId);
+            if (!record.completed && !enclosingAttempt) activeFollowSingles.delete(record.attemptId);
+        }
+        return;
+    }
+    const renderedIndex = Number.isInteger(payload) ? payload : Number(payload?.messageId ?? payload?.message_id ?? payload?.mesid ?? payload?.id);
+    for (const record of records) {
+        if (event === 'ended') {
+            if (record.terminal || (record.hostEventId !== null && record.hostEventId !== payload?.id)) continue;
+            record.terminal = true;
+        }
+        else if (event !== 'rendered' || !record.terminal || record.completed || renderedIndex !== record.index) continue;
+        const message = singleFollowMessage(record, chat);
+        if (!message) continue;
+        const sources = messageSourceCandidates(message).filter(candidate => {
+            if (record.initialSources.has(candidate.source)) return false;
+            if (record.faceCount > 1) {
+                if (candidate.label !== 'mes' && candidate.source !== String(message.mes || '').trim()) return false;
+                const parsed = parseMultifaceOutput(candidate.source, { expectedCount: record.faceCount, allowProse: true });
+                return parsed.ok || (recoverableMultifaceFrames(parsed).length > 0 && multifaceRecoveryWithinRawBudgets(candidate.source));
+            }
+            const inspection = inspectRabbitMirrorGenerationSource(candidate.source);
+            return inspection.complete && !record.initialMirrors.has(inspection.isolatedSource);
+        });
+        if (sources.length) record.completed = { message, body: String(message.mes || ''), swipe: currentSwipeId(message), sources };
+    }
+}
+
+export function getRabbitMirrorFollowSingleOwner(chat, message, source) {
+    const record = [...activeFollowSingles.values()].find(record => record.completed?.message === message && record.chat === chat);
+    const candidate = record?.completed?.sources.find(item => item.source === String(source || '').trim());
+    if (!record || singleFollowMessage(record, chat) !== message || record.completed.body !== String(message.mes || '')
+        || record.completed.swipe !== currentSwipeId(message) || !candidate) return null;
+    const getOutputIdentity = () => String(candidate.label === '当前 swipe' ? message.swipes?.[record.completed.swipe]
+        : candidate.label === 'display_text' ? message.extra?.display_text : message.mes || '').trim();
+    if (getOutputIdentity() !== candidate.source) return null;
+    return { chat, chatKey: record.chatKey, message, messageIndex: record.index, swipeId: record.completed.swipe, attemptId: record.attemptId,
+        outputIdentity: candidate.source, getOutputIdentity };
+}
+
+export function commitRabbitMirrorFollowSingle(chat, message, source) {
+    const owner = getRabbitMirrorFollowSingleOwner(chat, message, source);
+    if (owner) activeFollowSingles.delete(owner.attemptId);
+    return owner;
+}
+
 function normalizedFollowRecord(chat, attemptId, plan, metadata = null) {
     if (!isFollowBatchPlan(plan)) return null;
     const list = Array.isArray(chat) ? chat : [];
@@ -504,7 +595,7 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
     const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed) return false;
     // 跟随正文的成功一面也计入里程碑（同一条消息的同一个版本只计一次）。
-    void import('./milestones.js?rmv=1.78.6').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => {});
+    void import('./milestones.js?rmv=1.78.9').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => {});
     recordRabbitMirrorRecipe({
         chat,
         chatKey: record.chatKey,
@@ -717,6 +808,7 @@ export function getRabbitMirrorGenerationSnapshot(message, chat, messageIndex, e
 }
 
 export function clearRabbitMirrorGenerationSnapshots() {
+    activeFollowSingles.clear();
     for (const record of [...activeFollowBatches.values()]) deleteFollowRecord(record.batchId, { release: true });
     try {
         sessionStorage.removeItem(SNAPSHOT_STORAGE_KEY);

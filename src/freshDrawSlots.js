@@ -1,5 +1,6 @@
-// 这次打开页面以后发过兔子镜生成请求的楼层（整条或其中某一面）。
-// 插图记录找不到时，只有这些面自动画图；以前生成的面只留「重新生图」，不自动花额度。
+import { getContext } from './independentApi/runtime.js?rmv=1.78.9';
+
+// A grant describes one completed output, not a reusable numeric message slot.
 const KEY = '__rabbitMirrorFreshDrawSlots';
 const LIMIT = 500;
 
@@ -19,21 +20,58 @@ function faceOf(faceIndex) {
     return Number.isInteger(index) && index >= 0 ? index : null;
 }
 
-export function markFreshDrawSlot(chat, mes, swipe, faceIndex = null) {
+export function markFreshDrawSlot(chat, mes, swipe, faceIndex = null, supplied = {}) {
     if (!Number.isInteger(Number(mes)) || !Number.isInteger(Number(swipe))) return;
+    const ctx = getContext();
+    const message = supplied.message || ctx?.chat?.[Number(mes)];
+    const nameOfChat = String(chat).replace(/^chat:/, '');
+    if (!message || ctx?.chat?.[Number(mes)] !== message || Number(message.swipe_id || 0) !== Number(swipe)
+        || String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? '').replace(/^chat:/, '') !== nameOfChat) return;
+    const source = swipeSource(message, Number(swipe));
+    const readOutput = typeof supplied.getOutputIdentity === 'function' ? supplied.getOutputIdentity
+        : () => outputIdentity(ctx, message, Number(swipe));
+    let output;
+    try { output = String(supplied.outputIdentity ?? readOutput() ?? ''); } catch { return; }
+    if (!output) return;
     const map = slots();
     const name = slotName(chat, mes, swipe);
-    const faces = map.get(name) || new Set();
+    const previous = [...map.values()].find(value => value?.message === message && value.chat === nameOfChat && value.swipe === Number(swipe));
+    const faces = previous?.message === message && previous.source === source && previous.output === output ? previous.faces : new Set();
     const face = faceOf(faceIndex);
     faces.add(face === null ? 'all' : face);
+    for (const [oldKey, grant] of map) if (grant?.message === message && grant.chat === nameOfChat && grant.swipe === Number(swipe)) map.delete(oldKey);
     map.delete(name);
-    map.set(name, faces);
+    map.set(name, { message, source, output, readOutput, faces, chat: String(chat).replace(/^chat:/, ''), swipe: Number(swipe) });
     while (map.size > LIMIT) map.delete(map.keys().next().value);
 }
 
-export function isFreshDrawSlot(chat, mes, swipe, faceIndex = null) {
-    const faces = slots().get(slotName(chat, mes, swipe));
-    if (!faces) return false;
+function freshDrawGrant(chat, mes, swipe, faceIndex = null) {
+    const ctx = getContext(), message = ctx?.chat?.[Number(mes)];
+    if (!message || Number(message.swipe_id || 0) !== Number(swipe)
+        || String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? '').replace(/^chat:/, '') !== String(chat).replace(/^chat:/, '')) return false;
+    // The same message may move after deletion; a replacement at its old index
+    // may never inherit this grant.
+    const grant = [...slots().values()].find(value => value?.message === message && value.chat === String(chat).replace(/^chat:/, '') && value.swipe === Number(swipe));
+    if (!grant || grant.source !== swipeSource(message, Number(swipe))) return false;
+    try { if (String(grant.readOutput() ?? '') !== grant.output) return false; } catch { return false; }
     const face = faceOf(faceIndex);
-    return faces.has('all') || (face !== null && faces.has(face));
+    return grant.faces.has('all') || (face !== null && grant.faces.has(face)) ? grant : null;
+}
+
+export function isFreshDrawSlot(chat, mes, swipe, faceIndex = null) {
+    return !!freshDrawGrant(chat, mes, swipe, faceIndex);
+}
+
+export function freshDrawSlotIdentity(chat, mes, swipe, faceIndex = null) {
+    return freshDrawGrant(chat, mes, swipe, faceIndex)?.output || '';
+}
+
+function swipeSource(message, swipe) {
+    return String(Number(message?.swipe_id || 0) === swipe ? message?.mes ?? '' : message?.swipes?.[swipe] ?? '');
+}
+function outputIdentity(ctx, message, swipe) {
+    const index = ctx?.chat?.indexOf(message);
+    if (!(index >= 0)) return '';
+    return ctx?.chatMetadata?.rabbit_mirror_independent_outputs_v2?.owners?.[`${index}:${swipe}`]?.html
+        || message?.extra?.display_text || swipeSource(message, swipe);
 }

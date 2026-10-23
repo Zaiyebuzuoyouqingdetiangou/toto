@@ -232,7 +232,10 @@ export function compactSwipeState(value) {
 }
 
 function stackSignature(value) { return JSON.stringify(compactSwipeState(value)); }
-function backedUp(key, value) { return durableStacks.get(key) === stackSignature(value); }
+function backedUp(key, value) {
+    const base = key.slice(0, key.lastIndexOf('\u0000'));
+    return !archiveWrites.get(base)?.pending && durableStacks.get(key) === stackSignature(value);
+}
 
 function compactStore(store) {
     const next = emptyStore();
@@ -374,6 +377,34 @@ const archiveLoads = new Map();
 const archiveWrites = new Map();
 const archiveSaved = new Map();
 
+function forgetArchiveBackup(base) {
+    archiveSaved.delete(base);
+    for (const key of [...durableStacks.keys()]) {
+        if (key.startsWith(`${base}\u0000`)) durableStacks.delete(key);
+    }
+}
+
+function rememberArchiveBackup(base, row) {
+    forgetArchiveBackup(base);
+    archiveSaved.set(base, row);
+    for (const [index, state] of Object.entries(row.states || {})) {
+        if (/^[0-4]$/.test(index)) durableStacks.set(faceSwipeKey(base, Number(index)), stackSignature(state));
+    }
+}
+
+// Session-only proof from a completed archive transaction/read. A restart starts
+// without proof, and remapping/overwriting an archive invalidates the same state.
+export function faceSwipeArchiveRecordStored(slot, record) {
+    const base = faceSwipeStorageSlot(slot);
+    if (archiveWrites.get(base)?.pending) return false;
+    const saved = archiveSaved.get(base)?.record;
+    if (!saved?.html || saved.deleted || !record?.html) return false;
+    const initial = value => String(value.initialHtml || value.html || '');
+    const source = value => String(value.sourceHash || value.bodyHash || '');
+    return String(saved.html) === String(record.html)
+        && initial(saved) === initial(record) && source(saved) === source(record);
+}
+
 function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000 } = {}) {
     if (!globalThis.indexedDB) return Promise.resolve(readStatus ? { ok: true, value: null } : null);
     return new Promise(resolve => {
@@ -447,22 +478,19 @@ export function loadFaceSwipeArchive(slot, { retry = false } = {}) {
         entry.done = true;
         // A remap invalidates the whole read. Do not resurrect its previous slot.
         if (archiveLoads.get(base) !== entry) return null;
-        if (!result.ok) { entry.state = 'error'; return null; }
+        if (!result.ok) { forgetArchiveBackup(base); entry.state = 'error'; return null; }
         entry.state = 'ready';
         let row = result.value;
         // A newer committed local write (including a tombstone) wins over a
         // read that began before it. Recovery must never roll that write back.
         if (archiveSaved.get(base) !== cachedBeforeRead) row = archiveSaved.get(base) || null;
-        if (!row) { archiveSaved.delete(base); return null; }
-        if (row.slot !== base || row.schema !== 1) { entry.state = 'error'; return null; }
-        archiveSaved.set(base, row);
-        for (const [index, state] of Object.entries(row.states || {})) {
-            if (/^[0-4]$/.test(index)) durableStacks.set(faceSwipeKey(base, Number(index)), stackSignature(state));
-        }
+        if (!row) { forgetArchiveBackup(base); return null; }
+        if (row.slot !== base || row.schema !== 1) { forgetArchiveBackup(base); entry.state = 'error'; return null; }
+        rememberArchiveBackup(base, row);
         return row;
     }).catch(() => {
         entry.done = true;
-        if (archiveLoads.get(base) === entry) entry.state = 'error';
+        if (archiveLoads.get(base) === entry) { forgetArchiveBackup(base); entry.state = 'error'; }
         return null;
     });
     archiveLoads.set(base, entry);
@@ -479,63 +507,33 @@ export function saveFaceSwipeArchive(slot, record) {
     if (prior?.signature === signature) return prior.promise;
     const promise = archiveRemapGate.then(() => prior?.promise || loadFaceSwipeArchive(base)).then(async () => {
         if (JSON.stringify(archiveSaved.get(base)) === signature) return { saved: true, row };
+        // A put can commit even when read-back fails or times out. Once an
+        // overwrite starts, the previous row is no longer reliable backup proof.
+        forgetArchiveBackup(base);
         const readback = await archiveTransaction('readwrite', (store, done) => {
             store.put(row);
             const request = store.get(base); request.onsuccess = () => done(request.result);
         });
         const saved = !!readback && JSON.stringify(readback) === signature;
         if (saved) {
-            archiveSaved.set(base, row);
-            for (const [index, state] of Object.entries(row.states)) durableStacks.set(faceSwipeKey(base, Number(index)), stackSignature(state));
-            try { pruneFaceSwipeArchive(archiveChatPrefix(base)); } catch {}
+            rememberArchiveBackup(base, row);
         } else if (archiveWrites.get(base)?.promise === promise) {
             // 没写成（超时、事务失败）：忘掉这次，下次同样内容再来时重新写，不再一直复用这个失败结果。
             archiveWrites.delete(base);
         }
         return { saved, row };
     });
-    archiveWrites.set(base, { signature, promise });
+    const write = { signature, promise, pending: true };
+    archiveWrites.set(base, write);
+    // The previous committed row may be about to be replaced. Until this write
+    // settles it cannot authorize removing the separate output/stack cache.
+    void promise.then(() => { write.pending = false; }, () => { write.pending = false; });
     return promise;
 }
 
-// 版本存档按「聊天:楼层:swipe」一行一行放在 IndexedDB 里；聊天删掉、改名以后没有人来删这些行，只会越积越多。
-// 这里只在本机记下每个聊天最近一次写存档的时间；某次写成功后，顺手把「不是当前聊天、而且半年没写过
-// （或者超出最近 60 个聊天之外最旧的）」那些聊天的行整段删掉。一次范围删除，不读行内容；当前聊天永远不删。
-// 聊天文件里每面镜子本来就带着自己的版本，这里删的只是本机的一份副本。
-const ARCHIVE_TOUCH_KEY = 'rabbit_mirror_resay_archive_touch_v1';
-const ARCHIVE_CHAT_TTL_MS = 180 * 24 * 3600 * 1000;
-const ARCHIVE_CHAT_LIMIT = 60;
-let archivePrunedAt = 0;
-function archiveChatPrefix(base) { const match = /^(.*):\d+:\d+$/.exec(String(base || '')); return match ? match[1] : ''; }
-function readArchiveTouches() {
-    try { const value = JSON.parse(globalThis.localStorage?.getItem(ARCHIVE_TOUCH_KEY) || '{}'); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; } catch { return {}; }
-}
-function writeArchiveTouches(value) { try { globalThis.localStorage?.setItem(ARCHIVE_TOUCH_KEY, JSON.stringify(value)); } catch {} }
-function pruneFaceSwipeArchive(currentPrefix) {
-    if (!currentPrefix || !globalThis.indexedDB || typeof IDBKeyRange === 'undefined') return;
-    const now = Date.now();
-    const touches = readArchiveTouches();
-    touches[currentPrefix] = now;
-    writeArchiveTouches(touches);
-    if (now - archivePrunedAt < 60000) return;
-    const others = Object.entries(touches).filter(([prefix]) => prefix !== currentPrefix)
-        .sort((a, b) => Number(a[1] || 0) - Number(b[1] || 0));
-    const victims = others.filter(([, ts], i) => now - Number(ts || 0) > ARCHIVE_CHAT_TTL_MS || others.length - i > ARCHIVE_CHAT_LIMIT).map(([prefix]) => prefix);
-    if (!victims.length) return;
-    archivePrunedAt = now;
-    for (const prefix of victims) for (const cache of [archiveLoads, archiveSaved, archiveWrites]) {
-        for (const key of [...cache.keys()]) if (String(key).startsWith(`${prefix}:`)) cache.delete(key);
-    }
-    archiveRemapGate = archiveRemapGate.then(() => archiveTransaction('readwrite', (store, done) => {
-        for (const prefix of victims) store.delete(IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`));
-        done(true);
-    })).then(ok => {
-        if (ok !== true) return;
-        const next = readArchiveTouches();
-        for (const prefix of victims) delete next[prefix];
-        writeArchiveTouches(next);
-    }).catch(() => {});
-}
+// 版本存档可能是当前付费成品的唯一耐久副本：本机缓存可以在归档成功后
+// 腾出空间，但聊天文件可能尚未存盘。年龄、聊天数量和旧 touch 记录都不能
+// 证明另有副本，因此不自动淘汰归档。明确删除和楼层迁移仍走下面的事务。
 
 // 楼层或 swipe 被删、楼层号前移时，把版本栈的楼层号一起改过来。
 // mapSlot(slot) 返回新的 slot、原样的 slot，或 null（那层已删除）。一次读写，不逐条写入。
@@ -575,6 +573,11 @@ export function remapFaceSwipeArchive(prefix, mapSlot, retargetRecord = record =
     const range = typeof IDBKeyRange !== 'undefined' ? IDBKeyRange.bound(`${prefix}:`, `${prefix}:\uffff`) : null;
     if (!range) return Promise.resolve(false);
     const mine = `${prefix}:`;
+    const forgetBackups = () => {
+        for (const base of [...archiveSaved.keys()]) if (base.startsWith(mine)) forgetArchiveBackup(base);
+        for (const key of [...durableStacks.keys()]) if (key.startsWith(mine)) durableStacks.delete(key);
+    };
+    forgetBackups();
     const pendingWrites = [];
     for (const cache of [archiveLoads, archiveSaved, archiveWrites]) {
         for (const key of [...cache.keys()]) {
@@ -612,6 +615,9 @@ export function remapFaceSwipeArchive(prefix, mapSlot, retargetRecord = record =
             }
         };
     })).then(result => {
+        // A pending write may have completed while the remap waited for it.
+        // Its old slot must not remain proof after either a committed or failed remap.
+        forgetBackups();
         for (const cache of [archiveLoads, archiveSaved, archiveWrites]) {
             for (const key of [...cache.keys()]) if (String(key).startsWith(mine)) cache.delete(key);
         }

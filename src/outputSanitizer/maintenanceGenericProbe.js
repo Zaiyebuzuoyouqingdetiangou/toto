@@ -2,12 +2,12 @@
 // （点 label／按钮、拖滑杆、开合内层 details），比较操作前后的画面快照；没有任何变化的就是“点了没反应”。
 // 副本里会重新接上和真实页面一样的修复，所以修好的控件在副本里也能动。
 // 真实页面上的控件一个不碰；结果只写回一个属性，供维修兔的结论和诊断引用。
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.78.6';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.78.6';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.78.6';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.78.6';
-import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.78.6';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.78.6';
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.78.9';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.78.9';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.78.9';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.78.9';
+import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.78.9';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.78.9';
 
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
@@ -96,6 +96,9 @@ function collectControls(details) {
     const controls = [];
     const seen = new Set();
     const push = (element, kind) => {
+        // Keep one extra eligible control as evidence that this bounded pass is incomplete.
+        // It is never activated, and no further candidates need layout measurements.
+        if (controls.length > MAX_CONTROLS) return;
         if (seen.has(element) || element.closest(TOOL_SELECTOR) || element === outerSummary || outerSummary?.contains(element)) return;
         if (!visible(element)) return;
         seen.add(element);
@@ -110,9 +113,9 @@ function collectControls(details) {
         push(input, 'input');
     }
     // 没有真正控件、只是鼠标变成手形的元素，也算一种入口。
-    if (controls.length < MAX_CONTROLS) {
+    if (controls.length <= MAX_CONTROLS) {
         for (const element of details.querySelectorAll('div, span, li, p, figure, svg, g, path, circle, rect')) {
-            if (controls.length >= MAX_CONTROLS) break;
+            if (controls.length > MAX_CONTROLS) break;
             if (element.closest('label, button, summary, [role="button"]')) continue;
             // 里面已经有真正控件的外层（鼠标变手形只是顺带的），入口是里面那个，不单独算。
             if (element.querySelector('label, button, input, summary, [role="button"]')) continue;
@@ -124,7 +127,7 @@ function collectControls(details) {
             push(element, 'pointer');
         }
     }
-    return controls.slice(0, MAX_CONTROLS);
+    return controls;
 }
 
 function fire(element, type, init = {}) {
@@ -140,6 +143,8 @@ function activate(details, control) {
     const { element, kind } = control;
     // 前面的操作把它藏起来了（切了场景、收了折页）：藏着的控件按了本来就看不出变化，不算「没反应」。
     if (!visible(element)) return 'skip';
+    // 停用的原生控件（如第一页的“上一页”）本来就不该有反应，不算“点了没反应”。
+    if (element.disabled || element.getAttribute?.('aria-disabled') === 'true') return 'skip';
     if (kind === 'label') {
         const input = labelInput(details, element);
         if (input?.type === 'radio' && input.checked) return 'skip';
@@ -157,7 +162,6 @@ function activate(details, control) {
         return 'done';
     }
     if (kind === 'range') {
-        if (element.disabled) return 'dead';
         const min = Number(element.min === '' ? 0 : element.min), max = Number(element.max === '' ? 100 : element.max);
         const current = Number(element.value);
         element.value = String(Math.abs(current - min) > Math.abs(max - current) ? min : max);
@@ -168,8 +172,6 @@ function activate(details, control) {
         try { element.click(); } catch { fire(element, 'click'); }
         return 'done';
     }
-    // 停用的按钮（如翻到第一页时的“上一页”）本来就不该有反应，不算“点了没反应”。
-    if (element.disabled || element.getAttribute?.('aria-disabled') === 'true') return 'skip';
     // 已经选中的那一项（多选一、翻页页码）再点一次本来就不变，和已选中的单选一样跳过。
     if (element.matches?.('[data-rm-pick][data-rm-active="true"], [data-rm-goto][data-rm-active="true"]')) return 'skip';
     // 插件的复位按钮：初始状态下本来就没东西可复位，按了不变不能算“没反应”。
@@ -231,7 +233,12 @@ export function collectGenericProbeControls(opened) {
     // 副本外壳本身是 pointer-events:none（且 inert、在屏幕外），会被里面所有元素继承；
     // 收集控件时临时放开外壳，才能看出哪些元素是本面自己写了 pointer-events:none 的纯装饰。
     try { sandbox.host?.style?.setProperty('pointer-events', 'auto', 'important'); } catch {}
-    try { return collectControls(details); } finally {
+    try {
+        const controls = collectControls(details);
+        opened.controlLimitReached = controls.length > MAX_CONTROLS;
+        opened.controlCount = controls.length;
+        return controls.slice(0, MAX_CONTROLS);
+    } finally {
         try { sandbox.host?.style?.setProperty('pointer-events', 'none', 'important'); } catch {}
     }
 }
@@ -278,13 +285,13 @@ export function probeGenericControls(details, controls, started = Date.now(), bu
 export { controlName as genericProbeControlName };
 
 // 返回 { tested, dead: [名称…], skipped, truncated }；无法建立副本时返回 null。
-export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS } = {}) {
+export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS, recordResult = true } = {}) {
     const started = Date.now();
     const opened = openGenericProbeSandbox(root);
     if (!opened) return null;
     try {
         const controls = collectGenericProbeControls(opened);
-        const { outcomes, truncated, feedbackOnly } = probeGenericControls(opened.details, controls, started, budget);
+        const { outcomes, truncated: timedOut, feedbackOnly } = probeGenericControls(opened.details, controls, started, budget);
         const dead = [];
         const contentStill = [];
         let tested = 0, skipped = 0, uncertain = 0;
@@ -295,8 +302,11 @@ export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS } = {
             if (outcome === 'dead') dead.push(controlName(control.element));
             else if (feedbackOnly.has(control)) contentStill.push(controlName(control.element));
         }
-        const result = { tested, dead, feedbackOnly: contentStill, skipped, uncertain, truncated, total: controls.length };
-        try { root.setAttribute(GENERIC_PROBE_RESULT_ATTR, JSON.stringify(result)); } catch {}
+        const controlLimitReached = !!opened.controlLimitReached;
+        // If capped, total is a known lower bound: one additional eligible control was seen.
+        const result = { tested, dead, feedbackOnly: contentStill, skipped, uncertain,
+            truncated: timedOut || controlLimitReached, controlLimitReached, total: opened.controlCount };
+        if (recordResult) { try { root.setAttribute(GENERIC_PROBE_RESULT_ATTR, JSON.stringify(result)); } catch {} }
         return result;
     } catch (error) {
         console.debug('[RabbitMirror] generic probe failed:', error);
@@ -308,10 +318,14 @@ export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS } = {
 
 export function describeGenericProbe(result) {
     if (!result) return '';
-    if (!result.tested) return '';
+    const notes = `${result.uncertain ? `；${result.uncertain} 个控件只能用指针操作，测不准` : ''}${result.controlLimitReached ? '（已达到本次控件检查预算，尚有控件未测）' : result.truncated ? '（时间有限，未测完）' : ''}`;
+    if (!result.tested) {
+        if (result.truncated || result.uncertain) return `实测：这次没有完成任何控件的验证${notes}`;
+        // 没有可操作控件、或只有已选中／禁用等应跳过的控件，不代表作品缺少必须补出的交互。
+        return result.total ? `实测：${result.skipped || 0} 个控件当前无需操作，已跳过` : '实测：当前没有需要操作的可见控件';
+    }
     const still = Array.isArray(result.feedbackOnly) ? result.feedbackOnly : [];
     const stillText = still.length ? `；另有 ${still.length} 个按下后只有按钮自己变了、区域里的内容没变化：${[...new Set(still)].slice(0, 5).map(name => `「${name}」`).join('')}${still.length > 5 ? '…' : ''}` : '';
-    const notes = `${result.uncertain ? `；${result.uncertain} 个控件只能用指针操作，测不准` : ''}${result.truncated ? '（时间有限，未测完）' : ''}`;
     if (!result.dead.length) return `实测：副本里操作了 ${result.tested} 个控件，${still.length ? '画面有变化' : '画面都有变化'}${stillText}${notes}`;
     const names = [...new Set(result.dead)].slice(0, 5).map(name => `「${name}」`).join('');
     return `实测：${result.tested} 个控件里有 ${result.dead.length} 个操作后画面没有变化：${names}${result.dead.length > 5 ? '…' : ''}${stillText}${notes}`;

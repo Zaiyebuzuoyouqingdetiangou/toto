@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.78.6';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.78.6';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.78.6';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.78.9';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.78.9';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.78.9';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -15,11 +15,11 @@ import {
     mutateFaceSwipe,
     multifaceFacePagerView,
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
-    faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState,
+    faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.78.6';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.78.6';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.78.6';
+} from '../swipeVersions.js?rmv=1.78.9';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.78.9';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.78.9';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.78.6';
+} from './faceSwipe.js?rmv=1.78.9';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.78.6';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.78.6';
+} from './connection.js?rmv=1.78.9';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.78.9';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.78.6';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.78.6';
+} from './geometry.js?rmv=1.78.9';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.78.9';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -157,7 +157,7 @@ function rawOwnerForKey(ctx,index,swipe){
 // 一条本机缓存能不能确认「聊天数据里已经有它」：
 //   covered     ——当前聊天这一层的成品和它一样（或同一段正文已有更新的成品），或这一层已被删除：删掉本机这份不会丢东西；
 //   unconfirmed ——当前聊天，但聊天数据里没有它（可能还没来得及存，或聊天没加载完）：不能删；
-//   foreign     ——别的聊天，这里看不到它的聊天数据：只给每个聊天最新的那一条留着，更早的那些聊天早已保存过。
+//   foreign     ——别的聊天，这里看不到它的聊天数据，不能据此推定任何一版已经保存。
 function cacheCoverage(ctx,slot,record){
  const parsed=parseSlotKey(slot);
  if(!parsed || !Array.isArray(ctx?.chat)) return 'foreign';
@@ -181,63 +181,43 @@ function cacheCoverage(ctx,slot,record){
 function outputVersionBackedUp(ctx,slot,record){
  const html=String(record?.html||''); if(!html) return false;
  const parsed=parseSlotKey(slot); if(!parsed) return false;
- const archived=archivedOutputVersions.get(`${parsed.chat}:${parsed.index}:${parsed.swipe}`);
- if(archived && archived.slot===String(slot) && archived.html===html) return true;
+ if(faceSwipeArchiveRecordStored(`${parsed.chat}:${parsed.index}:${parsed.swipe}`,record)) return true;
  if(cacheCoverage(ctx,slot,record)!=='covered') return false;
  const owner=rawOwnerForKey(ctx,parsed.index,parsed.swipe);
  return owner?.deleted===true || String(owner?.html||'')===html;
 }
 
-// 每个聊天最新的那条缓存（别的聊天只有这一条可能还没进聊天文件）。
-function newestPerChat(items){
- const newest=new Map();
- for(const {key,ts} of items){
-  const chat=parseSlotKey(key)?.chat||key;
-  const current=newest.get(chat);
-  if(!current || ts>current.ts) newest.set(chat,{key,ts});
- }
- return newest;
-}
-
 function compactOutputStore(value){
- const entries=Object.entries(value&&typeof value==='object'?value:{}).filter(([,item])=>independentRecordWithinBudget(item)).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
+ const entries=Object.entries(value&&typeof value==='object'?value:{}).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
  const next={};
  let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
- const kept=entries.slice(0,120);
- const newest=newestPerChat(kept.map(([key,item])=>({key,ts:Number(item?.ts||0)})));
- // 累计每条自己的字节数，不在循环里反复把整个对象序列化（原来是 120 次 × 1.6MB，手机上会卡）。
- let used=2;
- for(const [key,item] of kept){
+ const classified=entries.map(([key,item])=>({key,item,backed:outputVersionBackedUp(ctx,key,item)}));
+ // 先为没有可靠副本的版本留足位置。达到原有上限时拒绝整次写入，不能截断后冒充保存成功。
+ let used=2,count=0;
+ for(const {key,item,backed} of [...classified.filter(entry=>!entry.backed),...classified.filter(entry=>entry.backed)]){
+  if(!independentRecordWithinBudget(item)) { if(backed) continue; return null; }
   // Full stacks live in their archive/chat metadata, not duplicated into the
   // bounded current-output cache on every passive reconciliation.
   const current={...item};delete current.faceSwipes;
   const cost=byteLength(JSON.stringify(key))+byteLength(JSON.stringify(current))+2;
-  if(used+cost>OUTPUT_STORE_BUDGET_BYTES){
-   // 超出目标：只留还不能确认已进聊天文件的（当前聊天里没对上的、别的聊天最新的一条），且不超过上限。
-   const coverage=cacheCoverage(ctx,key,item);
-   const protect=coverage==='unconfirmed' || (coverage==='foreign' && newest.get(parseSlotKey(key)?.chat||key)?.key===key);
-   if(!protect) continue;
-   if(used+cost>OUTPUT_STORE_CEILING_BYTES){ warnStorageTrimmed(); continue; }
-  }
-  next[key]=current; used+=cost;
+  if(backed && (count>=120 || used+cost>OUTPUT_STORE_BUDGET_BYTES)) continue;
+  if(count>=120 || used+cost>OUTPUT_STORE_CEILING_BYTES) return null;
+  next[key]=current; used+=cost; count+=1;
  }
  return next;
 }
 
 // 别处写不进去（比如记一笔抽签账）要腾地方时用：只删已经确认进了聊天数据的本机缓存，
-// 别的聊天每个留最新一条，当前聊天里还没对上的一条都不删。保留 keep 条可删的里最新的那些。
+// 没有可靠副本的版本一条都不删。保留 keep 条可删的里最新的那些。
 function compactCoveredOutputsForQuota(keep=40){
  let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
  let parsed;
  try{ parsed=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); }catch{ return false; }
  if(!parsed || typeof parsed!=='object' || Array.isArray(parsed)) return false;
  const entries=Object.entries(parsed).sort((a,b)=>Number(b[1]?.ts||0)-Number(a[1]?.ts||0));
- const newest=newestPerChat(entries.map(([key,item])=>({key,ts:Number(item?.ts||0)})));
  const next={}; let spare=0; let removed=0;
  for(const [key,item] of entries){
-  const coverage=cacheCoverage(ctx,key,item);
-  const protect=coverage==='unconfirmed' || (coverage==='foreign' && newest.get(parseSlotKey(key)?.chat||key)?.key===key);
-  if(protect){ next[key]=item; continue; }
+  if(!outputVersionBackedUp(ctx,key,item)){ next[key]=item; continue; }
   if(spare<Math.max(0,Number(keep)||0)){ next[key]=item; spare+=1; continue; }
   removed+=1;
  }
@@ -247,36 +227,35 @@ function compactCoveredOutputsForQuota(keep=40){
 // storage.js 不能直接引用这里（会绕成循环引用），经全局挂一个入口给它用。
 globalThis.__rabbitMirrorCompactCoveredOutputsForQuota=compactCoveredOutputsForQuota;
 
-// 给 storage.js 的空间回收步骤用：兔子镜历史备份里每一层更早的旧版本砍掉一半（只是回退用的）；每一层最新的那份一律留着。
+// 给 storage.js 腾空间时也必须逐版确认备份，不能把「旧版本」等同于「可丢弃」。
 function trimHistoryForQuota(){
  let history;
  try{ history=readHistoryStore(); }catch{ return false; }
- const older=[]; const keep=emptyHistoryStore();
+ let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
+ let removed=0; const keep=emptyHistoryStore();
  for(const [slot,entries] of Object.entries(history.slots||{})){
   const list=(Array.isArray(entries)?entries:[]).slice().sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
   if(!list.length) continue;
-  keep.slots[slot]=[list[list.length-1]];
-  for(const entry of list.slice(0,-1)) older.push({slot,entry});
+  keep.slots[slot]=list.filter((entry,index)=>{
+   if(index===list.length-1 || !outputVersionBackedUp(ctx,slot,entry)) return true;
+   removed+=1; return false;
+  });
  }
- if(!older.length) return false;
- older.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
- for(const {slot,entry} of older.slice(0,Math.floor(older.length/2))) keep.slots[slot].push(entry);
- for(const list of Object.values(keep.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
+ if(!removed) return false;
  try{ localStorage.setItem(HISTORY_STORE_KEY,JSON.stringify(keep)); warnStorageTrimmed(); return true; }catch{ return false; }
 }
 try{ globalThis.__rabbitMirrorTrimHistoryForQuota=trimHistoryForQuota; }catch{}
 
-// 本机存储满了、当前成品写不进去时，先从兔子镜自己的「旧版本备份」里腾地方：最旧的先删，每轮删四分之一，
-// 删一轮试写一次，写进去就停。旧版本备份只是本机多存的一份，聊天记录里的成品和版本存档都不动。
+// 当前成品写不进去时，只释放确认另有可靠副本的历史版本；没有备份的旧作品不替新写入让路。
 function freeHistoryRoomFor(serialized){
  let history;
  try{ history=readHistoryStore(); }catch{ return false; }
+ let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
  const flattened=[];
  for(const [slot,entries] of Object.entries(history.slots||{})) for(const entry of (Array.isArray(entries)?entries:[])) flattened.push({slot,entry});
- if(!flattened.length) return false;
- flattened.sort((a,b)=>Number(b.entry?.ts||0)-Number(a.entry?.ts||0));
- while(flattened.length){
-  flattened.splice(Math.max(0,flattened.length-Math.ceil(flattened.length/4)));
+ const evictable=flattened.filter(({slot,entry})=>outputVersionBackedUp(ctx,slot,entry)).sort((a,b)=>Number(a.entry?.ts||0)-Number(b.entry?.ts||0));
+ for(const candidate of evictable){
+  flattened.splice(flattened.indexOf(candidate),1);
   const retry=emptyHistoryStore();
   for(const {slot,entry} of flattened) (retry.slots[slot]||(retry.slots[slot]=[])).push(entry);
   for(const list of Object.values(retry.slots)) list.sort((a,b)=>Number(a?.ts||0)-Number(b?.ts||0));
@@ -291,6 +270,7 @@ function freeHistoryRoomFor(serialized){
 
 export function writeStore(v){
  const compacted=compactOutputStore(v);
+ if(!compacted){ warnStorageTrimmed(); return false; }
  try { localStorage.setItem(STORE_KEY, JSON.stringify(compacted)); try{ clearSavedIndependentOutputNotices(); }catch{} return true; }
  catch {
   // 先给插图存档瘦身（只瘦旧版本的长提示词，图不删），再动兔子镜自己的旧备份。
@@ -676,9 +656,6 @@ function chatOwnerConfirmedInFile(ctx,ownerKey,owner){
  if(!raw || (owner && raw!==owner && String(raw.html||'')!==String(owner.html||''))) return false;
  return !chatOwnerPending(ctx,ownerKey);
 }
-// 版本存档（IndexedDB）里确认写进并读回的那一版：base（聊天:楼层:swipe）→ {slot, html}。
-const archivedOutputVersions=new Map();
-const latestArchiveTokens=new Map();
 // 注意：确认只是尽力而为。酒馆的 saveMetadata() 在一些情况下没真存上也会正常返回——
 // 存聊天的网络错误、服务器 5xx 被它自己吞掉只弹提示，或者等上一次存盘（isChatSaving）超时后直接返回。
 // 这里拿不到更可靠的信号，只能把「返回落定且还是同一条聊天」当作已存。
@@ -926,13 +903,8 @@ export function writePersistedOwner(ctx,index,msg,value,{overwrite=true}={}){
  if(session) session[ownerKey]=next;
  const base=messageBaseSlotKey(ctx,index,msg);
  const savedSlot=chatPersistenceSlot(ctx,index,swipeId(msg),next);
- // 这一层的版本存档要换成新的这份：读回确认之前，旧的那条确认记录作废。
- const archiveToken=next.deleted?null:{slot:savedSlot,html:String(next.html||'')};
- archivedOutputVersions.delete(base);
- const archiveTokenRef={token:archiveToken};
- latestArchiveTokens.set(base,archiveTokenRef);
+ // 备份证据由版本存档维护；覆盖、删除和搬家时同步作废，不另存一份可能过期的确认表。
  void saveFaceSwipeArchive(base,next).then(({saved,row})=>{
-  if(saved && archiveToken?.slot && latestArchiveTokens.get(base)===archiveTokenRef && String(row?.record?.html||'')===archiveToken.html) archivedOutputVersions.set(base,archiveToken);
   // Only a completed, read-back archive transaction can dismiss a current-work
   // warning when the separate localStorage cache refused the same record.
   if(saved) clearSavedIndependentOutputNotices({...readStore(),[savedSlot]:row.record});
@@ -1211,7 +1183,7 @@ export function reconcileIndependentChatOwners(ctx=getContext(),options={}){
   try{ if(remapFaceSwipeSlots(mapSlot)) result.changed=true; }catch(error){ console.warn('[RabbitMirror] 版本栈对号失败：',error); }
   // 插图（内置生图与手动生图）也按楼层号存在本机，跟着一起搬；被删楼层的图留着不删。
   // 插图记录也有一份在聊天文件里：搬了的话 imageStore 自己会请求存盘，这里不计入对号次数。
-  try{ remapMirrorImageSlots(key,mapper); }catch(error){ console.warn('[RabbitMirror] 插图对号失败：',error); }
+  try{ remapMirrorImageSlots(key,mapper,{kind:options.kind,messageId:options.messageId}); }catch(error){ console.warn('[RabbitMirror] 插图对号失败：',error); }
   if(options.kind==='swipe'){
    // 归属标记里的 swipe 号也跟着改。
    const msg=chat[Number(options.messageId)];

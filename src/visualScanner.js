@@ -1,15 +1,17 @@
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.78.6';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.78.6';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.78.6';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.78.6';
-import { presentationModeFields } from './presentationMode.js?rmv=1.78.6';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget, updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.78.6';
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.78.6';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.78.6';
-import { getSettings } from './settings.js?rmv=1.78.6';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.78.6';
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.78.9';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.78.9';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.78.9';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.78.9';
+import { presentationModeFields } from './presentationMode.js?rmv=1.78.9';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget, updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.78.9';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.78.9';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.78.9';
+import { getSettings } from './settings.js?rmv=1.78.9';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.78.9';
 import {
     commitRabbitMirrorFollowBatch,
+    getRabbitMirrorFollowSingleOwner,
+    commitRabbitMirrorFollowSingle,
     captureRabbitMirrorGenerationSnapshots,
     getRabbitMirrorGenerationSnapshot,
     getRabbitMirrorFollowBatchSources,
@@ -17,16 +19,17 @@ import {
     inspectRabbitMirrorGenerationSource,
     releaseRabbitMirrorFollowBatch,
     releaseRabbitMirrorFollowBatchAtMessage,
-} from './generationGuard.js?rmv=1.78.6';
+} from './generationGuard.js?rmv=1.78.9';
 import {
     clearSanitizedRabbitMirrorFaceProof,
     getSanitizedRabbitMirrorFaceProof,
     markSanitizedRabbitMirrorFace,
-    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.78.6';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.78.6';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.78.6';
-import { saveFollowPartialResult } from './followPartialResults.js?rmv=1.78.6';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.78.6';
+    rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.78.9';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.78.9';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.78.9';
+import { saveFollowPartialResult, readFollowPartialResult } from './followPartialResults.js?rmv=1.78.9';
+import { markFreshDrawSlot, isFreshDrawSlot } from './freshDrawSlots.js?rmv=1.78.9';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.78.9';
 
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
@@ -41,6 +44,9 @@ let visualScannerCaptureTimer = 0;
 const followBatchScanAttempts = new Map();
 const terminalFollowMessageIndexes = new Set();
 const followBatchScansInFlight = new Set();
+// Accepted work may mount before the host's END callback. This is not authority:
+// every queued item must still pass the runtime injection/terminal owner proof.
+const pendingFollowDraws = new Map();
 // Runtime-only exact-owner tombstones; never persist source text in diagnostics.
 const rejectedFollowBatches = new Map();
 const followPartialStorageWarnings = new Set();
@@ -1759,7 +1765,7 @@ function templateSingleFollowRoot(template) {
 
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.78.6').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.78.9').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -1967,11 +1973,54 @@ function provenRenderedFollowFaces(set, chat, sanitizer) {
     return sanitizeAndMountFollowFaces(scopes[0], set, sanitizer, prepared);
 }
 
+// Called only after a live injected attempt's accepted output is committed.
+// The ordinary historical scanner and its synthetic pending fallback never mint grants.
+function authorizeFreshFollowDraws(owner, rendered) {
+    const settings = getSettings();
+    if (!owner || settings.enabled === false || settings.generationSource !== 'follow' || settings.builtinImageEnabled !== true) return;
+    const accepted = rendered.filter(item => !item.failure && item.root?.isConnected);
+    if (!accepted.length) return;
+    const { chat, message, chatKey, messageIndex, swipeId } = owner;
+    const getOutputIdentity = () => {
+        if (owner.getOutputIdentity?.() !== owner.outputIdentity) return '';
+        return readFollowPartialResult(chat, chat.indexOf(message))?.html || owner.outputIdentity;
+    };
+    const outputIdentity = getOutputIdentity();
+    const whole = accepted.length === rendered.length;
+    if (whole) markFreshDrawSlot(chatKey, messageIndex, swipeId, null, { message, outputIdentity, getOutputIdentity });
+    else for (const item of accepted) markFreshDrawSlot(chatKey, messageIndex, swipeId, item.proof.faceIndex, { message, outputIdentity, getOutputIdentity });
+    // Tools may have mounted before this proof existed and shown the safe old-face notice.
+    // Wake only these committed live faces; the image module still checks enable/owner/saved image.
+    void import('./builtinImage.js?rmv=1.78.9').then(module => {
+        for (const item of accepted) {
+            const index = chat.indexOf(message), face = item.proof?.faceIndex ?? null;
+            if (item.root?.isConnected && index >= 0 && isFreshDrawSlot(chatKey, index, swipeId, face)) module.fillBuiltinImageFrames(item.details || item.root);
+        }
+    }).catch(error => console.debug('[RabbitMirror] new follow image wake skipped:', error));
+}
+
+function settlePendingFollowDraws(chat) {
+    for (const [key, candidate] of pendingFollowDraws) {
+        if (candidate.chat !== chat) continue;
+        if (chat[candidate.messageIndex] !== candidate.message || String(candidate.message.mes || '') !== candidate.source
+            || !exactMessageScopes(chat, candidate.messageIndex).includes(candidate.scope)
+            || candidate.rendered.some((item, index) => !item.failure && (!item.root?.isConnected || !candidate.scope.contains(item.root)
+                || !item.root.contains(item.details) || followDrawContentIdentity(item.details, candidate.adoptDrawNotes) !== candidate.identities[index]))) {
+            pendingFollowDraws.delete(key); continue;
+        }
+        const owner = commitRabbitMirrorFollowSingle(chat, candidate.message, candidate.source);
+        if (!owner) continue;
+        pendingFollowDraws.delete(key);
+        authorizeFreshFollowDraws(owner, candidate.rendered);
+    }
+}
+
 async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
     let committed = 0;
     const terminalMessageIndexes=getRabbitMirrorFollowBatchTargetIndexes(chat).filter(index=>terminalFollowMessageIndexes.has(terminalFollowOwnerKey(chat,index)));
     const sets = getRabbitMirrorFollowBatchSources(chat,{terminalMessageIndexes});
     const sanitizer = sets.length ? await loadFollowBatchSanitizer() : null;
+    const imageModule = sets.length ? await import('./builtinImage.js?rmv=1.78.9').catch(() => null) : null;
     if (lifecycle !== visualScannerLifecycle) return committed;
     for (const set of sets) {
         if (lifecycle !== visualScannerLifecycle) break;
@@ -2000,6 +2049,16 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
             if (scans.length !== set.faces.length) continue;
             if (commitRabbitMirrorFollowBatch(set.batchId, chat, scans, {...set.owner,partial:scans.some(scan=>scan===null)})) {
                 committed += 1;
+                const freshOwner = commitRabbitMirrorFollowSingle(chat, set.owner.message, set.owner.message.mes);
+                if (freshOwner) authorizeFreshFollowDraws(freshOwner, rendered);
+                else if (imageModule?.adoptDrawNotes) {
+                    const scopes = exactMessageScopes(chat, set.owner.messageIndex);
+                    const scope = scopes.length === 1 && rendered.every(item => item.failure || scopes[0].contains(item.root)) ? scopes[0] : null;
+                    if (pendingFollowDraws.size >= 8) pendingFollowDraws.delete(pendingFollowDraws.keys().next().value);
+                    if (scope) pendingFollowDraws.set(set.batchId, { chat, message: set.owner.message, messageIndex: set.owner.messageIndex,
+                        source: String(set.owner.message.mes || ''), rendered, scope, adoptDrawNotes: imageModule.adoptDrawNotes,
+                        identities: rendered.map(item => item.failure ? '' : followDrawContentIdentity(item.details, imageModule.adoptDrawNotes)) });
+                }
                 rendered.forEach(({root,details,failure},faceIndex)=>{
                     if(failure)return;
                     const ref={batchId:set.batchId,faceIndex};
@@ -2062,7 +2121,9 @@ function messageIntegritySources(message) {
 }
 
 function successfulRabbitMirrorSource(message, chat) {
-    for (const source of messageIntegritySources(message)) {
+    const sources = messageIntegritySources(message);
+    const fresh = sources.find(source => getRabbitMirrorFollowSingleOwner(chat, message, source));
+    for (const source of fresh ? [fresh, ...sources.filter(source => source !== fresh)] : sources) {
         const inspection = inspectRabbitMirrorGenerationSource(source);
         if (!inspection.complete) continue;
         return { source, inspection, fromSnapshot: false };
@@ -2080,14 +2141,48 @@ function successfulRabbitMirrorSource(message, chat) {
     };
 }
 
-async function scanLatestAssistantMessage(mod) {
+function followDrawContentIdentity(details, adoptDrawNotes) {
+    const copy = details?.cloneNode?.(true);
+    if (!copy) return '';
+    adoptDrawNotes(copy);
+    copy.querySelectorAll('style, script, template, rm-think, rm-ticket, [data-rm-tool-ui], [data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-face-favorite-star], [data-rm-draw-status], [data-rm-draw-result], [data-rm-avatar-rendered], [data-rm-external-reference-note]')
+        .forEach(node => node.remove());
+    const frames = [...copy.querySelectorAll('[data-rm-draw-frame]')].map((frame, index) => {
+        const inputs = [frame, ...frame.querySelectorAll('[data-rm-draw-prompt], [data-rm-draw-tags], [data-rm-draw-char], [data-rm-draw-char-tags]')].map(node =>
+            [...node.attributes].filter(attribute => /^data-rm-draw-(?:prompt|tags|char|char-tags)$/.test(attribute.name))
+                .map(attribute => [attribute.name, attribute.value, normalizedText(node.textContent)]));
+        const value = [String(frame.getAttribute('data-rm-draw-frame') || ''), inputs, normalizedText(frame.textContent)];
+        // Keep frame placement relative to the caption/body, not merely a bag of prompts.
+        frame.replaceWith(copy.ownerDocument.createTextNode(`\u0000frame:${index}\u0000`));
+        return value;
+    });
+    return frames.length ? JSON.stringify([normalizedText(copy.textContent), frames]) : '';
+}
+
+async function singleFollowDrawContentMatches(rendered, inspection) {
+    try {
+        const [sanitizer, imageModule] = await Promise.all([loadFollowBatchSanitizer(), import('./builtinImage.js?rmv=1.78.9')]);
+        if (!sanitizer?.sanitizeRabbitMirrorUntrustedTemplate || !imageModule?.adoptDrawNotes) return false;
+        const template = document.createElement('template');
+        template.innerHTML = String(inspection?.isolatedSource || '');
+        if (!sanitizer.sanitizeRabbitMirrorUntrustedTemplate(template)) return false;
+        const expected = template.content.querySelector('details');
+        const actual = rendered?.matches?.('details') ? rendered : rendered?.querySelector?.('details');
+        const expectedIdentity = followDrawContentIdentity(expected, imageModule.adoptDrawNotes);
+        return !!expectedIdentity && expectedIdentity === followDrawContentIdentity(actual, imageModule.adoptDrawNotes);
+    } catch { return false; }
+}
+
+async function scanLatestAssistantMessage(mod, renderedMessage = null) {
     const lifecycle = visualScannerLifecycle;
     const chat = mod?.chat || globalThis.chat;
     if (!Array.isArray(chat) || !chat.length) return;
     captureRabbitMirrorGenerationSnapshots(chat);
     await scanFollowBatches(chat, lifecycle);
     if (lifecycle !== visualScannerLifecycle) return;
-    const message = [...chat].reverse().find(item => !item?.is_user && typeof item?.mes === 'string');
+    settlePendingFollowDraws(chat);
+    const message = renderedMessage || [...chat].reverse().find(item => !item?.is_user && typeof item?.mes === 'string');
+    if (renderedMessage && !chat.includes(renderedMessage)) return;
     if (!message || !/(?:<toto\b|<details\b)[\s\S]*?兔子镜/i.test(message.mes)) {
         console.debug('[RabbitMirror] visual commit skipped: latest assistant message has no RabbitMirror source');
         return;
@@ -2099,11 +2194,12 @@ async function scanLatestAssistantMessage(mod) {
         return;
     }
     const sourceForScan = successful.source;
+    const pendingFresh = !successful.fromSnapshot && getRabbitMirrorFollowSingleOwner(chat, message, sourceForScan);
     const sigHash = hashText(sourceForScan);
     if (sigHash !== lastScannedHash) {
         lastScannedHash = sigHash;
         lastScanAttempts = 0;
-    } else if (lastScanAttempts >= 2) {
+    } else if (lastScanAttempts >= 2 && !pendingFresh) {
         return;
     }
     lastScanAttempts += 1;
@@ -2131,6 +2227,26 @@ async function scanLatestAssistantMessage(mod) {
             bindVisualHistoryTarget(renderedToto,historyOwner);
             const details=renderedToto.matches?.('details')?renderedToto:renderedToto.querySelector?.('details');
             if(details)bindVisualHistoryTarget(details,historyOwner);
+        }
+        if (pendingFresh) {
+            // Drawing authority comes from the real completed attempt, not a
+            // successful local visual-history write (which may be out of space).
+            const details=renderedToto.matches?.('details')?renderedToto:renderedToto.querySelector?.('details');
+            // Unlike legacy title-only fallback, fresh drawing requires the one exact live message scope.
+            const scopes = pendingFresh ? exactMessageScopes(chat, pendingFresh.messageIndex) : [];
+            if (scopes.length === 1 && scopes[0].contains(renderedToto)
+                && renderedSummaryText(renderedToto) === rawSummaryText(sourceForScan)) {
+                const contentMatches = await singleFollowDrawContentMatches(renderedToto, successful.inspection);
+                const hostChat = globalThis.SillyTavern?.getContext?.()?.chat;
+                if (lifecycle !== visualScannerLifecycle || (mod?.chat || globalThis.chat) !== chat
+                    || (Array.isArray(hostChat) && hostChat !== chat)
+                    || !getRabbitMirrorFollowSingleOwner(chat, message, sourceForScan)) return;
+                if (contentMatches && renderedToto.isConnected && scopes[0].contains(renderedToto)
+                    && exactMessageScopes(chat, pendingFresh.messageIndex).includes(scopes[0])) {
+                    const owner = commitRabbitMirrorFollowSingle(chat, message, sourceForScan);
+                    if (owner) authorizeFreshFollowDraws(owner, [{ root: renderedToto, details, failure: null }]);
+                }
+            }
         }
         const feedbackResult = consumeInjectedFeedbackForSuccessfulRabbitMirror(message);
         if (feedbackResult?.consumed) {
@@ -2160,6 +2276,7 @@ export function destroyVisualScanner() {
     followBatchScanAttempts.clear();
     terminalFollowMessageIndexes.clear();
     followBatchScansInFlight.clear();
+    pendingFollowDraws.clear();
     for (const entry of rejectedFollowBatches.values()) entry.notice?.remove?.();
     rejectedFollowBatches.clear();
     if (globalThis.__rabbitMirrorVisualScannerCleanup === destroyVisualScanner) delete globalThis.__rabbitMirrorVisualScannerCleanup;
@@ -2175,6 +2292,8 @@ export async function initVisualScanner({ isActive = () => true } = {}) {
         const eventSource = mod?.eventSource;
         const eventTypes = mod?.event_types || {};
         if (!eventSource?.on) return;
+        const lifecycle = visualScannerLifecycle;
+        const renderedFreshTimers = new Map();
         const captureNow = () => {
             const finishCapture = globalThis.__rabbitMirrorPerfDiag?.begin?.('visualScanner.captureNow', {}, 0);
             if (visualScannerCaptureTimer) {
@@ -2199,6 +2318,7 @@ export async function initVisualScanner({ isActive = () => true } = {}) {
                 handler();
             }, delay);
             visualScannerTimers.add(timer);
+            return timer;
         };
         const generationMessageIndex = payload => {
             for (const value of [payload, payload?.messageId, payload?.message_id, payload?.mesid, payload?.id, mod?.streamingProcessor?.messageId]) {
@@ -2228,8 +2348,12 @@ export async function initVisualScanner({ isActive = () => true } = {}) {
             // Multiple SillyTavern end events can fire for the same reply. Keep
             // only one early and one settled scan instead of stacking another
             // pair for every event.
-            for (const timer of visualScannerTimers) clearTimeout(timer);
-            visualScannerTimers.clear();
+            const exactRenderTimers = new Set(renderedFreshTimers.values());
+            for (const timer of visualScannerTimers) {
+                if (exactRenderTimers.has(timer)) continue;
+                clearTimeout(timer);
+                visualScannerTimers.delete(timer);
+            }
             captureNow();
             scheduleCapture(120);
             scheduleTimer(() => scanLatestAssistantMessage(mod), 650);
@@ -2254,7 +2378,24 @@ export async function initVisualScanner({ isActive = () => true } = {}) {
             eventTypes.CHARACTER_MESSAGE_RENDERED,
         ].filter(Boolean);
         for (const eventName of [...new Set(captureEvents)]) {
-            const handler = () => scheduleCapture(140);
+            const handler = payload => {
+                scheduleCapture(140);
+                const chat = mod?.chat || globalThis.chat;
+                const index = generationMessageIndex(payload), message = chat?.[index];
+                const hasFreshOwner = () => messageIntegritySources(message).some(source => getRabbitMirrorFollowSingleOwner(chat, message, source));
+                if (!Number.isInteger(index) || !message || !hasFreshOwner() || renderedFreshTimers.has(message)) return;
+                // A final DOM projection may arrive after both END timers. Only
+                // the bounded set of proven current-page attempts can request this scan.
+                const timer = scheduleTimer(() => {
+                    renderedFreshTimers.delete(message);
+                    const currentChat = mod?.chat || globalThis.chat;
+                    const hostChat = globalThis.SillyTavern?.getContext?.()?.chat;
+                    if (lifecycle !== visualScannerLifecycle || currentChat !== chat
+                        || (Array.isArray(hostChat) && hostChat !== chat) || chat[index] !== message || !hasFreshOwner()) return;
+                    void scanLatestAssistantMessage(mod, message);
+                }, 0);
+                renderedFreshTimers.set(message, timer);
+            };
             subscribe(eventName, handler);
         }
         const generationEvents = [eventTypes.MESSAGE_RECEIVED, eventTypes.GENERATION_STOPPED, eventTypes.GENERATION_ENDED].filter(Boolean);
