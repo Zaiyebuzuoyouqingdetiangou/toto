@@ -1,4 +1,4 @@
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.79.0';
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.79.1';
 // 大富翁、飞行棋、走格子：一个掷骰子的区域（data-rm-ui="roll"，结果键是 1、2、3… 这样的点数），
 // 旁边一排表示「棋子在第几格」的单选（每格一个，样式里按 #格:checked 把棋子画在那一格）。
 // 模型把这两样写成了互不相干的：掷出几点，棋子不动。这里把它们接上：掷出 N 点，棋子往前走 N 格（走过终点从头接着走）。
