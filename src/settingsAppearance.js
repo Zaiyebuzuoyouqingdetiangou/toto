@@ -1,9 +1,9 @@
 // UI palettes from the user-provided Hearttrace source, by Toto.
 // Presentation only: no generation settings, Prompt, content storage, or network.
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.82.0';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.82.0';
-import { mountUserSkinControls } from './userSkin.js?rmv=1.82.0';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.82.0';
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.82.3';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.82.3';
+import { mountUserSkinControls } from './userSkin.js?rmv=1.82.3';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.82.3';
 const colorLabels = ['背景', '卡片底色', '正文', '辅助文字', '主色', '辅助色', '边框'];
 const mounts = new WeakMap();
 // Keep the existing public theme hook for older consumers.
@@ -52,7 +52,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.82.0').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.82.3').then(mod => {
         if (versionRow.isConnected) mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn('[RabbitMirror] 设置标题的更新检测没有挂上', error));
     const searchbar = make('div', 'rh-ui-searchbar');
@@ -99,7 +99,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
         usage:['tools','看看这次抽到了什么','查看抽签、请求记录和 Prompt 估算。估算不是服务商账单。'],
         regex:['tools','避免旧镜面重复发给模型','跟随正文 API 生成时，用这条正则过滤旧的兔子镜内容。'],
         diagnosis:['tools','检查宿主与连接问题','记录情况、查看诊断报告。'],
-        cleanup:['tools','清理与恢复','分别处理抽签记录、当前注入与设置。'],
+        cleanup:['tools','清理与恢复','分别处理抽签记录、当前注入、设置和本机存储。'],
         help:['tools','第一次使用兔子镜','先确定生成方式和显示模式，再回到聊天开始使用。'],
     };
     const panels = new Map();
@@ -207,7 +207,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
     move('rh_generation_evidence','diagnosis');
     move('rh_manual_entry_diag','diagnosis');
     move('rh_token_meter','usage');move(get('rh_copy_regex').closest('.rabbit-mirror-regex-helper'),'regex');
-    move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
+    move(get('rh_clear_last').parentElement,'cleanup');move(get('rh_storage_cleanup_block'),'cleanup');move(get('rh_external_diag_status').parentElement,'diagnosis');
     const steps=[['先选生成方式','选择“跟随正文 API”，或“使用副 API”。使用副 API 时，再为兔子镜配置连接与模型。','mode','选择生成方式'],['选择兔子镜显示模式',`根据生成方式，选择正文下方、外置展示或跟随正文内嵌。外置展示时，${outer}跟随正文内嵌则是${inner}`,'display','选择兔子镜显示模式'],['回到聊天，发一条消息','保持“随聊天生成小剧场”开启。按选好的生成与显示模式使用兔子镜。']];
     steps.forEach(([title,desc,target,label],i)=>{const step=html('section','rh-ui-guide-step',`<span>${i+1}</span><div><h3>${title}</h3><p>${desc}</p></div>`);if(i===2)step.querySelector('p').dataset.rhTimingGuide='true';if(target){const link=button(label+' ›',()=>navigate(target),'rh-ui-text-link');link.dataset.rhRoute=target;step.lastElementChild.append(link);}body('help').append(step);});
     note('help','想换内容，去「玩法」。遇到显示问题，查看具体镜面上的工具。');
@@ -324,7 +324,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => {} } = {}) {
             if(typeof root.showModal==='function'){if(!root.open)root.showModal();}
             else root.setAttribute('open','');
             trackViewport();applyTheme();paint();close.focus({preventScroll:true});
-            void import('./mirrorUpdateMenu.js?rmv=1.82.0').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
+            void import('./mirrorUpdateMenu.js?rmv=1.82.3').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn('[RabbitMirror] 打开设置时没能检测更新', error));
         }else{
             closeTheaterFavoriteViewer();
             closeTheaterFavoriteLibrary();

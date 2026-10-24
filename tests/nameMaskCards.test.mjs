@@ -51,3 +51,29 @@ test('an unreadable world book is skipped, not an error', async () => {
     const found = await findNameMaskCandidates(ctx, { fetchBook: async () => { throw new Error('offline'); } });
     assert.deepEqual(found.map(item => item.name), ['阿雪', '阿岩']);
 });
+
+test('NPC names written inside entry contents and active global books are found, and names seen in the chat come first', async () => {
+    const npcCtx = { ...ctx, chat: [{ is_user: true, name: '阿雪', mes: '去找阿松' }, { name: '阿岩', mes: '阿松和阿竹在桥上，阿松先开口。' }] };
+    const books = {
+        某城设定: { entries: {} },
+        聊天备忘: { entries: [] },
+        全局人物: { entries: { 1: { comment: '江湖势力＆npc', key: ['落汤鸡'], content: '【阿竹】\n阿松（镇北司指挥使）：冷面\n外貌：高大\n性格：沉稳\n绰号：某甲、某乙\n【主要势力与组织】' } } },
+    };
+    const found = await findNameMaskCandidates(npcCtx, { exclude: ['阿雪', '阿岩'], extraBooks: ['全局人物', '某城设定'], fetchBook: async (_c, name) => books[name] });
+    const names = found.map(item => item.name);
+    assert.ok(['阿竹', '阿松', '某甲', '某乙'].every(name => names.includes(name)), names.join(','));
+    assert.ok(!names.includes('外貌') && !names.includes('性格') && !names.includes('主要势力与组织'), names.join(','));
+    assert.deepEqual(names.slice(0, 2), ['阿松', '阿竹'], '聊天里出现次数多的在前');
+    assert.equal(found.find(item => item.name === '阿松').mentions, 3);
+    assert.ok(names.indexOf('落汤鸡') > names.indexOf('阿竹'), '没在聊天里出现的杂词沉后面');
+});
+
+test('common ways of writing an NPC in a book are all picked up, and real names are not swallowed as field labels', async () => {
+    const { namesFromText } = await import('../src/nameMaskCandidates.js');
+    const cases = [
+        ['- **阿松**：冷面', ['阿松']], ['**阿松**（指挥使）', ['阿松']], ['阿松，男，二十五岁', ['阿松']], ['name: 阿松', ['阿松']],
+        ['### 阿松', ['阿松']], ['背景人物：阿松、阿竹', ['阿松', '阿竹']], ['角色名：阿松', ['阿松']], ['姓名：阿松（字某甲）', ['阿松', '某甲']],
+        ['阿松 — 剑客', ['阿松']], ['李重要：账房', ['李重要']], ['外貌：高大', []], ['【人物设定】', []], ['这是一句话，没有名字。', []],
+    ];
+    for (const [text, expected] of cases) assert.deepEqual(namesFromText(text), expected, text);
+});
