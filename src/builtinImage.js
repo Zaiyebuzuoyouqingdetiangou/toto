@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.79.5';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.79.5';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.79.5';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.79.5';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.79.5';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.79.5';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.79.5';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.79.5';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.79.5';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.79.5';
+import { getSettings } from './settings.js?rmv=1.80.0';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.80.0';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.80.0';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.80.0';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.80.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.80.0';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.80.0';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.80.0';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.80.0';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.80.0';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -1151,7 +1151,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.5');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.80.0');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -1226,7 +1226,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.79.5'), import('./independentApi/connection.js?rmv=1.79.5')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.80.0'), import('./independentApi/connection.js?rmv=1.80.0')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1240,7 +1240,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.5');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.80.0');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1363,7 +1363,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         // 「跳过的标签」也管千千结档案里的文字。
         let cleanRef = value => value;
-        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.79.5')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.80.0')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
@@ -1513,17 +1513,26 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             if (sessionRecords.size > 200) sessionRecords.delete(sessionRecords.keys().next().value);
             try { saveMirrorImageForOwner(key, record, owner, { preserveCurrent: superseded }); if (!superseded) unsavedKeys.delete(key); }
             catch (error) {
-                // 存不下整份：只存看图要的（地址、时间、种子），刷新后至少图还在、不会再画一遍。
-                let minimalSaved = false;
-                try {
-                    const meta = record.promptMetadata || {};
-                    saveMirrorImageForOwner(key, { url: record.url, path: record.path, ...(record.path ? {} : { dataUrl: record.dataUrl }), generatedAt: record.generatedAt,
-                        provider: record.provider, builtinImageFit: record.builtinImageFit, promptMetadata: { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size } }, owner, { preserveCurrent: superseded });
-                    minimalSaved = true;
-                } catch { /* 还是存不下 */ }
+                // 本机存档写不下（多半是本机满了）：消息上已经写好完整记录时就靠它，不再改；没写上才先退一步：提示词、长相来源这些字照样留（只占几 KB，重画、看长相来源都靠它），只去掉图本身的重复副本；
+                // 还是存不下才退到只留看图要的。以前直接退到最小那份，聊天记录里已经写好的完整记录也被它盖掉，
+                // 新画的图就显示「旧版本画的，没留下提示词」、长相来源也没了。
+                let minimalSaved = error?.messageCopySaved === true;
+                const meta = record.promptMetadata || {};
+                const base = { url: record.url, path: record.path, ...(record.path ? {} : { dataUrl: record.dataUrl }), generatedAt: record.generatedAt,
+                    provider: record.provider, builtinImageFit: record.builtinImageFit };
+                const textMeta = Object.fromEntries(['prompt', 'nl', 'flatPrompt', 'characters', 'promptFormat', 'seed', 'size', 'backend', 'format', 'charactersApplied']
+                    .filter(name => meta[name] !== undefined).map(name => [name, meta[name]]));
+                const tiers = [
+                    { ...base, ...(record.prompt ? { prompt: record.prompt } : {}), promptMetadata: textMeta,
+                        ...(record.looksSources ? { looksSources: record.looksSources } : {}), ...(record.editedPrompt ? { editedPrompt: true } : {}) },
+                    { ...base, promptMetadata: { seed: meta.seed, promptFormat: meta.promptFormat, size: meta.size } },
+                ];
+                if (!minimalSaved) for (const tier of tiers) {
+                    try { saveMirrorImageForOwner(key, tier, owner, { preserveCurrent: superseded }); minimalSaved = true; break; } catch (tierError) { if (tierError?.messageCopySaved === true) { minimalSaved = true; break; } /* 下一档 */ }
+                }
                 console.warn('[RabbitMirror] 内置生图已画成，但没能写入本机存档', error);
                 // 画好了却没存进去（多半是本机存储满了）：记下原因，重画时如实告诉用户，不再说成「换好了」。
-                if (minimalSaved) unsavedKeys.delete(key);
+                if (minimalSaved) { if (!superseded) unsavedKeys.delete(key); }
                 else { unsavedKeys.add(key); Object.defineProperty(record, 'saveError', { value: error, enumerable: false }); }
             }
         }

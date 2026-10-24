@@ -1,11 +1,12 @@
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.79.5';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.79.5';
+import { normalizeNameMaskRules } from './nameMask.js?rmv=1.80.0';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.80.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.80.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.79.5';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.79.5';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.79.5';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.79.5';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.80.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.80.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.80.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.80.0';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -300,6 +301,8 @@ export const defaultSettings = Object.freeze({
     imageLooksMyriad: true,
     imageLooksWorldBook: true,
     imageLooksModel: true,
+    // 截图打码时额外要换的名字（原名 => 代称）；user 和角色名自动换，不用填。
+    nameMaskRules: [],
     imageCompositionMode: 'scene',
     imageBackend: 'baibai',
     imageLlmEnabled: false,
@@ -475,6 +478,7 @@ export function getSettings() {
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
     for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel']) settings[key] = settings[key] !== false;
+    settings.nameMaskRules = normalizeNameMaskRules(settings.nameMaskRules);
     settings.imageCompositionMode = settings.imageCompositionMode === 'auto' ? 'auto' : 'scene';
     const faceCount = settings.rabbitMirrorFaceCount;
     settings.rabbitMirrorFaceCount = Number.isInteger(faceCount) && faceCount >= 2 && faceCount <= 5 ? faceCount : 1;

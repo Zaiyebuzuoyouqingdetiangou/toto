@@ -11,6 +11,7 @@ const runtimeAnimation = readFileSync(new URL('../src/runtimeAnimationState.js',
 // Shared clone-restoration boundary: the real restoreRuntimeAnimationClone from
 // src/runtimeAnimationState.js plus the module-level leaf state it reads.
 const runtimeAnimationGlobals = () => ({
+    unmaskNameMaskClone: clone => clone,
     ANIMATION_SUSPENDED_ATTR: 'data-rm-animation-suspended', // exported constant of runtimeAnimationState.js
     authoredAnimationStyles: new WeakMap(), // models: no runtime animation override was remembered
     restoreRabbitMirrorAvatarClone: (source, clone) => clone, // models: no chat-avatar runtime active (src/chatAvatars.js)

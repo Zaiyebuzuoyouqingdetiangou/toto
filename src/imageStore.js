@@ -172,7 +172,7 @@ function requestChatSave(mes) {
         const request = saveRequest;
         saveRequest = null;
         if (!liveChatSaveContext(request)) return;
-        import('./independentApi/persistence.js?rmv=1.79.5')
+        import('./independentApi/persistence.js?rmv=1.80.0')
             .then(module => {
                 // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
                 const live = liveChatSaveContext(request);
@@ -365,6 +365,11 @@ export function mirrorImageOwnerMatchesKey(owner, key, { matchEntry = true } = {
 
 /** Preserve every completed paid result under an owner token, including deleted
  * or unloaded owners. The archive is never part of numeric/legacy key lookup. */
+function markMessageCopySaved(error) {
+    try { Object.defineProperty(error, 'messageCopySaved', { value: true, configurable: true }); } catch { /* 冻结的错误对象：调用方按没存处理 */ }
+    return error;
+}
+
 export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = false } = {}) {
     if (!owner?.message || !owner.extra || typeof owner.source !== 'string') throw new TypeError('图片请求缺少原始消息归属。');
     const target = ownedTarget(owner);
@@ -410,7 +415,8 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
         // A chat save is only queued, not an acknowledgement of durable disk
         // storage. Preserve the caller's session/unsaved warning if both local
         // safety writes failed, even though the live message has the picture.
-        if (archiveError) throw archiveError;
+        // 消息上已经写好了完整记录：告诉调用方，别再拿「最小那份」去盖掉它（提示词、长相来源会跟着丢）。
+        if (archiveError) throw markMessageCopySaved(archiveError);
         return result;
     }
     // The original object can be reinserted/recovered during this session. Do
@@ -419,7 +425,7 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
         if (!archiveError) rememberArchiveScope(owner.extra, owner.token, owner.entry, scope, null, archive.current, archive.history);
         const store = owner.extra[EXTRA_KEY] ||= {};
         const copy = chatCopy(archive);
-        if (copy) store[owner.entry] = { ...copy, swipe: owner.swipe };
+        if (copy) { store[owner.entry] = { ...copy, swipe: owner.swipe }; if (archiveError) throw markMessageCopySaved(archiveError); }
     }
     if (archiveError) throw archiveError;
     return retained;
@@ -618,7 +624,12 @@ function write(key, kind, value) {
         } catch { keepOld = false; }
         if (!keepOld) {
             const light = chatCopy(value);
-            try { globalThis.localStorage.setItem(name, JSON.stringify(light)); } catch { /* 本机满了就只靠聊天记录 */ }
+            try { globalThis.localStorage.setItem(name, JSON.stringify(light)); }
+            catch {
+                // 本机快满：本机这份退到只留看图要的（地址、时间、种子），消息上的完整记录不动。
+                const tiny = entry => entry && typeof entry === 'object' ? slimEntry(entry) : entry;
+                try { if (light) globalThis.localStorage.setItem(name, JSON.stringify({ ...light, current: tiny(light.current), history: [] })); } catch { /* 本机满了就只靠聊天记录 */ }
+            }
         }
         return;
     }
@@ -937,7 +948,11 @@ export function replaceMirrorImageVersions(key, current, history, { keepShownAt 
         try { globalThis.localStorage.removeItem(storageKey(key, 'images')); } catch { /* Retain an older safety copy. */ }
     } else {
         write(key, 'images', value);
-        if (archive?.owner) write(archiveKey, 'images', { ...value, owner: archive.owner });
+        // 消息上那份已经写好；只是本机的归属存档写不下时，标出来，调用方别再用精简版去盖。
+        if (archive?.owner) {
+            try { write(archiveKey, 'images', { ...value, owner: archive.owner }); }
+            catch (error) { throw chatCopy(value) && messageSlot(key) ? markMessageCopySaved(error) : error; }
+        }
     }
     if (archive?.owner && target) for (const extra of swipeExtras(target.msg, target.swipe).filter(Boolean))
         rememberArchiveScope(extra, token, slot.entry, archiveScope(target.ctx), target.mes, value.current, value.history);

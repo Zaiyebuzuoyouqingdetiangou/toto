@@ -119,3 +119,21 @@ test('a new swipe that copied the previous swipe data does not show or keep the 
     images.saveMirrorImage('builtin:chat-a:1:1:0:hF', record(2));
     assert.deepEqual(Object.keys(imgs(ctx.chat[1].extra)), ['0:hF']);
 });
+
+test('local storage full: the full record still lands on the message and the error says so', () => {
+    store.clear(); limit = Infinity; freshChat();
+    const key = 'builtin:chat:chat-a:1:0:0:h9';
+    const owner = images.captureMirrorImageOwner(key);
+    assert.ok(owner);
+    limit = used();
+    const full = { path: '/user/images/9.png', generatedAt: '2026-10-24T00:00:09Z', prompt: '阿雪 长发', looksSources: { 阿雪: '建档' },
+        promptMetadata: { prompt: '阿雪 长发', flatPrompt: '阿雪 长发', seed: 9, promptFormat: 'nai5-natural' } };
+    let thrown = null;
+    try { images.saveMirrorImageForOwner(key, full, owner); } catch (error) { thrown = error; }
+    assert.ok(thrown, '本机写不下时应报错');
+    assert.equal(thrown.messageCopySaved, true, '消息上已写好时，调用方不该再拿最小那份去盖');
+    const saved = Object.values(imgs(ctx.chat[1].extra))[0]?.current;
+    assert.equal(saved?.path, '/user/images/9.png');
+    assert.equal(saved?.promptMetadata?.flatPrompt, '阿雪 长发');
+    assert.deepEqual({ ...saved?.looksSources }, { 阿雪: '建档' });
+});
