@@ -1,7 +1,7 @@
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.82.4';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.82.4';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.82.4';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.82.4';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.82.5';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.82.5';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.82.5';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.82.5';
 
 // 插件写法「方言表」：模型写的插件交互，意思对、写法和标准不一样的那些情况，集中在这里认。
 // 每一条只做三件事：怎么认出来、按什么标准写法去理解、诊断里怎么说。不新增内容、不猜目标。

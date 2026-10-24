@@ -2,9 +2,9 @@
 // 默认只清「另有可靠副本」或「只是缓存」的：已存进聊天的镜面缓存和旧版本、待修样本、诊断记录、旧版本遗留键、插图旧版本里的长提示词。
 // 只在本机、清了就没有的（避重与抽签历史、本轮抽签记录、用量统计）要自己勾选。
 // 收藏夹、设置、外观、母本库、世界书、API 配置一律不碰。
-import { clearLastCombo } from './storage.js?rmv=1.82.4';
-import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.4';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.4';
+import { clearLastCombo } from './storage.js?rmv=1.82.5';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.5';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.5';
 
 const storage = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 
@@ -47,6 +47,10 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
             try { stats = globalThis.__rabbitMirrorCoveredStorageStats?.(); } catch { stats = null; }
             if (!stats) return '';
             const parts = [`这个聊天能清约 ${formatCleanupBytes(stats.freeable)}`];
+            // 三个存档各占多少，方便看大头在哪。
+            const each = [['镜面缓存', 'rabbit_mirror_independent_outputs_v1'], ['历史备份', 'rabbit_mirror_independent_history_v1'], ['多版本切换', 'rabbit_mirror_face_swipes_v1']]
+                .map(([label, key]) => `${label} ${formatCleanupBytes(sizeOf(exact(key)))}`).join('、');
+            parts.push(`其中${each}`);
             if (stats.otherChats) parts.push(`${stats.otherChatCount} 个别的聊天约 ${formatCleanupBytes(stats.otherChats)}（打开那个聊天再点）`);
             if (stats.unconfirmed) parts.push(`还没确认存进聊天的约 ${formatCleanupBytes(stats.unconfirmed)}（不清）`);
             return parts.join('；');
@@ -64,16 +68,18 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
         // 只存在本机的整张图（data: 开头，没有文件地址）不能瘦，说清占了多少。
         detail: () => {
             const store = storage();
-            let dataOnly = 0, prompts = 0;
+            let dataOnly = 0, prompts = 0, count = 0, current = 0;
             for (const key of keys()) {
                 if (!key.startsWith('rabbitMirror:image:v1:images:')) continue;
                 let raw = ''; try { raw = String(store.getItem(key) || ''); } catch { continue; }
                 const images = raw.match(/"data:image\/[^"]*"/g) || [];
                 dataOnly += images.reduce((sum, text) => sum + text.length * 2, 0);
                 let value = null; try { value = JSON.parse(raw); } catch { value = null; }
+                count += 1;
+                current += JSON.stringify(value?.current?.promptMetadata || {}).length * 2 + String(value?.current?.prompt || '').length * 2;
                 for (const entry of Array.isArray(value?.history) ? value.history : []) if (!entry?.slimmed) prompts += JSON.stringify(entry?.promptMetadata || {}).length * 2 + String(entry?.prompt || '').length * 2;
             }
-            return `能瘦掉的旧提示词约 ${formatCleanupBytes(prompts)}${dataOnly ? `；只存在本机的整张图约 ${formatCleanupBytes(dataOnly)}（图本身，不清）` : ''}`;
+            return `能瘦掉的旧提示词约 ${formatCleanupBytes(prompts)}${dataOnly ? `；只存在本机的整张图约 ${formatCleanupBytes(dataOnly)}（图本身，不清）` : ''}；共 ${count} 份插图存档，其中当前那张的提示词约 ${formatCleanupBytes(current)}`;
         },
         run: () => { try { resetMirrorImageSlimFlag(); slimMirrorImagesForQuota(); } catch { /* 跳过 */ } },
     },

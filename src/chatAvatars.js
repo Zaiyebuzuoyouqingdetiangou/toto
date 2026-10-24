@@ -1,10 +1,10 @@
 // Optional, local-only avatar consumer. Model markers describe a role, never an
 // image URL, an owner, or permission to replace arbitrary artwork.
-import { unmaskNameMaskClone } from './nameMask.js?rmv=1.82.4';
-import { getSettings } from './settings.js?rmv=1.82.4';
-import { getCurrentChatKey } from './storage.js?rmv=1.82.4';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.82.4';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.82.4';
+import { unmaskNameMaskClone } from './nameMask.js?rmv=1.82.5';
+import { getSettings } from './settings.js?rmv=1.82.5';
+import { getCurrentChatKey } from './storage.js?rmv=1.82.5';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.82.5';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.82.5';
 
 const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"]';
 const FACES = 'toto, details[data-rabbit-mirror-external-details]';
