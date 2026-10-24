@@ -20,13 +20,15 @@ function fill() {
     store.set('rabbit_mirror_theater:last_combo:v11', '[{"ts":1}]');
     store.set('rabbit_mirror_theater:selection_recipes:v1', '[]');
     store.set('rabbit_mirror_theater:token_meter:independent:v1', '{}');
+    store.set('rabbit_mirror_theater:pending_batch:v1', '{}');
+    store.set('rabbit_mirror_theater:pending_batch_registry:v2', '{}');
 }
 
 test('defaults are the safe categories only', () => {
     fill();
     const items = cleanup.measureStorageCleanup();
-    assert.deepEqual(items.filter(item => item.safe).map(item => item.id), ['covered', 'image-prompts', 'samples', 'diagnostics', 'legacy']);
-    assert.deepEqual(items.filter(item => !item.safe).map(item => item.id), ['history', 'recipes', 'token-meter']);
+    assert.deepEqual(items.filter(item => item.safe).map(item => item.id), ['covered', 'image-prompts', 'samples', 'diagnostics', 'legacy', 'prompt-meter']);
+    assert.deepEqual(items.filter(item => !item.safe).map(item => item.id), ['history', 'recipes', 'follow-partial']);
     assert.ok(items.find(item => item.id === 'legacy').bytes > 6000);
 });
 
@@ -34,13 +36,15 @@ test('safe cleanup removes samples, diagnostics and legacy keys but keeps curren
     fill();
     const result = cleanup.runStorageCleanup(cleanup.measureStorageCleanup().filter(item => item.safe).map(item => item.id));
     assert.ok(result.freed >= (4000 + 2000 + 3000 + 300) * 2);
+    assert.equal(store.has('rabbit_mirror_theater:token_meter:independent:v1'), false, 'Prompt 估算属于可放心清的');
     for (const key of ['rabbit_mirror_repair_samples:v1', 'rabbit_mirror_independent_api_last_request_v2', 'rabbit_mirror_theater:last_combo:v9', 'rabbit_mirror_theater:pending_combo:v10']) assert.equal(store.has(key), false, key);
-    for (const key of [...KEEP, 'rabbit_mirror_theater:last_combo:v11', 'rabbit_mirror_theater:selection_recipes:v1', 'rabbit_mirror_theater:token_meter:independent:v1']) assert.equal(store.has(key), true, key);
+    for (const key of [...KEEP, 'rabbit_mirror_theater:last_combo:v11', 'rabbit_mirror_theater:selection_recipes:v1', 'rabbit_mirror_theater:pending_batch:v1', 'rabbit_mirror_theater:pending_batch_registry:v2']) assert.equal(store.has(key), true, key);
 });
 
 test('local-only categories go only when ticked, and never touch favourites or settings', () => {
     fill();
-    cleanup.runStorageCleanup(['history', 'recipes', 'token-meter']);
-    for (const key of ['rabbit_mirror_theater:last_combo:v11', 'rabbit_mirror_theater:selection_recipes:v1', 'rabbit_mirror_theater:token_meter:independent:v1']) assert.equal(store.has(key), false, key);
+    store.set('rabbit_mirror_follow_partial_results_v1', '[]');
+    cleanup.runStorageCleanup(['history', 'recipes', 'follow-partial']);
+    for (const key of ['rabbit_mirror_theater:last_combo:v11', 'rabbit_mirror_theater:selection_recipes:v1', 'rabbit_mirror_follow_partial_results_v1']) assert.equal(store.has(key), false, key);
     for (const key of KEEP) assert.equal(store.has(key), true, key);
 });

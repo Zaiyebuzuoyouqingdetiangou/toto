@@ -29,17 +29,17 @@ function removeWhere(predicate) {
 }
 
 const exact = (...names) => key => names.includes(key);
-const LEGACY = key => (/^rabbit_mirror_theater:(?:last_combo|pending_combo):v\d+$/.test(key) && !/:v11$/.test(key))
-    || key === 'rabbit_mirror_theater:pending_batch:v1' || key === 'rabbit_mirror_theater:pending_batch_registry:v2';
+// 正在用的预约表（pending_batch:v1、pending_batch_registry:v2/v3）不算遗留。
+const LEGACY = key => /^rabbit_mirror_theater:(?:last_combo|pending_combo):v\d+$/.test(key) && !/:v11$/.test(key);
 const COVERED = exact('rabbit_mirror_independent_outputs_v1', 'rabbit_mirror_independent_history_v1', 'rabbit_mirror_face_swipes_v1');
 const HISTORY = key => /^rabbit_mirror_theater:(?:last_combo|pending_combo):v11$/.test(key)
-    || ['rabbit_mirror_theater:pending_batch_registry:v3', 'rabbit_mirror_theater:generation_attempts:v1',
+    || ['rabbit_mirror_theater:generation_attempts:v1',
         'rabbit_mirror_theater:directive_pick_cache:v1', 'rabbit_mirror_theater:format_eligible_misses:v1'].includes(key);
 
 export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
     {
         id: 'covered', safe: true, label: '已存进聊天的镜面缓存和旧版本',
-        note: '只删当前打开的聊天里已经确认存进聊天文件的那些；还没确认的、别的聊天的都不动。想清别的聊天，打开那个聊天再点一次。',
+        note: '只删已经确认另有副本（聊天文件或浏览器版本存档）的那些，每个位置最新那份留着；还没确认的不动。别的聊天的多数要打开那个聊天再点一次。下次重说时多版本切换会再占回一点。',
         measure: () => sizeOf(COVERED),
         run: () => {
             try { globalThis.__rabbitMirrorCompactCoveredOutputsForQuota?.(0); } catch { /* 跳过 */ }
@@ -57,7 +57,11 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
         id: 'samples', safe: true, label: '待修样本箱',
         note: '维修兔攒给作者看的样本，不影响使用。',
         measure: () => sizeOf(exact('rabbit_mirror_repair_samples:v1')),
-        run: () => removeWhere(exact('rabbit_mirror_repair_samples:v1')),
+        run: () => {
+            removeWhere(exact('rabbit_mirror_repair_samples:v1'));
+            // 和样本箱自己的「清空」一样通知一下，导出按钮上的面数跟着归零。
+            try { globalThis.dispatchEvent?.(new CustomEvent('rabbitmirror:repair-samples', { detail: { count: 0 } })); } catch { /* 跳过 */ }
+        },
     },
     {
         id: 'diagnostics', safe: true, label: '最近一次请求的诊断记录',
@@ -72,8 +76,14 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
         run: () => removeWhere(LEGACY),
     },
     {
+        id: 'prompt-meter', safe: true, label: '最近一次 Prompt 估算',
+        note: '下次生成会重新算。',
+        measure: () => sizeOf(key => key.startsWith('rabbit_mirror_theater:token_meter')),
+        run: () => removeWhere(key => key.startsWith('rabbit_mirror_theater:token_meter')),
+    },
+    {
         id: 'history', safe: false, label: '避重与抽签历史、冷却记录',
-        note: '只在本机。清掉后主题和形式的冷却从头算；颜色避重会从当前聊天里保存的兔子镜补，别的聊天的记录就没了。',
+        note: '只在本机。清掉后别的聊天的避重记录就没了；当前聊天里保存的兔子镜还会被扫进近期记录。正在生成时不要清。',
         measure: () => sizeOf(HISTORY),
         run: () => { try { clearLastCombo(); } catch { removeWhere(HISTORY); } },
     },
@@ -84,10 +94,10 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
         run: () => removeWhere(exact('rabbit_mirror_theater:selection_recipes:v1')),
     },
     {
-        id: 'token-meter', safe: false, label: '用量统计',
-        note: '只在本机，清掉后 token 用量从零开始记。',
-        measure: () => sizeOf(key => key.startsWith('rabbit_mirror_theater:token_meter')),
-        run: () => removeWhere(key => key.startsWith('rabbit_mirror_theater:token_meter')),
+        id: 'follow-partial', safe: false, label: '跟随正文多面的补回结果',
+        note: '只在本机。跟随正文多面里先出好的面、重试补回的面存在这里；清掉后这些面会显示回原来缺面或失败的样子。',
+        measure: () => sizeOf(exact('rabbit_mirror_follow_partial_results_v1')),
+        run: () => removeWhere(exact('rabbit_mirror_follow_partial_results_v1')),
     },
 ]);
 

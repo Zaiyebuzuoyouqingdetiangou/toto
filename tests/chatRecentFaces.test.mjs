@@ -37,3 +37,10 @@ test('a provider failure or no provider leaves local history as is', () => {
     storage.setChatRecentFacesProvider(null);
     assert.equal(storage.getRecentDiversityHistory(5).length, 1);
 });
+
+test('a repaired face whose saved time was bumped to now is still the same face (same form, same main colours)', () => {
+    store.set(KEY, JSON.stringify([{ ts: 5000, formatIds: ['1.14'], themeIds: [], paletteFingerprint: { mainColors: ['#3A271C', '#291B13'] } }]));
+    storage.setChatRecentFacesProvider(() => [{ ts: 9_900_000, formatIds: ['1.14'], themeIds: [], paletteFingerprint: { mainColors: ['#3a271c', '#291b13'] }, diversityRound: 'chat:r' }]);
+    assert.equal(storage.getComboHistory(10).length, 1);
+    storage.setChatRecentFacesProvider(null);
+});

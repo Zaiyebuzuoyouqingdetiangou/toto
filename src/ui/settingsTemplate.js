@@ -323,7 +323,7 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <div id="rh_storage_cleanup_usage" style="font-size:12px;opacity:.82;margin-bottom:6px;"></div>
             <div id="rh_storage_cleanup_list" style="display:grid;gap:6px;"></div>
             <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px;">
-              <button id="rh_storage_cleanup_refresh" class="menu_button" type="button">重新统计</button>
+              <button id="rh_storage_cleanup_refresh" class="menu_button" type="button">统计占用</button>
               <button id="rh_storage_cleanup_run" class="menu_button" type="button">清理勾选的</button>
               <span id="rh_storage_cleanup_status" style="font-size:11px;opacity:.72;"></span>
             </div>

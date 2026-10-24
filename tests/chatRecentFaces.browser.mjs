@@ -32,18 +32,20 @@ try {
             '6:0': { html: face('#1F3A5C', '夜航图'), ts: 1_800_000_100_000, apiRequest: { themeIds: [], formatIds: ['1.14'], presentationMode: 'html' } },
             '8:0': { deleted: true, ts: 1_800_000_200_000 },
         } } };
-        const chat = [{ is_user: true, mes: '去某城' }, { is_user: false, send_date: '2028-01-15T08:00:00Z', mes: `正文。<toto data-rabbit-mirror="true">${face('#5C1F3A', '跟随面')}</toto>` }];
+        const multi = [face('#1E4D2B', '甲面'), face('#4B1E5C', '乙面')].map((html, i) => `<toto data-rabbit-mirror="true" data-rm-face="${i + 1}">${html}</toto>`).join('\n');
+        const chat = [{ is_user: false, send_date: '2028-02-01T08:00:00Z', mes: `正文。${multi}` }, { is_user: true, mes: '去某城' }, { is_user: false, send_date: '2028-01-15T08:00:00Z', mes: `正文。<toto data-rabbit-mirror="true">${face('#5C1F3A', '跟随面')}</toto>` }];
         window.SillyTavern = { getContext: () => ({ chatMetadata, chat, chatId: 'chat-a', getCurrentChatId: () => 'chat-a' }) };
         localStorage.clear();
         localStorage.setItem('rabbit_mirror_theater:last_combo:v11', JSON.stringify([{ ts: 1000, formatIds: ['6.3.4'], themeIds: ['G.6.2'], paletteFingerprint: { mainColors: ['#F8EFF1'] } }]));
         await import('/src/independentApi/request.js?' + q);
         const storage = await import('/src/storage.js?' + q);
-        const recent = storage.getRecentDiversityHistory(4);
+        const recent = storage.getComboHistory(10);
         return recent.map(item => ({ formats: item.formatIds, colors: item.paletteFingerprint?.mainColors || [], fromChat: !!item.fromChat, hasHtml: JSON.stringify(item).includes('某城的夜色') }));
     }, q);
-    assert.equal(result.length, 4);
-    assert.deepEqual(result.map(item => item.formats[0]), ['6.3.4', '5.2.3.1', '1.14', undefined]);
+    assert.equal(result.length, 6, JSON.stringify(result));
+    assert.deepEqual(result.map(item => item.formats[0]), ['6.3.4', '5.2.3.1', '1.14', undefined, undefined, undefined]);
     assert.ok(result[3].fromChat && result[3].colors.some(color => /^#5C1F3A$/i.test(color)), '跟随正文的面也扫到：' + JSON.stringify(result[3]));
+    assert.ok(result[4].colors.some(color => /^#1E4D2B$/i.test(color)) && result[5].colors.some(color => /^#4B1E5C$/i.test(color)), '跟随正文多面每一面都扫到');
     assert.ok(result[1].fromChat && result[2].fromChat);
     assert.ok(result[1].colors.length && result[2].colors.length, '聊天里的面扫出了主色');
     assert.ok(result[1].colors.some(color => /^#2C2119$/i.test(color)), JSON.stringify(result[1].colors));

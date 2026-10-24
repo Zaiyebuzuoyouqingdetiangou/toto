@@ -1621,39 +1621,56 @@ export function commitIndependentVisualResult(inner='', onScan=null){
 // 给避重记录补上本机没记下的面（本机存储满了写不进去时，记录会停在很早以前）。
 // 只在浏览器里扫，兔子镜原文不发送；最多看最近 8 个楼层，扫过的按楼层＋时间缓存。
 const chatFaceScanCache=new Map();
+let chatFaceListCache={key:'',records:[]};
+// 聊天存档里的多面：和别处读存档一样按「已存显示」宽松解析（存档里样式括号不配对也照读）。
+function scanSavedMirrorFaces(html,onScan){
+ if(hasMultifaceMarkup(html)){
+  const parsed=parseMultifaceOutput(html,{storedDisplay:true});
+  if(!parsed.ok) return;
+  for(const face of parsed.faces) onScan(scanRabbitMirrorHtml(wrapIndependentFace(face.inner,face.index),null)||{},face.index);
+  return;
+ }
+ onScan(scanRabbitMirrorHtml(wrappedIndependentMirrorHtml(html),null)||{},0);
+}
 function chatRecentFaceRecords(){
  let ctx=null; try{ ctx=getContext(); }catch{ return []; }
  const owners=ctx?.chatMetadata?.rabbit_mirror_independent_outputs_v2?.owners;
- const key=String(chatKey(ctx)||'');
- const recent=Object.entries(owners&&typeof owners==='object'?owners:{})
-  .filter(([,record])=>record&&record.deleted!==true&&typeof record.html==='string'&&record.html&&Number(record.ts)>0);
- // 跟随正文模式：兔子镜就在回复正文里，时间取生成结束时间或发送时间。
  const chat=Array.isArray(ctx?.chat)?ctx.chat:[];
- for(let index=chat.length-1,seen=0;index>=0&&seen<8;index-=1){
+ const key=String(chatKey(ctx)||'');
+ const ownerEntries=Object.entries(owners&&typeof owners==='object'?owners:{})
+  .filter(([,record])=>record&&record.deleted!==true&&typeof record.html==='string'&&record.html&&Number(record.ts)>0);
+ // 一次请求里会被问几十次：聊天和存档都没变时直接用上次的结果。
+ const last=chat[chat.length-1];
+ const listKey=`${key}|${chat.length}|${String(last?.mes||'').length}|${Number(last?.swipe_id)||0}|${ownerEntries.map(([owner,record])=>`${owner}:${Number(record.ts)}`).join(',')}`;
+ if(chatFaceListCache.key===listKey) return chatFaceListCache.records;
+ const recent=ownerEntries.slice();
+ // 跟随正文模式：兔子镜就在回复正文里，时间取生成结束时间或发送时间。只往回看最近 40 条回复。
+ for(let index=chat.length-1,seen=0,looked=0;index>=0&&seen<8&&looked<40;index-=1){
   const msg=chat[index]; if(!msg||msg.is_user||msg.is_system) continue;
+  looked+=1;
   const text=String(msg.mes||''); const at=text.search(/<toto\b/i); if(at<0) continue;
   const end=text.toLowerCase().lastIndexOf('</toto>'); if(end<at) continue;
   const ts=Number(new Date(msg.gen_finished||msg.send_date||0))||0; if(!ts) continue;
-  const inner=text.slice(text.indexOf('>',at)+1,end);
-  recent.push([`follow:${index}:${Number(msg.swipe_id)||0}`,{html:inner,ts,apiRequest:null}]); seen+=1;
+  // 多面：整段原样交给解析（每面各有自己的 <toto>）；单面取里面。
+  const html=/<toto\b[^>]*\bdata-rm-face=/i.test(text)?text.slice(at,end+7):text.slice(text.indexOf('>',at)+1,end);
+  recent.push([`follow:${index}:${Number(msg.swipe_id)||0}`,{html,ts,apiRequest:null}]); seen+=1;
  }
  recent.sort((a,b)=>Number(b[1].ts)-Number(a[1].ts)); recent.splice(8);
  const out=[];
  for(const [owner,record] of recent){
-  const cacheKey=`${key}|${owner}|${Number(record.ts)}|${record.html.length}`;
+  const cacheKey=`${key}|${owner}|${Number(record.ts)}|${hashText(record.html)}`;
   if(!chatFaceScanCache.has(cacheKey)){
    const diagnostic=record.apiRequest&&typeof record.apiRequest==='object'?record.apiRequest:{};
    const faces=[];
    try{
-    commitIndependentVisualResult(record.html,(scan,faceIndex)=>{
+    scanSavedMirrorFaces(record.html,(scan,faceIndex)=>{
      const meta=Array.isArray(diagnostic.faces)?diagnostic.faces[faceIndex]||{}:diagnostic;
      faces.push({
-      ts:Number(record.ts),fromChat:true,diversityRound:`chat:${key}:${owner}:${Number(record.ts)}`,
-      ...(Array.isArray(diagnostic.faces)?{batchId:`chat:${owner}:${Number(record.ts)}`,faceIndex}:{}),
+      ts:Number(record.ts),fromChat:true,diversityRound:`chat:${key}:${owner}:${Number(record.ts)}`,faceIndex,
       themeIds:Array.isArray(meta.themeIds)?meta.themeIds.map(String):[],formatIds:Array.isArray(meta.formatIds)?meta.formatIds.map(String):[],
       samplingMode:String(meta.samplingMode||''),...presentationModeFields(meta),
       visualSkeleton:String(scan?.skeleton||''),paletteFingerprint:scan?.paletteFingerprint&&typeof scan.paletteFingerprint==='object'?scan.paletteFingerprint:undefined,
-      interactionFamily:scan?.interactionFamily||undefined,riskFlags:Array.isArray(scan?.riskFlags)?scan.riskFlags.slice(0,8):[],
+      interactionFamily:scan?.interactionFamily||undefined,
      });
     });
    }catch{ /* 扫不了这一面就跳过 */ }
@@ -1662,7 +1679,9 @@ function chatRecentFaceRecords(){
   }
   out.push(...chatFaceScanCache.get(cacheKey));
  }
- return out.sort((a,b)=>a.ts-b.ts||Number(a.faceIndex||0)-Number(b.faceIndex||0));
+ const records=out.sort((a,b)=>a.ts-b.ts||Number(a.faceIndex||0)-Number(b.faceIndex||0));
+ chatFaceListCache={key:listKey,records};
+ return records;
 }
 try{ setChatRecentFacesProvider(chatRecentFaceRecords); }catch{ /* 不影响生成 */ }
 

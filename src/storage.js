@@ -469,9 +469,15 @@ export function setChatRecentFacesProvider(provider) {
     chatRecentFacesProvider = typeof provider === 'function' ? provider : null;
 }
 
+const mainColorsOf = record => (Array.isArray(record?.paletteFingerprint?.mainColors) ? record.paletteFingerprint.mainColors : [])
+    .map(value => String(value).toUpperCase()).join('/');
+
 function sameRecord(local, chat) {
     if (chat.historyId && local?.historyId === chat.historyId) return true;
-    if (chat.batchId && local?.batchId === chat.batchId && Number(local?.faceIndex ?? 0) === Number(chat.faceIndex ?? 0)) return true;
+    // 维修、找回楼层、单面重说时聊天里那份的时间会被改成「现在」：同一形式、同一组主色的也算同一面。
+    const colors = mainColorsOf(chat);
+    if (colors && colors === mainColorsOf(local)
+        && (!(chat.formatIds || []).length || JSON.stringify(local?.formatIds || []) === JSON.stringify(chat.formatIds || []))) return true;
     // 没有编号：两分钟内记下的、同一形式的算同一面；聊天里的面不知道形式（跟随正文）时只看时间。
     if (Math.abs(Number(local?.ts || 0) - Number(chat.ts || 0)) >= 120000) return false;
     if (!(chat.formatIds || []).length && !(chat.themeIds || []).length) return true;
@@ -485,7 +491,9 @@ function readEffectiveHistory() {
     let fromChat = [];
     try { fromChat = chatRecentFacesProvider(); } catch { fromChat = []; }
     if (!Array.isArray(fromChat) || !fromChat.length) return local;
-    const extra = fromChat.filter(item => item && Number(item.ts) > 0 && !local.some(record => sameRecord(record, item)));
+    // 只补比本机最新一条还新的：本机写不进去时缺的正是这一段；更早的本机都记过。
+    const newestLocal = local.reduce((max, record) => Math.max(max, Number(record?.ts) || 0), 0);
+    const extra = fromChat.filter(item => item && Number(item.ts) > newestLocal && !local.some(record => sameRecord(record, item)));
     if (!extra.length) return local;
     // 本机记录没有时间的放在最前（保持原顺序），其余按时间排。
     return [...local, ...extra].map((item, order) => ({ item, order }))

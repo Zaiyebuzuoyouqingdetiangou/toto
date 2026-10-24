@@ -2419,13 +2419,14 @@ export function initRabbitMirrorUI() {
         const ids = $('#rh_storage_cleanup_list input:checked').map((_, el) => String(el.getAttribute('data-cleanup-id') || '')).get().filter(Boolean);
         if (!ids.length) { $('#rh_storage_cleanup_status').text('没有勾选要清的。'); return; }
         const risky = measureStorageCleanup().filter(item => !item.safe && ids.includes(item.id)).map(item => item.label);
-        if (risky.length && !globalThis.confirm?.(`这几类只在本机，清了找不回来：\n${risky.join('\n')}\n确定清理？`)) return;
+        if (risky.length && !globalThis.confirm?.(`这几类只在本机，清了找不回来：\n${risky.join('\n')}\n确定清理？`)) { $('#rh_storage_cleanup_status').text('已取消，什么都没清。'); return; }
         const result = runStorageCleanup(ids);
         renderStorageCleanup();
         $('#rh_storage_cleanup_status').text(`腾出约 ${formatCleanupBytes(result.freed)}（兔子镜本机占用 ${formatCleanupBytes(result.before)} → ${formatCleanupBytes(result.after)}）`);
         toastr?.success?.(`已清理，腾出约 ${formatCleanupBytes(result.freed)}。`);
     });
-    renderStorageCleanup();
+    // 统计要把整个本机存储读一遍：不在加载页面时做，点「统计占用」才算。
+    $('#rh_storage_cleanup_run').prop('hidden', true);
     $('#rh_clear_last').on('click', () => {
         clearLastCombo();
         toastr?.success?.('已清除抽签历史与冷却记录');
@@ -2840,7 +2841,9 @@ function renderStorageCleanup() {
         const row = $('<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.45;"></label>');
         const box = $('<input type="checkbox" style="margin-top:3px;">').attr('data-cleanup-id', item.id).prop('checked', checked.has(item.id));
         const text = $('<span></span>');
-        text.append($('<b></b>').text(`${item.label}　${formatCleanupBytes(item.bytes)}`));
+        // 这两类只清其中一部分，显示的是所在存档的总大小。
+        const partial = item.id === 'covered' || item.id === 'image-prompts';
+        text.append($('<b></b>').text(`${item.label}　${partial ? `所在存档共 ${formatCleanupBytes(item.bytes)}` : formatCleanupBytes(item.bytes)}`));
         if (!item.safe) text.append($('<span style="color:#d9822b;font-size:12px;"></span>').text('　只在本机'));
         text.append($('<br>')).append($('<small style="opacity:.7;"></small>').text(item.note));
         row.append(box, text);
@@ -2848,5 +2851,7 @@ function renderStorageCleanup() {
     }
     let all = 0;
     try { for (let i = 0; i < localStorage.length; i += 1) { const key = localStorage.key(i); all += (String(key).length + String(localStorage.getItem(key) || '').length) * 2; } } catch { /* 统计不了就不显示总量 */ }
+    $('#rh_storage_cleanup_run').prop('hidden', false);
+    $('#rh_storage_cleanup_refresh').text('重新统计');
     $('#rh_storage_cleanup_usage').text(`兔子镜本机占用约 ${formatCleanupBytes(rabbitMirrorLocalBytes())}${all ? `；本站浏览器存储一共约 ${formatCleanupBytes(all)}（多数浏览器上限约 5MB）` : ''}。`);
 }
