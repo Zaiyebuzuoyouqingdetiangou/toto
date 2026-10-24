@@ -43,7 +43,7 @@ function harness(){
   // earlyBody module state for noteHostGenerationEnd: no host generation has ended yet in this session.
   recentHostGenerationEnds:new Map(),
   // holdAbnormalAutomaticReply leaves: real safety-valve judgement; valve notification is UI only; no early-body owner exists here.
-  mainReplyAbnormalReason,notifySafetyValve(){},cancelEarlyBodyOwner(){},
+  mainReplyAbnormalReason,automaticMainReplySafetyOptions:()=>({}),notifySafetyValve(){},cancelEarlyBodyOwner(){},
   // flights: the missing-shell stop code that blockingAutomaticFailureStopFor filters out.
   MISSING_SHELL_STOP_CODE:'missing-external-shell',
  };

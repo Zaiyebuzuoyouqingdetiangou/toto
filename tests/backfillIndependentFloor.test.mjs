@@ -38,6 +38,7 @@ function fixture({ chat = 'A', settings = {}, mode = 'independent', eligible = t
         messageElement: () => (shown ? {} : null),
 
         mainReplyAbnormalReason: () => abnormal,
+        automaticMainReplySafetyOptions: () => ({}),
         generateFor: async (...args) => {
             calls.push(args);
             if (switchChatDuringGenerate) currentChat = 'B';

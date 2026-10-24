@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.79.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.79.1';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.79.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.79.1';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.79.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.79.1';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.79.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.79.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.79.1';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.79.1';
+import { getSettings } from './settings.js?rmv=1.79.5';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.79.5';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.79.5';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.79.5';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.79.5';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.79.5';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.79.5';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.79.5';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.79.5';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.79.5';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -185,6 +185,8 @@ function readTags(frame) {
 // NAI 5 时另写的 <p data-rm-draw-char-tags="原名" hidden>简短外貌英文标签</p>，按原名配给同一个人，进人物的标签栏。
 function readCharacters(frame) {
     const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
+    // Keep declaration boundaries until appearance reconciliation (性别：男性\n黑发).
+    const cleanLooks = value => String(value || '').replace(/\r\n?/g, '\n').replace(/[^\S\n]+/g, ' ').trim();
     const tags = new Map();
     for (const node of frame.querySelectorAll?.('[data-rm-draw-char-tags]') || []) {
         const name = clean(node.getAttribute('data-rm-draw-char-tags')).slice(0, 40);
@@ -195,7 +197,7 @@ function readCharacters(frame) {
     const seen = new Set();
     return nodes.map(node => {
         const name = clean(node.getAttribute('data-rm-draw-char')).slice(0, 40);
-        return { name, text: clean(node.textContent).slice(0, 800), modelTag: tags.get(name) || '' };
+        return { name, text: cleanLooks(node.textContent).slice(0, 800), modelTag: tags.get(name) || '' };
     }).filter(person => {
         // 同一个人写了两条（几个图框共用一块说明时常见）：只留第一条。
         if (!person.name || seen.has(person.name) || !(person.text.length >= 2 || person.modelTag)) return false;
@@ -839,7 +841,7 @@ function mergeAppearance(library, modelText, tagsOnly, sceneKinds = []) {
 // 这一面没写、或写空了某个人的外貌（只写了「黑发」这种和设定对不上的）：从这张卡绑定的世界书里按名字摘出长相那几句补上。
 // 世界书写的长相放在前面；它写了发色就去掉模型写的发色词，写了瞳色就去掉模型写的瞳色词（只去这几个词，衣着、动作照留），
 // 英文标签里的发色、瞳色标签同样处理。角色库里配了这个人外貌的，以角色库为准，不再补。
-// NAI 4.5 标签写法只收英文标签，中文的世界书原文用不上，不补。
+// 两种写法共用来源顺序；标签写法只补可明确转换的外貌事实，不额外调用模型。
 const COLOR = '(?:乌|淡|浅|深|暗|亮|雪|酒|玫瑰|天|湖|海|宝|靛|藏|藕|杏|米|奶|珍珠|象牙|烟|银灰|铁|钴|翠|松|墨|绯|朱|丹|胭脂|樱|桃|橘|柠檬)?(?:[黑白银金红棕灰紫蓝粉绿褐赤青墨碧黄橙茶栗紫靛绯朱丹翠]{1,2}|琥珀|亚麻|焦糖|蜂蜜|栗子|玫瑰|葡萄|薰衣草|祖母绿|宝石蓝|天蓝|湖蓝|海蓝|冰蓝|深|浅)色?';
 // 发色：「黑发」「乌黑长发」「黑色的头发」「一头银发」「发色偏深」；不算「发带、发夹、白发苍苍」。
 const HAIR = `(?:一头|一头乌黑的?)?${COLOR}的?(?:长|短|卷|直|微卷|及腰|齐肩)*(?:头)?发(?![带簪饰绳夹冠圈卡苍型际胶蜡])|${COLOR}长直|发色(?:为|是|呈|偏)?(?:${COLOR})?`;
@@ -1000,9 +1002,125 @@ function fillLooksFrom(person, looks, label) {
     person.looksSource = labels.join('＋');
     return true;
 }
-function newPersonFromLooks(name, looks, label) {
+function newPersonFromLooks(name, looks, label, tagsOnly = false) {
     const person = { name, text: '', modelTag: '', looksFields: [] };
-    return fillLooksFrom(person, looks, label) ? person : null;
+    return (tagsOnly ? fillTagLooksFrom : fillLooksFrom)(person, looks, label) ? person : null;
+}
+
+// Translate explicit, already person-scoped facts only. Unknown phrasing never
+// claims a field or erases the model's usable tags. This is not a new LLM call.
+const LOOK_COLOR_TAGS = [
+    ['浅粉', 'light pink'], ['淡粉', 'light pink'], ['浅蓝', 'light blue'], ['深蓝', 'dark blue'],
+    ['银灰', 'silver grey'], ['灰蓝', 'grey blue'], ['墨绿', 'dark green'], ['浅绿', 'light green'],
+    ['琥珀', 'amber'], ['亚麻', 'flaxen'], ['焦糖', 'caramel'], ['蜂蜜', 'honey'], ['祖母绿', 'emerald'],
+    ['薰衣草', 'lavender'], ['玫瑰', 'rose'], ['栗', 'chestnut'], ['乌黑', 'black'], ['雪白', 'white'],
+    ['黑', 'black'], ['白', 'white'], ['银', 'silver'], ['金', 'blonde'], ['红', 'red'], ['棕', 'brown'],
+    ['灰', 'grey'], ['紫', 'purple'], ['蓝', 'blue'], ['粉', 'pink'], ['绿', 'green'], ['褐', 'brown'],
+    ['赤', 'red'], ['碧', 'green'], ['黄', 'yellow'], ['橙', 'orange'], ['翠', 'emerald'],
+];
+function appearanceTagFacts(looks, name) {
+    const facts = [];
+    const add = (field, tag) => { if (tag && !facts.some(item => item.field === field && item.tag === tag)) facts.push({ field, tag }); };
+    const colors = value => {
+        let rest = String(value), result = [];
+        for (const [word, tag] of LOOK_COLOR_TAGS) if (rest.includes(word)) { result.push(tag); rest = rest.split(word).join(''); }
+        return [...new Set(result)];
+    };
+    for (const clause of splitLookClauses(looks)) {
+        if (/(?:不是|并非|并不|没有|可能|假如|如果|不像)|\b(?:not|without|might|perhaps)\b/i.test(clause)) continue;
+        for (const span of explicitGenderStatements(clause, name).filter(span => span.kind === 'identity')) {
+            const identity = clause.slice(span.start, span.end);
+            const gender = /非二元|non[- ]?binary/i.test(identity) ? 'nonbinary'
+                : /无性别|agender/i.test(identity) ? 'agender' : /性别流动|genderfluid/i.test(identity) ? 'genderfluid'
+                    : /女性|女人|女孩|(?:性别|性別)\s*[:：=]?\s*女|\b(?:female|woman|girl)\b/i.test(identity) ? 'female'
+                        : /男性|男人|男孩|(?:性别|性別)\s*[:：=]?\s*男|\b(?:male|man|boy)\b/i.test(identity) ? 'male' : '';
+            add('gender', /跨性别|trans/i.test(identity) && /^(?:male|female)$/.test(gender) ? `transgender ${gender}` : gender);
+        }
+        let bare = clause.replace(/_/g, ' ').trim();
+        bare = bare.replace(/^(?:hair|hair colou?r)\s*:\s*(.+)$/i, '$1 hair').replace(/^(?:eyes?|eye colou?r)\s*:\s*(.+)$/i, '$1 eyes');
+        const tagFields = { gender: 'gender', 'hair-color': 'hair', 'hair-length': 'hairlen', 'eye-color': 'eye', bangs: 'bangs' };
+        for (const trait of tagTraits(bare)) add(tagFields[trait], bare);
+        for (const part of clause.match(new RegExp(`${HAIR}|(?:头发|发丝)(?:是|为|呈)?${COLOR}`, 'g')) || []) for (const color of colors(part)) add('hair', `${color} hair`);
+        for (const part of clause.match(EYE_WORDS) || []) for (const color of colors(part)) add('eye', `${color === 'blonde' ? 'gold' : color} eyes`);
+        for (const match of bare.matchAll(new RegExp(`\\b(${TAG_COLOR})\\s+(?:(?:long|short|straight|curly|wavy)\\s+){0,2}(hair|eyes|pupils|irises)\\b`, 'gi'))) add(match[2].toLowerCase() === 'hair' ? 'hair' : 'eye', `${match[1].toLowerCase()} ${match[2].toLowerCase() === 'hair' ? 'hair' : 'eyes'}`);
+        for (const [pattern, tag] of [[/(?:长(?:直|卷)?发|发长及腰|头发及腰)|\blong(?:\s+\w+){0,2}\s+hair\b/i, 'long hair'],
+            [/(?:短(?:直|卷)?发)|\bshort(?:\s+\w+){0,2}\s+hair\b/i, 'short hair'],
+            [/(?:齐肩|及肩|过肩).{0,4}发|\bshoulder[- ]length\s+hair\b/i, 'shoulder-length hair'],
+            [/(?:长|短)?直发|\bstraight(?:\s+\w+){0,2}\s+hair\b/i, 'straight hair'],
+            [/(?:长|短)?卷发(?!棒|器)|\bcurly(?:\s+\w+){0,2}\s+hair\b/i, 'curly hair']]) if (pattern.test(`${clause}\n${bare}`)) add('hairlen', tag);
+        for (const [pattern, tag] of [[/齐刘海/, 'blunt bangs'], [/斜刘海/, 'swept bangs'], [/空气刘海/, 'wispy bangs'], [/中分刘海/, 'parted bangs']]) if (pattern.test(clause)) add('bangs', tag);
+        if (/(?:雪白|白皙|苍白|冷白).{0,3}(?:皮肤|肌肤|肤色)|(?:皮肤|肌肤|肤色).{0,3}(?:雪白|白皙|苍白|冷白)/.test(clause)) add('skin', 'pale skin');
+        if (/(?:黝黑).{0,3}(?:皮肤|肌肤|肤色)|(?:皮肤|肌肤|肤色).{0,3}黝黑/.test(clause)) add('skin', 'dark skin');
+        if (/(?:小麦|古铜).{0,3}(?:皮肤|肌肤|肤色)|(?:皮肤|肌肤|肤色).{0,3}(?:小麦|古铜)/.test(clause)) add('skin', 'tan skin');
+        const skin = bare.match(MODEL_SKIN_TAG_WORDS); if (skin) add('skin', skin[0].trim());
+    }
+    return facts;
+}
+function fillTagLooksFrom(person, looks, label) {
+    const covered = new Set(person.looksFields || []);
+    const facts = appearanceTagFacts(looks, person.name).filter(item => item.field && !covered.has(item.field));
+    if (!facts.length) return false;
+    const fields = new Set(facts.map(item => item.field));
+    const tags = [...new Set(facts.map(item => item.tag))].join(', ');
+    const model = { ...person, text: '', modelTag: person.text };
+    stripModelLooks(model, fields);
+    stripModelLooks(person, fields);
+    person.text = mergeTagLists(tags, model.modelTag);
+    person.modelTag = mergeTagLists(tags, person.modelTag);
+    person.looksFields = [...new Set([...covered, ...fields])];
+    person.looksSource = [...new Set([...String(person.looksSource || '').split('＋').filter(Boolean), label])].join('＋');
+    return true;
+}
+
+// Remove duplicate stable descriptors only from a clearly named subject's
+// descriptive lead-in. An action starts a different scope (e.g. 看着金发少女).
+// Hairstyles/clothing remain scene facts; unknown or unnamed subjects stay intact.
+function reconcileSceneAppearance(value, people, tagsOnly = false) {
+    let scene = String(value || '');
+    if (!scene.trim()) return scene;
+    const known = people.filter(person => person.looksFields?.length && person.name);
+    if (!known.length) return scene;
+    if (tagsOnly && people.length === 1 && !/[\u3400-\u9fff]/.test(scene)) {
+        const counts = [...scene.matchAll(/\b(\d+)\s*(?:boys?|girls?|others?|people|persons?)\b/gi)];
+        if (counts.reduce((sum, item) => sum + Number(item[1]), 0) > 1) return scene;
+        const copy = { ...known[0], text: '', modelTag: scene };
+        stripModelLooks(copy, new Set(known[0].looksFields));
+        return copy.modelTag || 'solo';
+    }
+    const names = [...new Set(people.map(person => person.name).filter(Boolean))].sort((a, b) => b.length - a.length);
+    const escape = name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const namePattern = new RegExp(names.map(escape).join('|'), 'g');
+    const hits = [...scene.matchAll(namePattern)].filter(hit => {
+        const before = scene[hit.index - 1] || '', after = scene[hit.index + hit[0].length] || '';
+        if (/[\u3400-\u9fff]/.test(hit[0][0]) && /[\u3400-\u9fff]/.test(before) && !/[和与及跟同是为给向对把让叫见称作]/.test(before)) return false;
+        if (/[\u3400-\u9fff]/.test(hit[0].at(-1)) && /[\u3400-\u9fff]/.test(after)
+            && !/^(?:是|为|有|的|身|穿|披|站|坐|走|跑|看|望|抱|牵|扶|摸|拉|推|拿|握|躺|靠|吻|笑|哭|说|在|与|和|跟|对|向|黑|白|银|金|红|棕|灰|紫|蓝|粉|绿|长|短|一)/.test(scene.slice(hit.index + hit[0].length))) return false;
+        return !(/[A-Za-z0-9]/.test(hit[0][0]) && /[A-Za-z0-9]/.test(before))
+            && !(/[A-Za-z0-9]/.test(hit[0].at(-1)) && /[A-Za-z0-9]/.test(after));
+    });
+    for (let i = hits.length - 1; i >= 0; i--) {
+        const hit = hits[i], person = known.find(item => item.name === hit[0]);
+        if (!person) continue;
+        const start = hit.index + hit[0].length;
+        let end = i + 1 < hits.length ? hits[i + 1].index : scene.length;
+        const body = scene.slice(start, end);
+        const stop = body.search(/[。；;！!？?\n]|(?:站|坐|走|跑|看|望|抱|牵|扶|摸|拉|推|拿|握|躺|靠|吻|笑|哭|说|翻|抬|垂|睁|闭|皱|抿|对|向|与|和|跟|陌生|妹妹|姐姐|哥哥|弟弟)|\b(?:stands?|sits?|walks?|runs?|looks?|watches?|holds?|embraces?|touches?|kisses?|smiles?|wears?|wearing|beside|next to)\b/i);
+        if (stop >= 0) end = start + stop;
+        let lead = scene.slice(start, end);
+        if (!lead || /(?:的|之)(?:妹妹|姐姐|哥哥|弟弟|朋友|母亲|父亲)|染|假发|变身|剪短|\b(?:dyed|wig|transformed)\b/i.test(lead)) continue;
+        const fields = new Set(person.looksFields);
+        if (fields.has('hair')) lead = lead.replace(/\b(?:blonde?|brunette|redhead)\b/gi, '');
+        if (fields.has('hairlen')) lead = lead.replace(/\b(?:long|short|medium)[-_ ]haired\b/gi, '');
+        if (fields.has('eye')) lead = lead.replace(new RegExp(`\\b${TAG_COLOR}[-_ ]eyed\\b`, 'gi'), '');
+        lead = stripFieldWords(lead, fields, person.name);
+        if (fields.has('gender')) lead = lead.replace(/(?:男性|女性|男人|女人|男子|女子|少年|少女|男孩|女孩)|\b(?:male|female|man|woman|boy|girl)\b/gi, '');
+        lead = lead.replace(/(?:是|为)(?:一[位名个])?(?=[的\s，,、]*$)/g, '')
+            .replace(/\b(?:is\s+)?an?\s*(?=with\b|[,;]|$)/g, '')
+            .replace(/(^|[，,、])\s*的(?=[，,、\s]|$)/g, '$1')
+            .replace(/[ \t]{2,}/g, ' ').replace(/([，,、])(?:[，,、\s])+/g, '$1');
+        scene = scene.slice(0, start) + lead + scene.slice(end);
+    }
+    return scene;
 }
 
 // 第二来源：角色卡（描述、性格）和 Persona 里写的长相。建档没有这个人、这一面又把长相写错时，从这里摘。
@@ -1012,7 +1130,6 @@ function frameCastNames(frame) {
         .map(node => String(node.getAttribute('data-rm-draw-char') || '').replace(/\s+/g, ' ').trim().slice(0, 40)).filter(Boolean))].slice(0, 4);
 }
 async function withCardAppearance(people, frame, tagsOnly) {
-    if (tagsOnly) return people;
     const names = frameCastNames(frame);
     const pending = names.filter(name => !looksComplete(people.find(person => person.name === name)));
     if (!pending.length) return people;
@@ -1034,7 +1151,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.5');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -1042,8 +1159,8 @@ async function withCardAppearance(people, frame, tagsOnly) {
         const looks = appearanceFromCast(cast, name, others);
         if (!looks) continue;
         const person = merged.find(item => item.name === name);
-        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, looks, '人设'); if (fresh) merged.push(fresh); continue; }
-        fillLooksFrom(person, looks, '人设');
+        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, looks, '人设', tagsOnly); if (fresh) merged.push(fresh); continue; }
+        (tagsOnly ? fillTagLooksFrom : fillLooksFrom)(person, looks, '人设');
     }
     return merged;
 }
@@ -1083,7 +1200,6 @@ function myriadEntryFor(list, name) {
     return loose.length === 1 ? loose[0] : null;
 }
 async function withMyriadAppearance(people, frame, tagsOnly) {
-    if (tagsOnly) return people;
     const names = frameCastNames(frame);
     const pending = names.filter(name => !looksComplete(people.find(person => person.name === name)));
     if (!pending.length) return people;
@@ -1094,8 +1210,8 @@ async function withMyriadAppearance(people, frame, tagsOnly) {
         const entry = myriadEntryFor(list, name);
         if (!entry) continue;
         const person = merged.find(item => item.name === name);
-        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, entry.looks, '千千结'); if (fresh) merged.push(fresh); continue; }
-        fillLooksFrom(person, entry.looks, '千千结');
+        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, entry.looks, '千千结', tagsOnly); if (fresh) merged.push(fresh); continue; }
+        (tagsOnly ? fillTagLooksFrom : fillLooksFrom)(person, entry.looks, '千千结');
     }
     return merged;
 }
@@ -1110,7 +1226,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.79.1'), import('./independentApi/connection.js?rmv=1.79.1')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.79.5'), import('./independentApi/connection.js?rmv=1.79.5')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1119,13 +1235,12 @@ function readWorldCast(names) {
     return promise;
 }
 async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
-    if (tagsOnly) return people;
     const names = frameCastNames(frame);
     if (!names.length || names.every(name => looksComplete(people.find(person => person.name === name)))) return people;
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.79.5');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1135,8 +1250,8 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
         if (looksComplete(person)) continue;
         const looks = appearanceFromCast(cast, name, others);
         if (!looks) continue;
-        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, looks, '世界书'); if (fresh) merged.push(fresh); continue; }
-        fillLooksFrom(person, looks, '世界书');
+        if (!person) { const fresh = merged.length < 4 && newPersonFromLooks(name, looks, '世界书', tagsOnly); if (fresh) merged.push(fresh); continue; }
+        (tagsOnly ? fillTagLooksFrom : fillLooksFrom)(person, looks, '世界书');
     }
     return merged;
 }
@@ -1148,7 +1263,8 @@ async function withLibraryAppearance(people, prompt, frame, tagsOnly) {
     const raw = await imageCharacters(floor);
     const { unique: library, ambiguous } = uniqueLibrary((Array.isArray(raw) ? raw : []).map(person => ({
         name: String(person?.name || '').trim(), tag: String(person?.tag || '').trim(), nl: String(person?.nl || '').trim(),
-    })).filter(person => person.name && (person.tag || person.nl)));
+    })).map(person => tagsOnly ? { ...person, tag: mergeTagLists(person.tag, appearanceTagFacts(person.nl, person.name).map(item => item.tag).join(', ')), nl: '' } : person)
+        .filter(person => person.name && (person.tag || person.nl)));
     if (!library.size) return people;
     // 建档角色排第一：它写了发色／瞳色的，模型写的同类词去掉，不让两种发色一起发给生图。
     // 模型给名字加了后缀（「甲（少女）」）时，按建档里唯一在名字边界上包含／被包含的那个名字认。
@@ -1247,7 +1363,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         // 「跳过的标签」也管千千结档案里的文字。
         let cleanRef = value => value;
-        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.79.1')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.79.5')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
@@ -1323,6 +1439,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             // 设置里勾掉的外貌来源不用：兔子镜写的不要时，人名留着给后面几处按名字补长相，只清掉它写的外貌和衣着。
             const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, myriad: settings.imageLooksMyriad !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false };
             let cast = readCharacters(frame);
+            if (tagsOnly) cast = cast.map(person => ({ ...person, text: /[\u3400-\u9fff]/.test(person.text) && person.modelTag ? person.modelTag : person.text }));
             if (!use.model) cast = cast.map(person => ({ ...person, text: '', modelTag: '' }));
             if (use.library) cast = await withLibraryAppearance(cast, prompt, frame, tagsOnly);
             if (use.card) cast = await withCardAppearance(cast, frame, tagsOnly);
@@ -1338,7 +1455,8 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             const appearance = people.map(person => `${person.name}: ${appearanceOf(person)}`).join('\n');
             looksSources = Object.fromEntries(people.map(person => [person.name, person.looksSource || '模型写的']));
             // NAI 5：标签栏放模型另写的英文短标签，自然语言栏放画面描述；旧镜面没写标签时仍只发画面描述这一份。
-            const tags = tagsOnly ? '' : readTags(frame);
+            prompt = reconcileSceneAppearance(prompt, people, tagsOnly);
+            const tags = tagsOnly ? '' : reconcileSceneAppearance(readTags(frame), people, true);
             return {
                 prompt: tags || prompt,
                 // 只收一段提示词的渠道：NAI 5 先放场景标签，再放自然语言画面，最后逐人外貌。

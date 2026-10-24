@@ -172,7 +172,7 @@ function requestChatSave(mes) {
         const request = saveRequest;
         saveRequest = null;
         if (!liveChatSaveContext(request)) return;
-        import('./independentApi/persistence.js?rmv=1.79.1')
+        import('./independentApi/persistence.js?rmv=1.79.5')
             .then(module => {
                 // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
                 const live = liveChatSaveContext(request);
@@ -379,8 +379,9 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
     const messagePrevious = target && ownEntry(candidate, target.swipe) && recordMatchesMessage(candidate, target.msg, target.swipe, false) ? candidate : null;
     if (!previous && preserveCurrent && messagePrevious) previous = { ...messagePrevious.current, history: messagePrevious.history || [] };
     const keepCurrent = preserveCurrent && previous?.imageOwner?.token === owner.token;
-    // 换上镜面的那一刻：图框挪过位置、同一张图在两个键下都有记录时，按它挑最后换上的那张。
-    if (!keepCurrent) record = { ...record, shownAt: Date.now() };
+    // 被后来的请求替代、却在原图框位置第一次存下的旧结果，并没有换上镜面。
+    // 留存它，但不把返回时间当显示时间，避免挪回原位或冷启动时抢过新图。
+    if (!keepCurrent) record = { ...record, shownAt: preserveCurrent ? 0 : Date.now() };
     const history = imageHistory(previous ? [...previous.history, keepCurrent ? record : storedRecord(previous)] : [], keepCurrent ? previous : record);
     if (keepCurrent) record = storedRecord(previous);
     const retained = { ...storedRecord(record), history };
@@ -405,7 +406,7 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
             : JSON.stringify([manual[0], target.mes, target.swipe, ...manual.slice(3)]);
         // Use the owner's existing versions, never an old local numeric occupant.
         const history = keepCurrent ? retained.history : imageHistory([...(retained.history || []), ...(messagePrevious?.history || []), ...(messagePrevious?.current ? [messagePrevious.current] : [])], record);
-        const result = replaceMirrorImageVersions(liveKey, record, history, { keepShownAt: keepCurrent });
+        const result = replaceMirrorImageVersions(liveKey, record, history, { keepShownAt: preserveCurrent });
         // A chat save is only queued, not an acknowledgement of durable disk
         // storage. Preserve the caller's session/unsaved warning if both local
         // safety writes failed, even though the live message has the picture.
@@ -881,7 +882,7 @@ function builtinKeyForOwnedArchive(name, target) {
 
 // 同一聊天、同一楼层、同一 swipe、同一段提示词，图框序号却不同：这一面重新挂上时结构被整理过，序号挪了，图还是那一张。
 // 楼层和 swipe 都得是记上了的（空的不算，免得认到别的楼层去）；claimed 里的键（这一面别的图框自己的）不拿；
-// 有好几个时取序号最近的。只读。
+// 有好几个时优先最后换上镜面的那张；旧记录没时间或时间相同时才按序号距离。只读。
 export function findShiftedBuiltinImageKey(key, claimed = null) {
     const storage = globalThis.localStorage;
     const wanted = parseBuiltinImageKey(key);
@@ -890,7 +891,7 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
     const head = `${imagesPrefix}builtin:`;
     const suffix = `:${wanted.mes}:${wanted.swipe}:`;
     const target = messageSlot(key);
-    let best = '', bestDistance = Infinity;
+    let best = '', bestShownAt = -1, bestDistance = Infinity;
     // claimed 可以是一个集合，也可以是算出集合的函数（真找到候选时才算，平常命中自己的键时不花这份工夫）。
     let claimedSet = null;
     const taken = () => claimedSet || (claimedSet = (typeof claimed === 'function' ? claimed() : claimed) || new Set());
@@ -903,7 +904,11 @@ export function findShiftedBuiltinImageKey(key, claimed = null) {
             if (!other || !builtinImageKeysShifted(key, candidate)) continue;
             if ([...taken()].some(key => builtinImageKeysCompatible(key, candidate))) continue;
             const distance = Math.abs(parseBuiltinFrameIndex(other.index)?.frame - parseBuiltinFrameIndex(wanted.index)?.frame);
-            if (Number.isFinite(distance) && distance < bestDistance) { best = candidate; bestDistance = distance; }
+            let shownAt = 0;
+            try { const at = Number(loadMirrorImage(candidate)?.shownAt); if (Number.isFinite(at) && at > 0) shownAt = at; } catch { /* 仍保留旧存档的不可读提示。 */ }
+            if (Number.isFinite(distance) && (shownAt > bestShownAt || shownAt === bestShownAt && distance < bestDistance)) {
+                best = candidate; bestShownAt = shownAt; bestDistance = distance;
+            }
         }
     } catch { /* 读不到就当没有 */ }
     return best;

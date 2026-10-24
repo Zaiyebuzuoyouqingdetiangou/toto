@@ -1,14 +1,14 @@
 // Split from independentApi.js — geometry.
-import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.79.1';
-import { rearmOrphanStateWiring } from '../outputSanitizer/orphanStateWiring.js?rmv=1.79.1';
-import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.79.1';
+import { carryExternalFaceFrames } from './faceFrame.js?rmv=1.79.5';
+import { rearmOrphanStateWiring } from '../outputSanitizer/orphanStateWiring.js?rmv=1.79.5';
+import { restoreRuntimeAnimationClone, ANIMATION_SUSPENDED_ATTR } from '../runtimeAnimationState.js?rmv=1.79.5';
 
-import { bindVisualHistoryTarget } from '../storage.js?rmv=1.79.1';
-import { presentationModeFields } from '../presentationMode.js?rmv=1.79.1';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.79.1';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.79.1';
-import { getSettings } from '../settings.js?rmv=1.79.1';
-import { resolveExternalAnchor, normalizeExternalAnchor } from './externalAnchor.js?rmv=1.79.1';
+import { bindVisualHistoryTarget } from '../storage.js?rmv=1.79.5';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.79.5';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=1.79.5';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorExternalPlacementParent } from '../hostCompatibility.js?rmv=1.79.5';
+import { getSettings } from '../settings.js?rmv=1.79.5';
+import { resolveExternalAnchor, normalizeExternalAnchor } from './externalAnchor.js?rmv=1.79.5';
 import {
     cleanRabbitMirrorOutput,
     compactTotoBlock,
@@ -22,14 +22,14 @@ import {
     clearRabbitMirrorHorizontalClipArtifacts,
     sanitizeRabbitMirrorUntrustedTemplate,
     validateRabbitMirrorRecoveredStyleAssignments,
-} from '../outputSanitizer.js?rmv=1.79.1';
-import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.79.1';
-import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.79.1';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.79.1';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.79.1';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.79.1';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE, SAFETY_VALVE_SHELL_PREFIX } from './missingRetryShell.js?rmv=1.79.1';
-import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.79.1';
+} from '../outputSanitizer.js?rmv=1.79.5';
+import { rememberRabbitMirrorFilteredDom, cloneRabbitMirrorFilteredNode } from '../bannedWords.js?rmv=1.79.5';
+import { createRabbitMirrorTextReplacementReceipt, matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=1.79.5';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.79.5';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.79.5';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=1.79.5';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE, SAFETY_VALVE_SHELL_PREFIX } from './missingRetryShell.js?rmv=1.79.5';
+import { markSanitizedRabbitMirrorFace } from '../multifaceProof.js?rmv=1.79.5';
 import {
     EXTERNAL_SHELL_ATTR,
     FOLLOW_EXTERNAL_ANCHOR_ATTR,
@@ -44,8 +44,8 @@ import {
     getContext,
     hashText,
     independentMaintenanceLiveRepairLocked,
-} from './runtime.js?rmv=1.79.1';
-import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.79.1';
+} from './runtime.js?rmv=1.79.5';
+import { automaticDispatchAlreadyConsumed, automaticFailureStops, generationPolls, operationEpochForBase } from './flights.js?rmv=1.79.5';
 import {
     INDEPENDENT_HTML_BUDGET_BYTES,
     INTERACTION_STATE_MIGRATION_KEY,
@@ -54,7 +54,7 @@ import {
     persistedOwnerForMessage,
     readStore,
     writeStore,
-} from './persistence.js?rmv=1.79.1';
+} from './persistence.js?rmv=1.79.5';
 import {
     chatKey,
     copyIndependentOwnerLineage,
@@ -73,8 +73,8 @@ import {
     slotSearchKeys,
     swipeId,
     independentContextExcludedTagSet,
-} from './connection.js?rmv=1.79.1';
-import { stripExcludedTagsFromFaceOutput } from './faceTagFilter.js?rmv=1.79.1';
+} from './connection.js?rmv=1.79.5';
+import { stripExcludedTagsFromFaceOutput } from './faceTagFilter.js?rmv=1.79.5';
 import {
     EXTERNAL_GEOMETRY_SETTLE_STEPS_MS,
     allExternalHosts,
@@ -108,7 +108,7 @@ import {
     wrapIndependentFace,
     wrapPreparedIndependentFace,
     writeGeometryDataset,
-} from './request.js?rmv=1.79.1';
+} from './request.js?rmv=1.79.5';
 import {
     activeIndependentFlightForBase,
     automaticCutoverVersionToken,
@@ -132,20 +132,20 @@ import {
     serializeExternalFaceDetails,
     showMultifaceFace,
     stripIndependentTransientLayoutArtifacts,
-} from './mount.js?rmv=1.79.1';
+} from './mount.js?rmv=1.79.5';
 import {
     automaticHostGenerationRenderMatches,
     hasExistingFollowRabbitMirror,
     queueMessageSync,
     suppressesAutomaticGeneration,
-} from './earlyBody.js?rmv=1.79.1';
+} from './earlyBody.js?rmv=1.79.5';
 import {
     automaticGenerationCutovers,
     persistedInteractionMigrationHandle,
     persistedInteractionMigrationIdle,
     writePersistedInteractionMigrationHandle,
     writePersistedInteractionMigrationIdle,
-} from './lifecycle.js?rmv=1.79.1';
+} from './lifecycle.js?rmv=1.79.5';
 
 let externalGeometryFrame = 0;
 
@@ -2236,7 +2236,7 @@ export function setPlaceholderSummary(details,text){
 export function ensureReplyGenerationPlaceholder(el,key,sourceHash='',waitingForBody=true){
  const message=waitingForBody
   ? '正文回复完成后会自动生成兔子镜。'
-  : '正文已经完成，正在生成这条回复对应的兔子镜。';
+  : '正在核对正文并准备生成这条回复对应的兔子镜；正文异常时会停止自动生成。';
  const existing=externalHosts(el).find(node=>node.dataset.rmKey===key && node.dataset.rmState==='loading' && node.dataset.rmReplyGenerationPlaceholder==='true');
  const host=existing||ensureExternalUi(el,key,message,'loading','independent',sourceHash);
  if(!host) return null;
@@ -2245,7 +2245,7 @@ export function ensureReplyGenerationPlaceholder(el,key,sourceHash='',waitingFor
  host.dataset.rmState='loading';
  if(sourceHash) host.dataset.rmSourceHash=String(sourceHash);
  const details=host.querySelector?.(':scope > details');
- setPlaceholderSummary(details,waitingForBody?'【兔子镜：等待正文完成……】':'【兔子镜：正在生成中……】');
+ setPlaceholderSummary(details,waitingForBody?'【兔子镜：等待正文完成……】':'【兔子镜：正在准备生成……】');
  let body=details?.querySelector?.(':scope > .rabbit-mirror-external-placeholder-body');
  if(details && !body){ body=document.createElement('div'); body.className='rabbit-mirror-external-placeholder-body'; details.append(body); }
  if(body){
@@ -2287,7 +2287,7 @@ export function renderExternalErrorBody(details,text=''){
   // second retry intent after the first click has entered loading or READY.
   const host=details.closest?.(`[${SOURCE_ATTR}="true"]`);
   if(retry.disabled || !retry.isConnected || !details.contains?.(retry) || host?.dataset?.rmState!=='error') return;
-  void import('../outputSanitizer/toolsChrome.js?rmv=1.79.1').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
+  void import('../outputSanitizer/toolsChrome.js?rmv=1.79.5').then(module=>module.openRabbitMirrorResayChooser(details)).catch(()=>globalThis.toastr?.warning?.('重说面板未能打开，请从工具菜单重试。'));
  },true);
  recover.addEventListener('click',async event=>{
   event.preventDefault(); event.stopPropagation();
