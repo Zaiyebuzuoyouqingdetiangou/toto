@@ -1,11 +1,11 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.79.5';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.79.5';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.79.5';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.79.5';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.79.5';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.79.5';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.79.5';
-import { slimMirrorImagesForQuota } from './imageStore.js?rmv=1.79.5';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.82.0';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.82.0';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=1.82.0';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.82.0';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=1.82.0';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=1.82.0';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.0';
+import { slimMirrorImagesForQuota } from './imageStore.js?rmv=1.82.0';
 
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
@@ -461,13 +461,53 @@ function signatureOf(combo) {
     });
 }
 
+// 本机避重记录写不进去（存储满）时会一直停在很早以前，模型拿到的「近期记录」就是几天前的。
+// 这里允许别处（副 API）提供「当前聊天里实际保存的兔子镜」现场扫出来的记录：
+// 只在本机比聊天新的部分没有对应记录时补进来，按时间合并；兔子镜原文不发送，只有扫出的颜色、布局、形式编号。
+let chatRecentFacesProvider = null;
+export function setChatRecentFacesProvider(provider) {
+    chatRecentFacesProvider = typeof provider === 'function' ? provider : null;
+}
+
+const mainColorsOf = record => (Array.isArray(record?.paletteFingerprint?.mainColors) ? record.paletteFingerprint.mainColors : [])
+    .map(value => String(value).toUpperCase()).join('/');
+
+function sameRecord(local, chat) {
+    if (chat.historyId && local?.historyId === chat.historyId) return true;
+    // 维修、找回楼层、单面重说时聊天里那份的时间会被改成「现在」：同一形式、同一组主色的也算同一面。
+    const colors = mainColorsOf(chat);
+    if (colors && colors === mainColorsOf(local)
+        && (!(chat.formatIds || []).length || JSON.stringify(local?.formatIds || []) === JSON.stringify(chat.formatIds || []))) return true;
+    // 没有编号：两分钟内记下的、同一形式的算同一面；聊天里的面不知道形式（跟随正文）时只看时间。
+    if (Math.abs(Number(local?.ts || 0) - Number(chat.ts || 0)) >= 120000) return false;
+    if (!(chat.formatIds || []).length && !(chat.themeIds || []).length) return true;
+    return JSON.stringify(local?.formatIds || []) === JSON.stringify(chat.formatIds || [])
+        && JSON.stringify(local?.themeIds || []) === JSON.stringify(chat.themeIds || []);
+}
+
+function readEffectiveHistory() {
+    const local = readHistory();
+    if (!chatRecentFacesProvider) return local;
+    let fromChat = [];
+    try { fromChat = chatRecentFacesProvider(); } catch { fromChat = []; }
+    if (!Array.isArray(fromChat) || !fromChat.length) return local;
+    // 只补比本机最新一条还新的：本机写不进去时缺的正是这一段；更早的本机都记过。
+    const newestLocal = local.reduce((max, record) => Math.max(max, Number(record?.ts) || 0), 0);
+    const extra = fromChat.filter(item => item && Number(item.ts) > newestLocal && !local.some(record => sameRecord(record, item)));
+    if (!extra.length) return local;
+    // 本机记录没有时间的放在最前（保持原顺序），其余按时间排。
+    return [...local, ...extra].map((item, order) => ({ item, order }))
+        .sort((a, b) => (Number(a.item?.ts || 0) - Number(b.item?.ts || 0)) || (a.order - b.order))
+        .map(entry => entry.item);
+}
+
 export function getComboHistory(limit = 10) {
-    const history = readHistory();
+    const history = readEffectiveHistory();
     return history.slice(-Math.max(0, Number(limit) || 10));
 }
 
 export function getRecentDiversityHistory(rounds = 5) {
-    return recentDiversityRecords(readHistory(), rounds);
+    return recentDiversityRecords(readEffectiveHistory(), rounds);
 }
 
 export function getLastCombo() {

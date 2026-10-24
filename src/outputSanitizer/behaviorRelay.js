@@ -3,12 +3,13 @@
 // 就在另一份副本里把这一块整块“退还”（撤掉插件接线、标识原样保留），让老修复器整套去修，再测一次。
 // 退还后：原来能用的控件仍然能用，而且没反应的变少了（不算只加了“已点击”提示的那种），才在真实页面上照做；
 // 否则保持插件接线不动。真实页面上的控件在确认之前一个不碰。
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.79.5';
-import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=1.79.5';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.79.5';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.79.5';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.79.5';
-import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=1.79.5';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.82.0';
+import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=1.82.0';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.82.0';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.82.0';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.82.0';
+import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=1.82.0';
+import { assertNameMaskRestorable, prepareNameMaskReplacement } from '../nameMask.js?rmv=1.82.0';
 
 export const BEHAVIOR_RELAY_ATTR = 'data-rabbit-mirror-behavior-relayed';
 const GROUP_TAG = 'data-rm-relay-group';
@@ -106,6 +107,7 @@ export function relayDeadBehaviorGroups(root, { onlyGroup = null, replayIndex = 
         try { second.sandbox.destroy(); } catch {}
     }
     if (!accepted.length) return 0;
+    for (const index of accepted) assertNameMaskRestorable(liveGroups[Number(index)]);
     const toto = root.closest?.('toto') || root;
     // 先按退还前的样子记下这一面的指纹（退还后类型名仍记在 data-rm-released 上，指纹不变）。
     const faceKey = behaviorRelayFaceKey(liveDetails);
@@ -117,6 +119,7 @@ export function relayDeadBehaviorGroups(root, { onlyGroup = null, replayIndex = 
         // 和副本里验证过的做法一致：这一块换成一份干净的副本（去掉之前挂在里面元素上的旧监听和“已修过”标记，
         // 比如插件区域里被当成“没反应按钮”加上的已点击提示），再让老修复器整套接一遍。
         const fresh = group.cloneNode(true);
+        const commitNameMaskReplacement = prepareNameMaskReplacement(fresh, group);
         // 点了没反应时的即时接力：记下刚才点的是哪一个，换好之后替用户再点一次。
         if (onlyGroup && replayIndex >= 0) fresh.querySelectorAll('*')[replayIndex]?.setAttribute(REPLAY_ATTR, '');
         try { rearmRabbitMirrorSerializedInteractionRoot(fresh); } catch {}
@@ -125,6 +128,7 @@ export function relayDeadBehaviorGroups(root, { onlyGroup = null, replayIndex = 
             if (unchecked.length) clearPersistedCheckedInlineArtifacts(fresh, unchecked);
         } catch {}
         group.replaceWith(fresh);
+        commitNameMaskReplacement();
         relayed += 1;
     }
     if (!relayed) return 0;

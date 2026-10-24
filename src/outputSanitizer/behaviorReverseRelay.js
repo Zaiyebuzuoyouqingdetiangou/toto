@@ -3,12 +3,14 @@
 // 就试着把这一块认成插件的「翻面／开关」或「多选一」，由插件按状态类去切换。
 // 和正向接力一样：先在隔离副本里改好标识再实测，没反应的变少、原来能用的仍能用，才在真实页面上照做；
 // 只认样式里确实写了的状态类，不补内容、不猜目标；含勾选框、单选、滑杆、内层折叠的区域不碰（那是老修复器的地盘）。
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.79.5';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.79.5';
-import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=1.79.5';
-import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.79.5';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.79.5';
-import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=1.79.5';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=1.82.0';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=1.82.0';
+import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=1.82.0';
+import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.82.0';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=1.82.0';
+import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=1.82.0';
+
+import { assertNameMaskRestorable, prepareNameMaskReplacement } from '../nameMask.js?rmv=1.82.0';
 
 export const BEHAVIOR_REVERSE_ATTR = 'data-rabbit-mirror-behavior-reverse-relayed';
 const NODE_TAG = 'data-rm-rev-node';
@@ -227,6 +229,7 @@ export function reverseRelayDeadHandwrittenControls(root) {
     try { verdict = score(before, measure(second, Date.now(), false)); } catch (error) { console.debug('[RabbitMirror] reverse relay verify failed:', error); }
     finally { try { second.sandbox.destroy(); } catch {} }
     if (!verdict || verdict.deadAfter >= verdict.deadBefore) return 0;
+    for (const patch of patches) assertNameMaskRestorable(liveNodes[patch.group]);
     // 真实页面：这几块换成干净的副本（去掉老修复器挂上的监听和“已点击”提示），再写上插件标识、接插件。
     const signatures = patches.map(patch => ({
         ...patch,
@@ -238,8 +241,10 @@ export function reverseRelayDeadHandwrittenControls(root) {
         const group = liveNodes[patch.group];
         if (!group?.isConnected) continue;
         const fresh = group.cloneNode(true);
+        const commitNameMaskReplacement = prepareNameMaskReplacement(fresh, group);
         try { rearmRabbitMirrorSerializedInteractionRoot(fresh); } catch {}
         group.replaceWith(fresh);
+        commitNameMaskReplacement();
         applied += 1;
     }
     if (!applied) return 0;
