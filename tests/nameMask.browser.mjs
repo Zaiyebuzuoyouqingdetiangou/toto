@@ -41,7 +41,7 @@ try {
         const streamMasked = stream.textContent;
         // 复制出来要存的那份换回原名
         const clone = document.querySelector('#a').cloneNode(true);
-        mask.unmaskNameMaskClone(clone);
+        mask.unmaskNameMaskClone(clone, document.querySelector('#a'));
         const cloneText = clone.textContent;
         // 名字拆在两个标签里
         const split = document.createElement('p'); split.id = 'split'; split.innerHTML = '<b>阿</b>雪和<i>阿岩</i>儿'; document.querySelector('#chat').append(split);
@@ -49,8 +49,10 @@ try {
         const splitMasked = split.textContent;
         const splitClone = mask.unmaskNameMaskClone(split.cloneNode(true), split).innerHTML;
         // 复制品被过滤过、和原件对不上：拆开的半个名字不进反查，空节点不会被写成「雪」
+        // 1.81.1 起：对不上原件就停下并报错，不按代称猜原名。
         const filtered = split.cloneNode(true); filtered.querySelector('i').remove(); filtered.append(document.createTextNode(''));
-        const filteredHtml = mask.unmaskNameMaskClone(filtered, split).innerHTML;
+        let filteredHtml = '';
+        try { filteredHtml = mask.unmaskNameMaskClone(filtered, split).innerHTML; } catch (error) { filteredHtml = 'refused:' + String(error.message || error); }
         // 被清空的那段被宿主整体重写：当新字处理，不把旧的「雪」带回来
         const wipe = document.createElement('p'); wipe.innerHTML = '<b>阿</b>雪'; document.querySelector('#chat').append(wipe);
         await new Promise(r => setTimeout(r, 20));
@@ -83,7 +85,7 @@ try {
     assert.equal(result.streamRestored, '阿雪说：阿岩快来');
     assert.equal(result.cloneText, '阿雪看着阿岩，阿岩儿笑了。某城下雨。', '要存的复制品是原名');
     assert.equal(result.oneText, '我看见 小帅 和 Also。', '一个字的名字不自动换；英文名按整词换');
-    assert.equal(result.filteredHtml, '<b>阿</b>雪和儿', '删掉一个节点的复制品照样按节点还原，多出的空节点不被写成「雪」');
+    assert.match(result.filteredHtml, /^refused:/, '对不上原件的复制品不猜原名，直接拒绝');
     assert.equal(result.wipeMasked, '阿下雨了', '名字被宿主改掉了：剩下的半个字不再当名字');
     assert.equal(result.wipeRestored, '<b>阿</b>下雨了');
     assert.equal(result.splitMasked, '小美和小帅', '拆在标签里的名字也换（阿岩儿是自填的一条）');

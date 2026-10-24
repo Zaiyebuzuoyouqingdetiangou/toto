@@ -78,7 +78,7 @@ export async function findNameMaskCandidates(ctx, { exclude = [], fetchBook = fe
     try { if (chatBook && chatBook !== linked) books.push(await fetchBook(ctx, chatBook)); } catch { /* 读不到就跳过 */ }
     for (const book of books) {
         for (const entry of entriesOf(book)) {
-            if (entry?.disable === true) continue;
+            if (entry?.disable === true || entry?.enabled === false) continue;
             add(entry?.comment || entry?.name || entry?.title, '世界书标题');
             for (const key of [...(Array.isArray(entry?.key) ? entry.key : []), ...(Array.isArray(entry?.keys) ? entry.keys : [])]) add(key, '世界书关键词');
         }

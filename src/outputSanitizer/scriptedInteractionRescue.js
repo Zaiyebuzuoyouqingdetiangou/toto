@@ -1,10 +1,11 @@
 // Split from outputSanitizer.js — scriptedInteractionRescue.
 
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.81.0';
-import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.81.0';
-import { getSettings } from '../settings.js?rmv=1.81.0';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.81.0';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.81.0';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.81.5';
+import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.81.5';
+import { getSettings } from '../settings.js?rmv=1.81.5';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.81.5';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.81.5';
+import { assertNameMaskRestorable, prepareNameMaskReplacement, unmaskNameMaskClone } from '../nameMask.js?rmv=1.81.5';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -21,7 +22,7 @@ import {
     getRabbitMirrorLocalStyleElements,
     getRenderedRabbitMirrorInteractionRoots,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.81.0';
+} from './runtime.js?rmv=1.81.5';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DETACHED_CHECKED_HAS_RULE_COUNT_ATTR,
@@ -58,7 +59,7 @@ import {
     reversibleStyleBaselineStates,
     reversibleTextBaselineStates,
     syncCrossParentCheckedRuleFallback,
-} from './checkedStateRescue.js?rmv=1.81.0';
+} from './checkedStateRescue.js?rmv=1.81.5';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     PSEUDO_INTERACTION_HINT_RE,
@@ -80,8 +81,8 @@ import {
     resolveCheckedRelativeElementExpression,
     resolveScopedPseudoId,
     sanitizeRecoveredInteractionStyleAssignments,
-} from './renderedStateRescue.js?rmv=1.81.0';
-import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.81.0';
+} from './renderedStateRescue.js?rmv=1.81.5';
+import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.81.5';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FILL_IN_CHOICE_COUNT_ATTR,
@@ -92,7 +93,7 @@ import {
     SELECTION_ONLY_FALLBACK_ATTR,
     STATIC_CHOICE_SELECTION_COUNT_ATTR,
     STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR,
-} from './diagnostics.js?rmv=1.81.0';
+} from './diagnostics.js?rmv=1.81.5';
 import {
     checkedDeclarationCreatesContentReveal,
     getRenderedMessageElement,
@@ -100,15 +101,15 @@ import {
     isIndependentMaintenanceRoot,
     maintenanceMessageSourceCandidates,
     normalizeMaintenanceSummaryText,
-} from './maintenanceInspect.js?rmv=1.81.0';
+} from './maintenanceInspect.js?rmv=1.81.5';
 import {
     decodeHtmlEntities,
     normalizeMirrorAttribute,
     rescueDamagedDataUriRabbitMirrorOutput,
     validateRabbitMirrorMarkupLexicalBudget,
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
-} from './markup.js?rmv=1.81.0';
-import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.81.0';
+} from './markup.js?rmv=1.81.5';
+import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.81.5';
 
 export const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 
@@ -1168,7 +1169,10 @@ function parseSelfMutationProgram(source, trigger, root, rawTrigger = null, rawR
     // Store inert DOM clones in a WeakMap; restoring the inactive state never reparses a model-controlled HTML string.
     let originalNodes = rawSelfMutationDomBaselines.get(trigger);
     if (!Array.isArray(originalNodes)) {
-        originalNodes = [...trigger.childNodes].map(node => node.cloneNode(true));
+        // 首次接线可能发生在截图打码之后；缓存前按原节点还原整份副本，
+        // 不把代称永久记成按钮原文。无法对应时不缓存，也不继续登记监听。
+        const baseline = unmaskNameMaskClone(trigger.cloneNode(true), trigger);
+        originalNodes = [...baseline.childNodes];
         rawSelfMutationDomBaselines.set(trigger, originalNodes);
     }
     trigger.removeAttribute?.(RAW_SELF_MUTATION_HTML_BASELINE_ATTR);
@@ -1442,11 +1446,14 @@ function reclaimStaleInertActionTrigger(trigger) {
     const adjacentStatus = trigger.nextElementSibling?.hasAttribute?.(INERT_ACTION_STATUS_ATTR)
         ? trigger.nextElementSibling
         : (statusId ? trigger.parentElement?.querySelector?.(`#${escapeCssIdentifier(statusId)}`) : null);
-    adjacentStatus?.remove?.();
 
     // 热重载时旧版通用兜底的 listener 无法直接移除；用等价克隆替换按钮，
     // 保留结构与样式，同时清除旧 listener 和通用状态属性，再交给真实 class 状态程序接管。
+    // 先核对并还原复制品；打码原名有歧义时，旧按钮、监听和旁边的状态都保持不动。
+    assertNameMaskRestorable(trigger);
     const replacement = trigger.cloneNode(true);
+    const commitNameMaskReplacement = prepareNameMaskReplacement(replacement, trigger);
+    adjacentStatus?.remove?.();
     replacement.removeAttribute(INERT_ACTION_BUTTON_RESCUE_ATTR);
     replacement.removeAttribute('data-rabbit-mirror-inert-action-active');
     replacement.removeAttribute('aria-pressed');
@@ -1456,6 +1463,7 @@ function reclaimStaleInertActionTrigger(trigger) {
         else replacement.removeAttribute('aria-describedby');
     }
     trigger.replaceWith(replacement);
+    commitNameMaskReplacement();
     return replacement;
 }
 
