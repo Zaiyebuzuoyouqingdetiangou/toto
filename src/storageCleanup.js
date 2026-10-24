@@ -2,9 +2,9 @@
 // 默认只清「另有可靠副本」或「只是缓存」的：已存进聊天的镜面缓存和旧版本、待修样本、诊断记录、旧版本遗留键、插图旧版本里的长提示词。
 // 只在本机、清了就没有的（避重与抽签历史、本轮抽签记录、用量统计）要自己勾选。
 // 收藏夹、设置、外观、母本库、世界书、API 配置一律不碰。
-import { clearLastCombo } from './storage.js?rmv=1.82.1';
-import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.1';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.1';
+import { clearLastCombo } from './storage.js?rmv=1.82.2';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.2';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.2';
 
 const storage = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 
