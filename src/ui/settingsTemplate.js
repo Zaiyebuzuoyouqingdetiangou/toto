@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.81.6';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.81.6';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.81.6';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.82.0';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.82.0';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.82.0';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -316,6 +316,17 @@ export function buildRabbitMirrorSettingsDialogHtml() {
             <button id="rh_clear_last" class="menu_button">清除抽签历史与冷却记录</button>
             <button id="rh_clear_injection" class="menu_button">清空当前注入</button>
             <button id="rh_reset" class="menu_button">恢复默认设置</button>
+          </div>
+          <div id="rh_storage_cleanup_block" style="padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;margin-top:8px;">
+            <div style="font-weight:700;">清理兔子镜的本机存储</div>
+            <div style="opacity:.76;font-size:12px;line-height:1.5;margin:4px 0 7px;">兔子镜的成品、插图记录都跟着聊天文件存；浏览器本机里的多是缓存和旧版本。本机存满时会出现「避重记录未能保存」、插图丢提示词这类问题。默认勾上的几类都另有副本或只是缓存，可以放心清；后面几类只在本机，清了就没有，需要自己勾。收藏夹、设置、母本库、世界书不在这里，不会被清。</div>
+            <div id="rh_storage_cleanup_usage" style="font-size:12px;opacity:.82;margin-bottom:6px;"></div>
+            <div id="rh_storage_cleanup_list" style="display:grid;gap:6px;"></div>
+            <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+              <button id="rh_storage_cleanup_refresh" class="menu_button" type="button">重新统计</button>
+              <button id="rh_storage_cleanup_run" class="menu_button" type="button">清理勾选的</button>
+              <span id="rh_storage_cleanup_status" style="font-size:11px;opacity:.72;"></span>
+            </div>
           </div>
           <div id="rh_external_library_actions" style="padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
             <div style="font-weight:700;">把你的文字、玩法或世界书加入母本库</div>

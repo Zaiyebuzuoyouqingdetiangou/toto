@@ -1,4 +1,4 @@
-import { getContext } from './independentApi/runtime.js?rmv=1.81.6';
+import { getContext } from './independentApi/runtime.js?rmv=1.82.0';
 
 // A grant describes one completed output, not a reusable numeric message slot.
 const KEY = '__rabbitMirrorFreshDrawSlots';

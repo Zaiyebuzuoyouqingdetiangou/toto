@@ -1,4 +1,4 @@
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.81.6';
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.82.0';
 // 插件驱动的扩展类型：滚动浏览、时间、滑动手势、节奏连击、悬停窥视、文字遮蔽、环境感应，以及跨面继承。
 // 和主驱动（behaviorInteractions.js）同一套状态模型：容器 data-rm-ui、部件 data-rm-*、显示 data-rm-show。
 // 主驱动在准备、点按、指针、同步、复位这几个点调进来；这里不碰别的类型，出错也只影响这一块。

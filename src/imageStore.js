@@ -172,7 +172,7 @@ function requestChatSave(mes) {
         const request = saveRequest;
         saveRequest = null;
         if (!liveChatSaveContext(request)) return;
-        import('./independentApi/persistence.js?rmv=1.81.6')
+        import('./independentApi/persistence.js?rmv=1.82.0')
             .then(module => {
                 // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
                 const live = liveChatSaveContext(request);
@@ -684,6 +684,8 @@ function migrateOldImageRecords() {
 
 // 瘦过一遍、之后没再存新图：再瘦也腾不出地方，不再把几百份存档逐条解析一遍。
 let slimmedClean = false;
+// 设置里手动清理时，不管这次打开页面后有没有瘦过，都再瘦一遍。
+export function resetMirrorImageSlimFlag() { slimmedClean = false; }
 export function slimMirrorImagesForQuota() {
     const storage = globalThis.localStorage;
     if (!storage || slimmedClean) return false;

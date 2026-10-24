@@ -1,11 +1,11 @@
 // Split from outputSanitizer.js — scriptedInteractionRescue.
 
-import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.81.6';
-import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.81.6';
-import { getSettings } from '../settings.js?rmv=1.81.6';
-import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.81.6';
-import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.81.6';
-import { assertNameMaskRestorable, prepareNameMaskReplacement, unmaskNameMaskClone } from '../nameMask.js?rmv=1.81.6';
+import { inspectBehaviorRecovery } from './behaviorRecovery.js?rmv=1.82.0';
+import { nativePopoverFallbackCount } from './nativePopoverFallback.js?rmv=1.82.0';
+import { getSettings } from '../settings.js?rmv=1.82.0';
+import { repairDesignCandidateAttributeQuotes } from '../interactionSampling.js?rmv=1.82.0';
+import { applyRabbitMirrorBannedWordsToDom, filterRabbitMirrorVisibleTextValue } from '../bannedWords.js?rmv=1.82.0';
+import { assertNameMaskRestorable, prepareNameMaskReplacement, unmaskNameMaskClone } from '../nameMask.js?rmv=1.82.0';
 import {
     FEEDBACK_CAT_ATTR,
     MAINTENANCE_RABBIT_ATTR,
@@ -22,7 +22,7 @@ import {
     getRabbitMirrorLocalStyleElements,
     getRenderedRabbitMirrorInteractionRoots,
     isRabbitMirrorDetails,
-} from './runtime.js?rmv=1.81.6';
+} from './runtime.js?rmv=1.82.0';
 import {
     CHANGE_PSEUDO_RESCUE_ATTR,
     DETACHED_CHECKED_HAS_RULE_COUNT_ATTR,
@@ -59,7 +59,7 @@ import {
     reversibleStyleBaselineStates,
     reversibleTextBaselineStates,
     syncCrossParentCheckedRuleFallback,
-} from './checkedStateRescue.js?rmv=1.81.6';
+} from './checkedStateRescue.js?rmv=1.82.0';
 import {
     EXISTING_INTERACTIVE_SELECTOR,
     PSEUDO_INTERACTION_HINT_RE,
@@ -81,8 +81,8 @@ import {
     resolveCheckedRelativeElementExpression,
     resolveScopedPseudoId,
     sanitizeRecoveredInteractionStyleAssignments,
-} from './renderedStateRescue.js?rmv=1.81.6';
-import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.81.6';
+} from './renderedStateRescue.js?rmv=1.82.0';
+import { cancelLabeledCheckedTransitionVerification, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.82.0';
 import {
     DISABLED_ONLY_CHOICE_RESCUE_ATTR,
     FILL_IN_CHOICE_COUNT_ATTR,
@@ -93,7 +93,7 @@ import {
     SELECTION_ONLY_FALLBACK_ATTR,
     STATIC_CHOICE_SELECTION_COUNT_ATTR,
     STRUCTURED_STATIC_DISCLOSURE_COUNT_ATTR,
-} from './diagnostics.js?rmv=1.81.6';
+} from './diagnostics.js?rmv=1.82.0';
 import {
     checkedDeclarationCreatesContentReveal,
     getRenderedMessageElement,
@@ -101,15 +101,15 @@ import {
     isIndependentMaintenanceRoot,
     maintenanceMessageSourceCandidates,
     normalizeMaintenanceSummaryText,
-} from './maintenanceInspect.js?rmv=1.81.6';
+} from './maintenanceInspect.js?rmv=1.82.0';
 import {
     decodeHtmlEntities,
     normalizeMirrorAttribute,
     rescueDamagedDataUriRabbitMirrorOutput,
     validateRabbitMirrorMarkupLexicalBudget,
     RABBIT_MIRROR_MAX_TEMPLATE_SOURCE_CHARS,
-} from './markup.js?rmv=1.81.6';
-import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.81.6';
+} from './markup.js?rmv=1.82.0';
+import { getMessageIndexFromMirrorNode, hostScriptModule, messageUsesDistinctDisplaySource } from './lifecycle.js?rmv=1.82.0';
 
 export const RAW_RADIO_RESET_RESCUE_ATTR = 'data-rabbit-mirror-radio-reset-rescue';
 

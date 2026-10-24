@@ -1,0 +1,115 @@
+// 清理兔子镜在本机（浏览器存储）里的东西。
+// 默认只清「另有可靠副本」或「只是缓存」的：已存进聊天的镜面缓存和旧版本、待修样本、诊断记录、旧版本遗留键、插图旧版本里的长提示词。
+// 只在本机、清了就没有的（避重与抽签历史、本轮抽签记录、用量统计）要自己勾选。
+// 收藏夹、设置、外观、母本库、世界书、API 配置一律不碰。
+import { clearLastCombo } from './storage.js?rmv=1.82.0';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.0';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.0';
+
+const storage = () => { try { return globalThis.localStorage || null; } catch { return null; } };
+
+function keys() {
+    const store = storage();
+    const out = [];
+    if (!store) return out;
+    try { for (let index = 0; index < store.length; index += 1) { const key = store.key(index); if (key != null) out.push(String(key)); } } catch { /* 读不到就当空 */ }
+    return out;
+}
+
+function sizeOf(predicate) {
+    const store = storage();
+    let bytes = 0;
+    for (const key of keys()) if (predicate(key)) { try { bytes += (key.length + String(store.getItem(key) || '').length) * 2; } catch { /* 跳过 */ } }
+    return bytes;
+}
+
+function removeWhere(predicate) {
+    const store = storage();
+    for (const key of keys()) if (predicate(key)) { try { store.removeItem(key); } catch { /* 跳过 */ } }
+}
+
+const exact = (...names) => key => names.includes(key);
+const LEGACY = key => (/^rabbit_mirror_theater:(?:last_combo|pending_combo):v\d+$/.test(key) && !/:v11$/.test(key))
+    || key === 'rabbit_mirror_theater:pending_batch:v1' || key === 'rabbit_mirror_theater:pending_batch_registry:v2';
+const COVERED = exact('rabbit_mirror_independent_outputs_v1', 'rabbit_mirror_independent_history_v1', 'rabbit_mirror_face_swipes_v1');
+const HISTORY = key => /^rabbit_mirror_theater:(?:last_combo|pending_combo):v11$/.test(key)
+    || ['rabbit_mirror_theater:pending_batch_registry:v3', 'rabbit_mirror_theater:generation_attempts:v1',
+        'rabbit_mirror_theater:directive_pick_cache:v1', 'rabbit_mirror_theater:format_eligible_misses:v1'].includes(key);
+
+export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
+    {
+        id: 'covered', safe: true, label: '已存进聊天的镜面缓存和旧版本',
+        note: '只删当前打开的聊天里已经确认存进聊天文件的那些；还没确认的、别的聊天的都不动。想清别的聊天，打开那个聊天再点一次。',
+        measure: () => sizeOf(COVERED),
+        run: () => {
+            try { globalThis.__rabbitMirrorCompactCoveredOutputsForQuota?.(0); } catch { /* 跳过 */ }
+            try { globalThis.__rabbitMirrorTrimHistoryForQuota?.(); } catch { /* 跳过 */ }
+            try { compactFaceSwipeStoreForQuota([1]); } catch { /* 跳过 */ }
+        },
+    },
+    {
+        id: 'image-prompts', safe: true, label: '插图旧版本里的长提示词',
+        note: '每张图的地址、时间都留着，图一张不删；只是翻回旧版本重画时要重新准备提示词。',
+        measure: () => sizeOf(key => key.startsWith('rabbitMirror:image:v1:images:')),
+        run: () => { try { resetMirrorImageSlimFlag(); slimMirrorImagesForQuota(); } catch { /* 跳过 */ } },
+    },
+    {
+        id: 'samples', safe: true, label: '待修样本箱',
+        note: '维修兔攒给作者看的样本，不影响使用。',
+        measure: () => sizeOf(exact('rabbit_mirror_repair_samples:v1')),
+        run: () => removeWhere(exact('rabbit_mirror_repair_samples:v1')),
+    },
+    {
+        id: 'diagnostics', safe: true, label: '最近一次请求的诊断记录',
+        note: '下次生成会重新记。',
+        measure: () => sizeOf(exact('rabbit_mirror_independent_api_last_request_v2')),
+        run: () => removeWhere(exact('rabbit_mirror_independent_api_last_request_v2')),
+    },
+    {
+        id: 'legacy', safe: true, label: '旧版本留下的记录',
+        note: '以前版本用过、现在已经不读的键。',
+        measure: () => sizeOf(LEGACY),
+        run: () => removeWhere(LEGACY),
+    },
+    {
+        id: 'history', safe: false, label: '避重与抽签历史、冷却记录',
+        note: '只在本机。清掉后主题和形式的冷却从头算；颜色避重会从当前聊天里保存的兔子镜补，别的聊天的记录就没了。',
+        measure: () => sizeOf(HISTORY),
+        run: () => { try { clearLastCombo(); } catch { removeWhere(HISTORY); } },
+    },
+    {
+        id: 'recipes', safe: false, label: '「本轮抽签」记录',
+        note: '只在本机。副 API 生成的面还能从聊天存档里读出抽签；跟随正文的面清掉后会显示「没有留下当时抽中的」。',
+        measure: () => sizeOf(exact('rabbit_mirror_theater:selection_recipes:v1')),
+        run: () => removeWhere(exact('rabbit_mirror_theater:selection_recipes:v1')),
+    },
+    {
+        id: 'token-meter', safe: false, label: '用量统计',
+        note: '只在本机，清掉后 token 用量从零开始记。',
+        measure: () => sizeOf(key => key.startsWith('rabbit_mirror_theater:token_meter')),
+        run: () => removeWhere(key => key.startsWith('rabbit_mirror_theater:token_meter')),
+    },
+]);
+
+const RABBIT_KEY = key => /^rabbit_?mirror/i.test(key);
+
+export function rabbitMirrorLocalBytes() { return sizeOf(RABBIT_KEY); }
+
+export function formatCleanupBytes(bytes) {
+    const value = Math.max(0, Number(bytes) || 0);
+    return value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)}MB` : `${Math.round(value / 1024)}KB`;
+}
+
+/** 当前各类占用（字节）。 */
+export function measureStorageCleanup() {
+    return STORAGE_CLEANUP_CATEGORIES.map(category => ({ id: category.id, label: category.label, note: category.note, safe: category.safe, bytes: category.measure() }));
+}
+
+/** 清理选中的几类；返回腾出的字节数（按兔子镜全部本机占用前后相减）。 */
+export function runStorageCleanup(ids = []) {
+    const chosen = new Set(Array.isArray(ids) ? ids : []);
+    const before = rabbitMirrorLocalBytes();
+    for (const category of STORAGE_CLEANUP_CATEGORIES) if (chosen.has(category.id)) category.run();
+    const after = rabbitMirrorLocalBytes();
+    return { before, after, freed: Math.max(0, before - after) };
+}
