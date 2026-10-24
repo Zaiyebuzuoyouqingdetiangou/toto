@@ -2,9 +2,9 @@
 // 默认只清「另有可靠副本」或「只是缓存」的：已存进聊天的镜面缓存和旧版本、待修样本、诊断记录、旧版本遗留键、插图旧版本里的长提示词。
 // 只在本机、清了就没有的（避重与抽签历史、本轮抽签记录、用量统计）要自己勾选。
 // 收藏夹、设置、外观、母本库、世界书、API 配置一律不碰。
-import { clearLastCombo } from './storage.js?rmv=1.82.3';
-import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.3';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.3';
+import { clearLastCombo } from './storage.js?rmv=1.82.4';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag } from './imageStore.js?rmv=1.82.4';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=1.82.4';
 
 const storage = () => { try { return globalThis.localStorage || null; } catch { return null; } };
 
@@ -41,6 +41,16 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
         id: 'covered', safe: true, label: '已存进聊天的镜面缓存和旧版本',
         note: '只删已经确认另有副本（聊天文件或浏览器版本存档）的那些，每个位置最新那份留着；还没确认的不动。别的聊天的多数要打开那个聊天再点一次。下次重说时多版本切换会再占回一点。',
         measure: () => sizeOf(COVERED),
+        // 说清这里面能清的有多少、多少属于别的聊天：别的聊天的要打开那个聊天才能确认已存好。
+        detail: () => {
+            let stats = null;
+            try { stats = globalThis.__rabbitMirrorCoveredStorageStats?.(); } catch { stats = null; }
+            if (!stats) return '';
+            const parts = [`这个聊天能清约 ${formatCleanupBytes(stats.freeable)}`];
+            if (stats.otherChats) parts.push(`${stats.otherChatCount} 个别的聊天约 ${formatCleanupBytes(stats.otherChats)}（打开那个聊天再点）`);
+            if (stats.unconfirmed) parts.push(`还没确认存进聊天的约 ${formatCleanupBytes(stats.unconfirmed)}（不清）`);
+            return parts.join('；');
+        },
         run: () => {
             try { globalThis.__rabbitMirrorCompactCoveredOutputsForQuota?.(0); } catch { /* 跳过 */ }
             try { globalThis.__rabbitMirrorTrimHistoryForQuota?.(); } catch { /* 跳过 */ }
@@ -51,6 +61,20 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
         id: 'image-prompts', safe: true, label: '插图旧版本里的长提示词',
         note: '每张图的地址、时间都留着，图一张不删；只是翻回旧版本重画时要重新准备提示词。',
         measure: () => sizeOf(key => key.startsWith('rabbitMirror:image:v1:images:')),
+        // 只存在本机的整张图（data: 开头，没有文件地址）不能瘦，说清占了多少。
+        detail: () => {
+            const store = storage();
+            let dataOnly = 0, prompts = 0;
+            for (const key of keys()) {
+                if (!key.startsWith('rabbitMirror:image:v1:images:')) continue;
+                let raw = ''; try { raw = String(store.getItem(key) || ''); } catch { continue; }
+                const images = raw.match(/"data:image\/[^"]*"/g) || [];
+                dataOnly += images.reduce((sum, text) => sum + text.length * 2, 0);
+                let value = null; try { value = JSON.parse(raw); } catch { value = null; }
+                for (const entry of Array.isArray(value?.history) ? value.history : []) if (!entry?.slimmed) prompts += JSON.stringify(entry?.promptMetadata || {}).length * 2 + String(entry?.prompt || '').length * 2;
+            }
+            return `能瘦掉的旧提示词约 ${formatCleanupBytes(prompts)}${dataOnly ? `；只存在本机的整张图约 ${formatCleanupBytes(dataOnly)}（图本身，不清）` : ''}`;
+        },
         run: () => { try { resetMirrorImageSlimFlag(); slimMirrorImagesForQuota(); } catch { /* 跳过 */ } },
     },
     {
@@ -112,7 +136,11 @@ export function formatCleanupBytes(bytes) {
 
 /** 当前各类占用（字节）。 */
 export function measureStorageCleanup() {
-    return STORAGE_CLEANUP_CATEGORIES.map(category => ({ id: category.id, label: category.label, note: category.note, safe: category.safe, bytes: category.measure() }));
+    return STORAGE_CLEANUP_CATEGORIES.map(category => {
+        let detail = '';
+        try { detail = typeof category.detail === 'function' ? category.detail() : ''; } catch { detail = ''; }
+        return { id: category.id, label: category.label, note: category.note, safe: category.safe, bytes: category.measure(), detail };
+    });
 }
 
 /** 清理选中的几类；返回腾出的字节数（按兔子镜全部本机占用前后相减）。 */

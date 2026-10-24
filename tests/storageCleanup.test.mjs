@@ -48,3 +48,12 @@ test('local-only categories go only when ticked, and never touch favourites or s
     for (const key of ['rabbit_mirror_theater:last_combo:v11', 'rabbit_mirror_theater:selection_recipes:v1', 'rabbit_mirror_follow_partial_results_v1']) assert.equal(store.has(key), false, key);
     for (const key of KEEP) assert.equal(store.has(key), true, key);
 });
+
+test('the image category says how much is old prompts and how much is pictures kept only here', () => {
+    fill();
+    store.set('rabbitMirror:image:v1:images:builtin:c:1:0:0:h', JSON.stringify({ version: 1, current: { url: 'data:image/png;base64,' + 'A'.repeat(5000) },
+        history: [{ path: '/x.png', prompt: 'p'.repeat(3000), promptMetadata: { flatPrompt: 'q'.repeat(3000) } }] }));
+    const detail = cleanup.measureStorageCleanup().find(item => item.id === 'image-prompts').detail;
+    assert.match(detail, /旧提示词约 1\d?KB/);
+    assert.match(detail, /只存在本机的整张图约 10KB/);
+});
