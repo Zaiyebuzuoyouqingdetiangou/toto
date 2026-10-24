@@ -44,7 +44,7 @@ for (const [name, mes, reason] of [
     ['a closing comment cannot close the actual content', `<content>${story}<!-- </content> -->`, /<content>/],
     ['a preceding closing tag cannot close a later opening', `</content><content>${story}`, /<content>/],
     ['unfinished backtick block', `${story}\n\`\`\`html\n<div>还未写完`, /代码块/],
-    // 1.80.0：代码里提到的收尾标签不算正文写完。
+    // 1.80.1：代码里提到的收尾标签不算正文写完。
     ['a closing example inside a script string does not close the content', `<content>${story}<script>const example = '</content>';</script>`, /<content>/],
     ['wrong fence length', `${story}\n\`\`\`\`html\n<div>\n\`\`\``, /代码块/],
 ]) test(`${name} stops automatic generation without changing the reply`, () => {

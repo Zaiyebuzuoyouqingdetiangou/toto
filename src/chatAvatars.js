@@ -1,10 +1,10 @@
 // Optional, local-only avatar consumer. Model markers describe a role, never an
 // image URL, an owner, or permission to replace arbitrary artwork.
-import { unmaskNameMaskClone } from './nameMask.js?rmv=1.80.0';
-import { getSettings } from './settings.js?rmv=1.80.0';
-import { getCurrentChatKey } from './storage.js?rmv=1.80.0';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.80.0';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.80.0';
+import { unmaskNameMaskClone } from './nameMask.js?rmv=1.80.1';
+import { getSettings } from './settings.js?rmv=1.80.1';
+import { getCurrentChatKey } from './storage.js?rmv=1.80.1';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.80.1';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.80.1';
 
 const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"]';
 const FACES = 'toto, details[data-rabbit-mirror-external-details]';
@@ -148,7 +148,7 @@ export async function prepareRabbitMirrorAvatarFrame(frame) {
 // Avatar URLs are local runtime projection, not new generated source content.
 export function restoreRabbitMirrorAvatarClone(source, clone) {
     // 截图打码开着时，复制出来要存的那份换回原名，不把「小美／小帅」存进去。
-    unmaskNameMaskClone(clone);
+    unmaskNameMaskClone(clone, source);
     if (!source?.querySelectorAll || !clone?.querySelectorAll) return clone;
     active?.restoreClone(source, clone);
     for (const node of clone.querySelectorAll('[data-rm-avatar-rendered="true"]')) node.remove();

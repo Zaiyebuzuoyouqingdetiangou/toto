@@ -43,10 +43,31 @@ try {
         const clone = document.querySelector('#a').cloneNode(true);
         mask.unmaskNameMaskClone(clone);
         const cloneText = clone.textContent;
+        // 名字拆在两个标签里
+        const split = document.createElement('p'); split.id = 'split'; split.innerHTML = '<b>阿</b>雪和<i>阿岩</i>儿'; document.querySelector('#chat').append(split);
+        await new Promise(r => setTimeout(r, 20));
+        const splitMasked = split.textContent;
+        const splitClone = mask.unmaskNameMaskClone(split.cloneNode(true), split).innerHTML;
+        // 复制品被过滤过、和原件对不上：拆开的半个名字不进反查，空节点不会被写成「雪」
+        const filtered = split.cloneNode(true); filtered.querySelector('i').remove(); filtered.append(document.createTextNode(''));
+        const filteredHtml = mask.unmaskNameMaskClone(filtered, split).innerHTML;
+        // 被清空的那段被宿主整体重写：当新字处理，不把旧的「雪」带回来
+        const wipe = document.createElement('p'); wipe.innerHTML = '<b>阿</b>雪'; document.querySelector('#chat').append(wipe);
+        await new Promise(r => setTimeout(r, 20));
+        wipe.lastChild.data = '下雨了';
+        await new Promise(r => setTimeout(r, 20));
+        const wipeMasked = wipe.textContent;
+        // 两段原文打码后一模一样：按节点对应还原，不串名
+        const twin = document.createElement('div'); twin.id = 'twin'; twin.innerHTML = '<p>阿岩儿</p><p>阿岩</p>'; document.querySelector('#chat').append(twin);
+        await new Promise(r => setTimeout(r, 20));
+        const twinMasked = twin.textContent;
+        const twinClone = mask.unmaskNameMaskClone(twin.cloneNode(true), twin).innerHTML;
         const off = mask.toggleNameMask({ ctx });
+        const wipeRestored = wipe.innerHTML;
+        const splitRestored = split.innerHTML, twinRestored = twin.innerHTML;
         const one = mask.buildNameMaskRules({ name1: '我', name2: 'Al', chat: [] });
         const oneText = mask.maskText('我看见 Al 和 Also。', one);
-        return { oneText, on, off, masked, lateMasked, streamMasked, cloneText, streamRestored: document.querySelector('#s').textContent, restored: document.querySelector('#a').textContent, lateRestored: document.querySelector('#late').textContent, active: mask.isNameMaskActive() };
+        return { filteredHtml, wipeMasked, wipeRestored, splitMasked, splitClone, twinMasked, twinClone, splitRestored, twinRestored, oneText, on, off, masked, lateMasked, streamMasked, cloneText, streamRestored: document.querySelector('#s').textContent, restored: document.querySelector('#a').textContent, lateRestored: document.querySelector('#late').textContent, active: mask.isNameMaskActive() };
     });
     assert.equal(result.on.active, true);
     assert.equal(result.masked.name, '小美');
@@ -62,6 +83,15 @@ try {
     assert.equal(result.streamRestored, '阿雪说：阿岩快来');
     assert.equal(result.cloneText, '阿雪看着阿岩，阿岩儿笑了。某城下雨。', '要存的复制品是原名');
     assert.equal(result.oneText, '我看见 小帅 和 Also。', '一个字的名字不自动换；英文名按整词换');
+    assert.equal(result.filteredHtml, '<b>阿</b>雪和儿', '删掉一个节点的复制品照样按节点还原，多出的空节点不被写成「雪」');
+    assert.equal(result.wipeMasked, '阿下雨了', '名字被宿主改掉了：剩下的半个字不再当名字');
+    assert.equal(result.wipeRestored, '<b>阿</b>下雨了');
+    assert.equal(result.splitMasked, '小美和小帅', '拆在标签里的名字也换（阿岩儿是自填的一条）');
+    assert.equal(result.splitClone, '<b>阿</b>雪和<i>阿岩</i>儿');
+    assert.equal(result.splitRestored, '<b>阿</b>雪和<i>阿岩</i>儿');
+    assert.equal(result.twinMasked, '小帅小帅', '两段原文不同、打码后都是小帅');
+    assert.equal(result.twinClone, '<p>阿岩儿</p><p>阿岩</p>', '按节点还原，不串名');
+    assert.equal(result.twinRestored, '<p>阿岩儿</p><p>阿岩</p>');
     assert.deepEqual(errors, []);
     console.log('nameMask browser: ok');
 } finally { await browser?.close(); server.close(); }

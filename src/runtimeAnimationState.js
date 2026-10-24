@@ -1,7 +1,6 @@
 // In-memory provenance only: generated data attributes cannot impersonate a
 // runtime override. Restore on detached copies, never mutate the live controls.
-import { unmaskNameMaskClone } from './nameMask.js?rmv=1.80.0';
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.80.0';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.80.1';
 const authoredAnimationStyles = new WeakMap();
 export const ANIMATION_SUSPENDED_ATTR = 'data-rm-animation-suspended';
 
@@ -13,8 +12,6 @@ export function rememberRuntimeAnimationStyle(element, property = 'animation-pla
 }
 
 export function restoreRuntimeAnimationClone(source, clone) {
-    // 截图打码开着时，复制出来要存的那份换回原名，不把「小美／小帅」存进去。
-    unmaskNameMaskClone(clone);
     const stack = [[source, clone]];
     while (stack.length) {
         const [before, after] = stack.pop();
