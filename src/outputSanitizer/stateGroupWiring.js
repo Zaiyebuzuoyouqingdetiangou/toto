@@ -8,7 +8,7 @@
 //   4. 开关属性（.播放器[data-playing="true"] 写了样式，元素上默认 data-playing="false"）：
 //      旁边一个闲着的播放／暂停按钮，按一下切换（▶ 和 ❚❚ 跟着换）。
 // 都只在能一一对上时才接，对不上不猜；接过的元素记在 WeakSet 里，复制出来的新节点重新接。
-import { innerButtonIsFree } from './orphanStateWiring.js?rmv=1.81.5';
+import { innerButtonIsFree } from './orphanStateWiring.js?rmv=1.81.6';
 
 const GROUP_ATTR = 'data-rm-state-group';
 const PULSE_ATTR = 'data-rm-pulse-trigger';
