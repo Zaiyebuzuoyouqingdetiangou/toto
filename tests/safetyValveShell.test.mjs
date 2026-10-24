@@ -17,7 +17,7 @@ test('missing-shell message and title use the safety-valve wording in automatic 
     const fn = early.slice(early.indexOf('function missingIndependentHistoryMessage('), early.indexOf('const manualFillFloors'));
     assert.match(fn, /automaticIndependentTiming\(\)/);
     assert.match(fn, /floorMirrorEvidence\(ctx,index,msg\)/);
-    assert.match(fn, /mainReplyAbnormalReason\(msg\)/);
+    assert.match(fn, /mainReplyAbnormalReason\(msg,automaticMainReplySafetyOptions\(ctx,index\)\)/);
     assert.match(fn, /safetyValveShellMessage\(reason\)/);
     const geometry = readFileSync(new URL('../src/independentApi/geometry.js', import.meta.url), 'utf8');
     assert.match(geometry, /startsWith\(SAFETY_VALVE_SHELL_PREFIX\)\) return '【兔子镜：本轮没有自动生成】'/);

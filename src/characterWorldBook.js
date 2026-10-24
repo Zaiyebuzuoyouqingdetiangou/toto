@@ -346,6 +346,28 @@ function joinSentences(list) {
     }, '');
 }
 
+// Explicit Chinese person headings establish a separate subject even when that
+// person is not in the current picture. Property labels do not change subjects.
+const APPEARANCE_LABEL = /^(?:姓名|名字|名称|昵称|别名|性别|性別|年龄|年齡|身份|种族|职业|性格|身高|体重|外貌|外表|外观|长相|容貌|相貌|五官|面容|脸型|发色|发型|发长|头发|刘海|眼睛|眼眸|瞳色|肤色|皮肤|肌肤|身材|体型|特征|特点|服装|衣着|服饰|背景|经历|关系|人物关系|备注|简介|设定|基本信息|详细信息|其他|补充)$/;
+function chineseSubjectBoundaries(content, who, knownOthers) {
+    const names = new Set(knownOthers);
+    for (const match of content.matchAll(/(?:^|[\n。；;])\s*(?:【([^】\n]{2,12})】|([\u3400-\u9fff·]{2,8})\s*[:：])/g)) {
+        const name = (match[1] || match[2]).trim();
+        if (name !== who && !APPEARANCE_LABEL.test(name) && !TITLE_NOISE.test(name)) names.add(name);
+    }
+    const foreign = new Set();
+    let other = false;
+    for (const raw of content.split(SENTENCE_SPLIT)) {
+        const part = raw.trim();
+        if (!part) continue;
+        const start = part.replace(/^[\s【「『]+/, '');
+        if (start.startsWith(who) && !/^[的之]/.test(start.slice(who.length))) other = false;
+        else if ([...names].some(name => start.startsWith(name))) other = true;
+        if (other) foreign.add(part);
+    }
+    return { names: [...names], foreign };
+}
+
 export function appearanceFromCast(castText, name, otherNames = []) {
     const who = text(name).trim();
     if (!who || who.length < 2) return '';
@@ -355,7 +377,12 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         try { const row = JSON.parse(line); if (row && typeof row.content === 'string') rows.push(row); } catch { /* 截断标记之类 */ }
     }
     const titleIsWho = row => text(row.title).trim() === who || text(row.title).split(/[\s【】\[\]()（）<>《》「」『』:：·・|｜/\\,，、\-—_+=#*]+/).some(piece => piece.trim() === who);
-    let foreign = new Set();
+    let foreign = new Set(), rowOthers = others;
+    const setSubjects = content => {
+        const chinese = chineseSubjectBoundaries(content, who, others);
+        rowOthers = chinese.names;
+        foreign = new Set([...englishSentencesAboutOthers(content, who), ...chinese.foreign]);
+    };
     const pick = window => {
         // 英文按句号、问号、叹号加空格分句，不然一整段英文算一句，超过 600 字时末尾的肤色、痣被截掉。
         const sentences = window.split(SENTENCE_SPLIT).map(part => part.trim()).filter(Boolean);
@@ -364,7 +391,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     // 别人的名字出现在哪里就截到哪里；窗口一开头就是别人（这一句在讲别人）截成空串，调用方跳过这一句接着找。
     const cutAtOthers = window => {
         let end = window.length;
-        for (const other of others) { const at = window.indexOf(other); if (at >= 0) end = Math.min(end, at); }
+        for (const other of rowOthers) { const at = window.indexOf(other); if (at >= 0) end = Math.min(end, at); }
         return window.slice(0, end);
     };
     const ownRows = rows.filter(titleIsWho);
@@ -380,7 +407,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
         // 标题就是这个人的条目（角色卡、Persona 也走这里）：长相常写在几百字的身份、背景后面，
         // 从写长相的地方往后摘，不只看开头。第一处写长相的句子是在讲别人（「乙：红发…」）时，接着找下一处。
         const content = row.content;
-        foreign = englishSentencesAboutOthers(content, who);
+        setSubjects(content);
         const words = new RegExp(SCAN_APPEARANCE_WORDS.source, `${SCAN_APPEARANCE_WORDS.flags}g`);
         let match, tries = 0, lastStart = -1;
         while ((match = words.exec(content)) && tries < 8) {
@@ -402,7 +429,7 @@ export function appearanceFromCast(castText, name, otherNames = []) {
     for (const row of rows) {
         if (ownRows.includes(row)) continue;
         const content = row.content;
-        foreign = englishSentencesAboutOthers(content, who);
+        setSubjects(content);
         let tries = 0;
         for (let at = content.indexOf(who); at >= 0 && tries < 6; at = content.indexOf(who, at + who.length)) {
             if (!boundary.test(content.slice(at + who.length, at + who.length + 1))) continue;

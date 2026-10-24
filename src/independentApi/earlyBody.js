@@ -1,13 +1,13 @@
 // Split from independentApi.js — earlyBody.
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.79.2';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.79.5';
 
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.79.2';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.79.2';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.79.2';
-import { getSettings } from '../settings.js?rmv=1.79.2';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.79.2';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.79.2';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.79.2';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=1.79.5';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=1.79.5';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=1.79.5';
+import { getSettings } from '../settings.js?rmv=1.79.5';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=1.79.5';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.79.5';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.79.5';
 import {
     MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE,
     safetyValveShellMessage,
@@ -18,7 +18,7 @@ import {
     isMissingShellTargetFloor,
     normalizeMissingShellScanRange,
     shouldRestoreMissingIndependentRetryShell,
-} from './missingRetryShell.js?rmv=1.79.2';
+} from './missingRetryShell.js?rmv=1.79.5';
 import {
     INDEPENDENT_GENERATION_INTENTS_KEY,
     INDEPENDENT_GENERATION_INTENT_TYPES,
@@ -28,7 +28,7 @@ import {
     currentRuntime,
     getContext,
     hashText,
-} from './runtime.js?rmv=1.79.2';
+} from './runtime.js?rmv=1.79.5';
 import {
     ACTIVE_GENERATION_WAIT_MS,
     FINAL_RENDER_POLL_INTERVAL_MS,
@@ -44,7 +44,7 @@ import {
     markAutomaticFailureStop,
     operationEpochForBase,
     pending,
-} from './flights.js?rmv=1.79.2';
+} from './flights.js?rmv=1.79.5';
 import {
     appendHistoryEntry,
     chatPersistenceSlot,
@@ -62,7 +62,7 @@ import {
     reconcileIndependentChatOwners,
     rememberChatMessageOrder,
     checkOwnerRemapEpoch,
-} from './persistence.js?rmv=1.79.2';
+} from './persistence.js?rmv=1.79.5';
 import {
     activeGlobalWorldInfoCapture,
     assistantMessages,
@@ -112,7 +112,7 @@ import {
     withOwnerLockStoreBatch,
     writeActiveGlobalWorldInfoCapture,
     writeHostModule,
-} from './connection.js?rmv=1.79.2';
+} from './connection.js?rmv=1.79.5';
 import {
     allExternalHosts,
     externalHosts,
@@ -121,7 +121,7 @@ import {
     removeEmptyInlineAnchors,
     withExternalHostSyncIndex,
     isTheaterFavoriteHost,
-} from './request.js?rmv=1.79.2';
+} from './request.js?rmv=1.79.5';
 import {
     beginHostWorkTiming,
     clearExternalHostFreshSourceState,
@@ -155,7 +155,7 @@ import {
     setPlaceholderSummary,
     usableReadyDetails,
     withRestorableHtmlCacheBatch,
-} from './geometry.js?rmv=1.79.2';
+} from './geometry.js?rmv=1.79.5';
 import {
     INDEPENDENT_INTENT_OWNER,
     abortFlight,
@@ -209,7 +209,7 @@ import {
     serializeExternalFaceDetails,
     stampAutomaticAuthorizationEpoch,
     withHistoricalRestoreLightPass,
-} from './mount.js?rmv=1.79.2';
+} from './mount.js?rmv=1.79.5';
 import {
     automaticGenerationCutovers,
     hostGenerationHintStartedAt,
@@ -234,7 +234,7 @@ import {
     writeStartupHistoryFallbackRoot,
     writeSyncRunning,
     writeSyncTimer,
-} from './lifecycle.js?rmv=1.79.2';
+} from './lifecycle.js?rmv=1.79.5';
 
 let earlyBodyParserPromise=null;
 
@@ -363,7 +363,7 @@ function settleEarlyBodyAtFinal(ctx,index){
 
 async function probeIndependentEarlyBody(packet,sequence){
  if(!earlyBodyPacketCurrent(packet)) return;
- if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.79.2')
+ if(!earlyBodyParserPromise) earlyBodyParserPromise=import('../earlyBodyTags.js?rmv=1.79.5')
   .then(module=>{earlyBodyParser=module;return module;}).catch(()=>{earlyBodyParserPromise=null;return null;});
  const parser=await earlyBodyParserPromise;
  if(!parser || sequence!==earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet)) return;
@@ -818,10 +818,18 @@ function preserveCompletedAutomaticHostGeneration(ctx,owner){
  return finalizeAutomaticHostGeneration(ctx,rendered.index,'host-next-normal',false,rendered.at);
 }
 
+export function automaticMainReplySafetyOptions(ctx,index){
+ const settings=getSettings();
+ const ownTags=settings.independentEarlyBodyEnabled===true
+  && String(settings.independentEarlyBodyChatKey||'')===chatKey(ctx);
+ return {messageIndex:Number(index),processor:hostModule?.streamingProcessor||ctx?.streamingProcessor,
+  bodyTags:ownTags?settings.independentEarlyBodyTags:[]};
+}
+
 function holdAbnormalAutomaticReply(ctx,index){
  if(!automaticIndependentTiming()) return false;
  const message=ctx?.chat?.[Number(index)];
- const reason=mainReplyAbnormalReason(message);
+ const reason=mainReplyAbnormalReason(message,automaticMainReplySafetyOptions(ctx,index));
  if(!reason) return false;
  const cutover=automaticGenerationCutovers.get(chatKey(ctx));
  const early=cutover?.earlyBodies?.get(Number(index));
@@ -1208,7 +1216,7 @@ function missingIndependentHistoryMessage(ctx,index,msg){
  try{ evidence=!!floorMirrorEvidence(ctx,index,msg); }catch{ evidence=false; }
  if(!evidence && automaticIndependentTiming()){
   let reason='';
-  try{ reason=mainReplyAbnormalReason(msg)||''; }catch{ reason=''; }
+  try{ reason=mainReplyAbnormalReason(msg,automaticMainReplySafetyOptions(ctx,index))||''; }catch{ reason=''; }
   if(reason) return safetyValveShellMessage(reason);
  }
  return MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE;

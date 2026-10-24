@@ -44,6 +44,8 @@ for (const [name, mes, reason] of [
     ['a closing comment cannot close the actual content', `<content>${story}<!-- </content> -->`, /<content>/],
     ['a preceding closing tag cannot close a later opening', `</content><content>${story}`, /<content>/],
     ['unfinished backtick block', `${story}\n\`\`\`html\n<div>还未写完`, /代码块/],
+    // 1.79.5：代码里提到的收尾标签不算正文写完。
+    ['a closing example inside a script string does not close the content', `<content>${story}<script>const example = '</content>';</script>`, /<content>/],
     ['wrong fence length', `${story}\n\`\`\`\`html\n<div>\n\`\`\``, /代码块/],
 ]) test(`${name} stops automatic generation without changing the reply`, () => {
     const message = { mes };
@@ -53,10 +55,7 @@ for (const [name, mes, reason] of [
 
 // 安全阀有意放过的两种写法（见 mainReplySafetyValve.js 里的注释）：
 // 1）剧情里常用 ~~~ 当分隔线，没配对的波浪线按普通文字处理，不算截断；
-// 2）正文用 <content> 包着并写到了最后一个 </content>，只检查到这里为止——哪怕那个 </content> 出现在 script 字符串里，
-//    也当作正文已写完，免得状态栏、小总结写得不规范时拦住兔子镜。
 for (const [name, mes] of [
-    ['a closing example inside a script string counts as the end of the content', `<content>${story}<script>const example = '</content>';</script>`],
     ['unfinished tilde block', `${story}\n~~~html\n<div>还未写完`],
 ]) test(`${name} is tolerated and does not stop automatic generation`, () => {
     const message = { mes };
@@ -80,7 +79,7 @@ function install(context, name) {
 test('exact host completion proof does not judge content before the source-stability poll', () => {
     const message = { mes: `<content>${story}` }, ctx = { chat: [] }, notices = [];
     ctx.chat.push(message);
-    const context = vm.createContext({ mainReplyAbnormalReason, getSettings: () => ({}), independentGenerationTiming: () => 'auto',
+    const context = vm.createContext({ mainReplyAbnormalReason, automaticMainReplySafetyOptions: () => ({}), getSettings: () => ({}), independentGenerationTiming: () => 'auto',
         notifySafetyValve: (...args) => notices.push(args), isRabbitMirrorEligibleAssistantMessage: () => true,
         messageBodyFingerprint: value => value.mes, INDEPENDENT_INTENT_OWNER: Symbol('owner') });
     install(context, 'deferredIndependentIntentHasFinalProof');
@@ -99,7 +98,7 @@ test('manual generation bypasses the automatic reply-content gate', async () => 
     const to = mount.indexOf(' if(!independentHistoryLoaded(', from);
     assert.ok(from >= 0 && to > from);
     const message = { mes: story, extra: { api_error: true } }, ctx = { chat: [message] };
-    const context = vm.createContext({ mainReplyAbnormalReason, getContext: () => ctx,
+    const context = vm.createContext({ mainReplyAbnormalReason, automaticMainReplySafetyOptions: () => ({}), getContext: () => ctx,
         isRabbitMirrorEligibleAssistantMessage: () => true, observeMessageSourceRevision: () => ({}), recordKey: () => 'message',
         getSettings: () => ({ generationSource: 'independent' }), messageBaseSlotKey: () => 'base', runtimeMode: () => 'independent',
         independentGenerationTiming: () => 'auto', automaticIndependentTiming: () => true, notifySafetyValve() {} });
@@ -111,7 +110,7 @@ test('manual generation bypasses the automatic reply-content gate', async () => 
 test('final automatic dispatch rejects incomplete tags; corrected text and manual retry pass', async () => {
     const from = mount.indexOf('export async function generateFor('), to = mount.indexOf(' if(!independentHistoryLoaded(', from);
     const message = { mes: `<content>${story}` }, ctx = { chat: [message] }, notices = [];
-    const context = vm.createContext({ mainReplyAbnormalReason, getContext: () => ctx,
+    const context = vm.createContext({ mainReplyAbnormalReason, automaticMainReplySafetyOptions: () => ({}), getContext: () => ctx,
         isRabbitMirrorEligibleAssistantMessage: () => true, observeMessageSourceRevision: () => ({}), recordKey: () => 'message',
         getSettings: () => ({ generationSource: 'independent' }), messageBaseSlotKey: () => 'base', runtimeMode: () => 'independent',
         independentGenerationTiming: () => 'auto', automaticIndependentTiming: () => true, notifySafetyValve: (_msg, reason) => notices.push(reason) });
@@ -152,7 +151,7 @@ test('the "正文已出，立即生成" click passes the valve while the status 
     // 正文写完了，状态栏的 <details> 还在流式输出：整条消息里有没闭合的标签。
     const message = { mes: `${story}\n<details><summary>状态栏</summary>心情：`, extra: {} }, ctx = { chat: [message] }, notices = [];
     const owner = { index: 0 };
-    const context = vm.createContext({ mainReplyAbnormalReason, getContext: () => ctx,
+    const context = vm.createContext({ mainReplyAbnormalReason, automaticMainReplySafetyOptions: () => ({}), getContext: () => ctx,
         isRabbitMirrorEligibleAssistantMessage: () => true, observeMessageSourceRevision: () => ({}), recordKey: () => 'message',
         getSettings: () => ({ generationSource: 'independent' }), messageBaseSlotKey: () => 'base', runtimeMode: () => 'independent',
         independentGenerationTiming: () => 'auto', automaticIndependentTiming: () => true, notifySafetyValve: (_msg, reason) => notices.push(reason),

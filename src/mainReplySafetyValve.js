@@ -1,5 +1,5 @@
 // 安全阀（仅自动生成）：正文异常时不自动生成兔子镜，避免浪费额度。
-// 只看正文本身，不改正文；手动生成不受影响。判定都偏保守：需要多个信号同时出现，
+// 只读当前正文和属于它的结束信息，不改正文；手动生成不受影响。判定都偏保守：需要多个信号同时出现，
 // 或者整段很短、只有报错／拒答／空内容提示，避免误伤剧情里正常出现的“抱歉”“超时”。
 // 按消息本身去重：流式输出时正文长度一直在变，不能用长度当去重依据。
 const NOTIFIED = new WeakMap();
@@ -16,6 +16,44 @@ const ERROR_START = /^(?:error|错误|报错|请求失败|api ?error|\[error\])/
 const EMPTY_HINT = /(?:未返回|无内容|没有内容|内容为空|空回复|空响应|no content|empty response|^null$|^undefined$)/i;
 const REFUSAL_START = /^(?:抱歉|对不起|很抱歉|非常抱歉|我很抱歉|sorry|i'?m sorry|i am sorry|i apologi[sz]e|i can'?t|i cannot|i'?m unable|i am unable|as an ai|作为(?:一个)?(?:ai|人工智能|语言模型))/i;
 const REFUSAL_WORDS = /(?:无法|不能|不可以|不便|拒绝|政策|规定|准则|安全|can'?t|cannot|unable|not able|won'?t|policy|guidelines|content)/i;
+const REASONING_TAGS = new Set(['think', 'thinking', 'thought', 'thoughts', 'reasoning', 'analysis', 'cot', 'chain-of-thought']);
+
+function abnormalTerminationReason(message, { processor, messageIndex } = {}) {
+    // Only current message metadata is authoritative here. Never consult other
+    // swipes or a global "last response". A processor must match the entire body,
+    // not merely its opening words, before its terminal reason may be used.
+    const sources = [message, message.extra];
+    const body = String(message.mes || '').trim();
+    const processorSwipe = processor?.swipe_id ?? processor?.swipeId;
+    if (processor && Number.isSafeInteger(messageIndex) && Number(processor.messageId) === messageIndex
+        && body && String(processor.result || '').trim() === body
+        && (processorSwipe === undefined || Number(processorSwipe) === Number(message.swipe_id || 0))) sources.push(processor);
+    for (const source of sources) for (const field of ['finish_reason', 'finishReason', 'stop_reason', 'stopReason']) {
+        const value = source?.[field];
+        if (typeof value !== 'string') continue;
+        const reason = value.trim().toLowerCase().replace(/[ -]/g, '_');
+        if (/^(?:length|max_tokens|max_output_tokens|model_length)$/.test(reason)) return '主回复达到输出长度上限，疑似截断';
+        if (/^(?:content_filter|safety|recitation|blocked)$/.test(reason)) return '主回复被服务商中断，正文可能未写完';
+        if (/^(?:error|abort|aborted|cancelled|canceled)$/.test(reason)) return '主回复异常中断，正文可能未写完';
+    }
+    return '';
+}
+
+function unfinishedProseReason(raw) {
+    // A missing final period alone is not evidence: preserve short replies,
+    // verse, headings, tables, lists and code. This fallback is for substantial
+    // Chinese narrative with several completed sentences and a long unfinished
+    // prose line, when the host exposes no reliable body boundary.
+    const source = raw.trim();
+    if (!/[\p{L}\p{N}]$/u.test(source)) return '';
+    const text = plainText(source);
+    if (text.length < 80 || (text.match(/[。！？]/g) || []).length < 2) return '';
+    const line = source.split(/\r?\n/).filter(value => value.trim()).at(-1)?.trim() || '';
+    if (/^(?:#{1,6}\s|[-*+]\s|\d+[.)、]\s*|\||>|```|~~~)/.test(line)) return '';
+    const tail = plainText(line);
+    if (tail.length < 24 || (tail.match(/[\u3400-\u9fff]/g) || []).length < 16) return '';
+    return '正文末尾疑似停在句中，尚不能确认已写完';
+}
 
 // 整条正文就是一个接口报错 JSON（OpenAI / Claude / Gemini / new-api 等）：有 error 字段，或 type 为 error，
 // 或带 4xx/5xx 的 code/status 与 message。剧情正文不会整段是这种对象。
@@ -52,12 +90,20 @@ function htmlApiErrorHeader(raw) {
 
 // Inspect source syntax, not rendered DOM (browsers auto-close missing tags).
 // This is only a completion hint; it never sanitizes or repairs the main reply.
-function incompleteMainReplyMarkup(raw) {
-    const pending = new Map([['content', 0], ['details', 0]]);
+function incompleteMainReplyMarkup(raw, bodyTags = [], completion = {}) {
+    const bodies = new Set(['content', 'story', 'story_scene', '正文']);
+    if (Array.isArray(bodyTags)) for (const tag of bodyTags.slice(0, 8)) {
+        if (typeof tag === 'string' && /^[a-z][a-z0-9_:-]{0,63}$/i.test(tag) && !REASONING_TAGS.has(tag.toLowerCase())) bodies.add(tag.toLowerCase());
+    }
+    const pending = new Map([...bodies, 'details', ...REASONING_TAGS].map(name => [name, 0]));
     const opaque = new Set(['script', 'style', 'textarea', 'title', 'xmp', 'pre', 'code']);
-    const tagStart = /<(\/?)([a-z][a-z0-9:._-]*)(?=[\s/>])/iy;
+    const tagStart = /<(\/?)([a-z\u3400-\u9fff][a-z0-9:._\-\u3400-\u9fff]*)(?=[\s/>]|$)/iy;
     const fenceStart = / {0,3}(`{3,}|~{3,})([^\r\n]*)/y;
-    let cursor = 0, codeRuns = null, inlineBreaks = null;
+    let cursor = 0, codeRuns = null, inlineBreaks = null, syntaxReason = '', closedBodyReason = '';
+    const pendingReason = () => {
+        for (const [name, count] of pending) if (count > 0) return `正文结构未完整（<${name}> 标签未闭合，疑似截断）`;
+        return '';
+    };
     while (cursor < raw.length) {
         if (cursor === 0 || raw[cursor - 1] === '\n') {
             fenceStart.lastIndex = cursor;
@@ -70,7 +116,7 @@ function incompleteMainReplyMarkup(raw) {
                 if (!end && fence[1][0] === '~') { cursor = fenceStart.lastIndex; continue; }
                 // 没配对的 ``` 后面还有 </content>（如 ```</content>），说明正文已写完：只把这串反引号当普通文字。
                 if (!end && /<\/content\s*>/i.test(raw.slice(cursor))) { cursor += fence[0].length - fence[2].length; continue; }
-                if (!end) return '正文结构未完整（代码块未闭合，疑似截断）';
+                if (!end) { syntaxReason = '正文结构未完整（代码块未闭合，疑似截断）'; break; }
                 cursor = end.index + end[0].length;
                 continue;
             }
@@ -136,8 +182,24 @@ function incompleteMainReplyMarkup(raw) {
         cursor = end + 1;
         if (pending.has(name)) {
             // <content> 不会嵌套：思考或正文里提到“<content>”时只多算一次开标签，以最后一个 </content> 为准。
-            if (closing) pending.set(name, name === 'content' ? 0 : Math.max(0, pending.get(name) - 1));
+            const opened = pending.get(name) > 0;
+            if (closing) pending.set(name, bodies.has(name) ? 0 : Math.max(0, pending.get(name) - 1));
             else if (!selfClosing) pending.set(name, pending.get(name) + 1);
+            if (closing && opened && bodies.has(name) && [...bodies].every(tag => !pending.get(tag))) {
+                completion.bodyEnd = cursor;
+                closedBodyReason = pendingReason();
+            }
+        }
+        if (!closing && !selfClosing && REASONING_TAGS.has(name)) {
+            const close = new RegExp(`</${name}\\s*>`, 'gi');
+            close.lastIndex = cursor;
+            const match = close.exec(raw);
+            // Reasoning is opaque: mentions of body tags cannot certify a reply.
+            if (!match) break;
+            pending.set(name, 0);
+            cursor = match.index + match[0].length;
+            (completion.reasoningRanges ||= []).push([tag.index, cursor]);
+            continue;
         }
         if (!closing && !selfClosing && opaque.has(name)) {
             const close = new RegExp(`</${name}\\s*>`, 'gi');
@@ -147,16 +209,32 @@ function incompleteMainReplyMarkup(raw) {
             if (match) cursor = match.index + match[0].length;
         }
     }
-    for (const [name, count] of pending) if (count > 0) return `正文结构未完整（<${name}> 标签未闭合，疑似截断）`;
-    return '';
+    if (completion.bodyEnd && [...bodies].every(tag => !pending.get(tag))) return closedBodyReason;
+    completion.bodyEnd = 0;
+    return syntaxReason || pendingReason();
 }
 
 // 返回异常原因；正常返回空串。
-export function mainReplyAbnormalReason(message, { partial = false } = {}) {
+export function mainReplyAbnormalReason(message, { partial = false, bodyTags = [], processor = null, messageIndex = -1 } = {}) {
     if (!message) return '';
     const raw = String(message.mes || '');
     if (message.extra?.error || message.extra?.api_error) return '宿主标记为错误';
-    const text = plainText(raw);
+    const completion = {};
+    const structuralReason = partial ? '' : incompleteMainReplyMarkup(raw, bodyTags, completion);
+    if (!partial && !completion.bodyEnd) {
+        const terminalReason = abnormalTerminationReason(message, { processor, messageIndex });
+        if (terminalReason) return terminalReason;
+    }
+    // Use the lexical ranges from the same scan. Code examples of reasoning
+    // tags remain examples, and hidden planning cannot supply narrative length
+    // or punctuation evidence for an otherwise complete visible answer.
+    let visibleSource = '', offset = 0;
+    for (const [start, end] of completion.reasoningRanges || []) {
+        visibleSource += raw.slice(offset, start) + ' ';
+        offset = end;
+    }
+    visibleSource += raw.slice(offset);
+    const text = plainText(visibleSource);
     // 提前生成阶段正文还在写，短不代表异常；只在正文完成后判断“过短”。
     if (!partial && (text.length < 30 || (text.length < 80 && EMPTY_HINT.test(text)))) return '正文未返回内容或过短';
     const signals = [STATUS_CODE, ERROR_EN, ERROR_CN].filter(pattern => pattern.test(text)).length;
@@ -170,18 +248,7 @@ export function mainReplyAbnormalReason(message, { partial = false } = {}) {
     if (text.length < 400 && REFUSAL_START.test(text) && REFUSAL_WORDS.test(text)) return '正文是模型拒答或道歉';
     // Only final, stable source may be checked for closure. A streaming prefix
     // can legitimately be missing its closing tag; manual requests skip this gate.
-    return partial ? '' : incompleteMainReplyMarkup(bodyScopedSource(raw));
-}
-
-// 正文用 <content> 包着并且已经写到最后一个 </content> 时，只检查到这里为止：
-// 后面的状态栏、小总结写得不规范（details 拼错、代码块收尾不在单独一行）不代表正文被截断，不该拦兔子镜。
-function bodyScopedSource(raw) {
-    let last = null;
-    for (const match of raw.matchAll(/<\/content\s*>/gi)) last = match;
-    if (!last || !/<content(?=[\s>])/i.test(raw.slice(0, last.index))) return raw;
-    // 收尾之后又开了一段 <content>（正文分两段写）时，照旧整段检查。
-    if (/<content(?=[\s>])/i.test(raw.slice(last.index + last[0].length))) return raw;
-    return raw.slice(0, last.index + last[0].length);
+    return partial ? '' : structuralReason || (completion.bodyEnd ? '' : unfinishedProseReason(visibleSource));
 }
 
 export function notifySafetyValve(message, reason) {
