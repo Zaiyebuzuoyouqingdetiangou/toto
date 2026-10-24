@@ -271,6 +271,23 @@ function writeStore(store) {
     return false;
 }
 
+/** 设置页「清理所有聊天」用：去掉已确认在那个聊天文件里有完整副本的几组（只用于没打开的聊天）。内存和本机快照一起改。 */
+export function dropFaceSwipeStacksForCleanup(keys = []) {
+    const drop = new Set(Array.isArray(keys) ? keys : []);
+    if (!drop.size) return 0;
+    readStore();
+    let removed = 0;
+    for (const key of drop) if (memoryStore?.faces && Object.prototype.hasOwnProperty.call(memoryStore.faces, key)) { delete memoryStore.faces[key]; durableStacks.delete(key); removed += 1; }
+    // 本机快照可能比内存那份小（写的时候缩过）：只从快照里删这几组，不把内存整份写回去。
+    let snapshot = null;
+    try { snapshot = JSON.parse(globalThis.localStorage?.getItem(STORE_KEY) || 'null'); } catch { snapshot = null; }
+    if (snapshot?.faces && typeof snapshot.faces === 'object') {
+        for (const key of drop) delete snapshot.faces[key];
+        writeLocalSnapshot(snapshot);
+    }
+    return removed;
+}
+
 export function compactFaceSwipeStoreForQuota(limits = [40, 20, 10, 5, 1]) {
     const store = readStore();
     const stacks = Object.entries(store.faces || {})
