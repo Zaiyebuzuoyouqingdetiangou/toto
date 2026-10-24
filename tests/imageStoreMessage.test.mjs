@@ -137,3 +137,38 @@ test('local storage full: the full record still lands on the message and the err
     assert.equal(saved?.promptMetadata?.flatPrompt, '阿雪 长发');
     assert.deepEqual({ ...saved?.looksSources }, { 阿雪: '建档' });
 });
+
+test('a trailing newline or CRLF added by the host after dispatch does not cut the picture off its frame', () => {
+    for (const change of [mes => `${mes}\n`, mes => mes.replace(/\n/g, '\r\n') + '  ']) {
+        store.clear(); limit = Infinity; freshChat();
+        ctx.chat[1].mes = '第一行\n第二行';
+        const key = 'builtin:chat:chat-a:1:0:0:hw';
+        const owner = images.captureMirrorImageOwner(key);
+        ctx.chat[1].mes = change(ctx.chat[1].mes);
+        images.saveMirrorImageForOwner(key, { path: '/user/images/w.png', generatedAt: '2026-10-24T00:00:00Z', promptMetadata: { seed: 1 } }, owner);
+        assert.equal(images.loadMirrorImage(key)?.path, '/user/images/w.png', JSON.stringify(change.toString()));
+    }
+});
+
+test('a real change of the message text still keeps the picture away from the new text', () => {
+    store.clear(); limit = Infinity; freshChat();
+    ctx.chat[1].mes = '原来的回复';
+    const key = 'builtin:chat:chat-a:1:0:0:hz';
+    const owner = images.captureMirrorImageOwner(key);
+    ctx.chat[1].mes = '完全换了一条回复';
+    images.saveMirrorImageForOwner(key, { path: '/user/images/z.png', generatedAt: '2026-10-24T00:00:00Z', promptMetadata: { seed: 1 } }, owner);
+    assert.notEqual(images.loadMirrorImage(key)?.path, '/user/images/z.png');
+});
+
+test('an old record stored with the raw text fingerprint is still recognised', () => {
+    store.clear(); limit = Infinity; freshChat();
+    ctx.chat[1].mes = '旧回复  \r\n第二行';
+    const key = 'builtin:chat:chat-a:1:0:0:ho';
+    const owner = images.captureMirrorImageOwner(key);
+    images.saveMirrorImageForOwner(key, { path: '/user/images/o.png', generatedAt: '2026-10-24T00:00:00Z', promptMetadata: { seed: 1 } }, owner);
+    // 把存下的指纹改回旧版本按原样算的那种
+    let raw = 2166136261; for (const c of ctx.chat[1].mes) raw = Math.imul(raw ^ c.charCodeAt(0), 16777619);
+    const legacy = (raw >>> 0).toString(36);
+    for (const value of Object.values(ctx.chat[1].extra.rabbitMirrorImages || {})) if (value?.current?.imageOwner) value.current.imageOwner.source = legacy;
+    assert.equal(images.loadMirrorImage(key)?.path, '/user/images/o.png');
+});
