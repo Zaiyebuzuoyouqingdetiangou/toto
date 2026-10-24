@@ -172,7 +172,7 @@ function requestChatSave(mes) {
         const request = saveRequest;
         saveRequest = null;
         if (!liveChatSaveContext(request)) return;
-        import('./independentApi/persistence.js?rmv=1.82.3')
+        import('./independentApi/persistence.js?rmv=1.82.4')
             .then(module => {
                 // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
                 const live = liveChatSaveContext(request);

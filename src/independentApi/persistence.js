@@ -1,8 +1,8 @@
 // Split from independentApi.js — persistence.
 
-import { presentationModeFields } from '../presentationMode.js?rmv=1.82.3';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.82.3';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.82.3';
+import { presentationModeFields } from '../presentationMode.js?rmv=1.82.4';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=1.82.4';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=1.82.4';
 import {
     FACE_SWIPE_FULL_MESSAGE,
     FACE_SWIPE_MAX,
@@ -17,9 +17,9 @@ import {
     snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot,
     faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored,
     remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled,
-} from '../swipeVersions.js?rmv=1.82.3';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.82.3';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.82.3';
+} from '../swipeVersions.js?rmv=1.82.4';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=1.82.4';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota } from '../imageStore.js?rmv=1.82.4';
 import {
     clearEphemeralFaceFailure,
     hasEphemeralFaceFailure,
@@ -29,7 +29,7 @@ import {
     independentSwipeSlot,
     seedIndependentFaceSwipesFromIdentity,
     writeIndependentOwnerHtml,
-} from './faceSwipe.js?rmv=1.82.3';
+} from './faceSwipe.js?rmv=1.82.4';
 import {
     API_PROFILE_STORE_KEY,
     assistantMessages,
@@ -49,8 +49,8 @@ import {
     remapOwnerLockSlots,
     hostGenerationLooksActive,
     legacyChatKey,
-} from './connection.js?rmv=1.82.3';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.82.3';
+} from './connection.js?rmv=1.82.4';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=1.82.4';
 import {
     copyIndependentReplacementReceipt,
     ensureExternalTools,
@@ -61,8 +61,8 @@ import {
     normalizeSavedInteractionRecord,
     recoverSavedRecord,
     replaceExternalMultifaceFace,
-} from './geometry.js?rmv=1.82.3';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.82.3';
+} from './geometry.js?rmv=1.82.4';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=1.82.4';
 
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 
@@ -226,6 +226,27 @@ function compactCoveredOutputsForQuota(keep=40){
 }
 // storage.js 不能直接引用这里（会绕成循环引用），经全局挂一个入口给它用。
 globalThis.__rabbitMirrorCompactCoveredOutputsForQuota=compactCoveredOutputsForQuota;
+
+// 设置页「清理本机存储」用：镜面缓存和历史备份里，这个聊天里能确认另有副本（可清）的有多少，
+// 别的聊天的、还没确认的各有多少。只统计，不改任何东西。
+function coveredStorageStats(){
+ let ctx=null; try{ ctx=getContext(); }catch{ ctx=null; }
+ const stats={freeable:0,otherChats:0,otherChatCount:0,unconfirmed:0};
+ const chats=new Set();
+ const current=(()=>{ try{ return String(chatKey(ctx)||''); }catch{ return ''; } })();
+ const visit=(slot,item)=>{
+  const bytes=(String(slot).length+JSON.stringify(item||'').length)*2;
+  const parsed=parseSlotKey(slot);
+  let other=false; try{ other=!!(parsed && current && parsed.chat!==current && parsed.chat!==legacyChatKey(ctx)); }catch{ other=false; }
+  if(other){ stats.otherChats+=bytes; chats.add(parsed.chat); return; }
+  if(outputVersionBackedUp(ctx,slot,item)) stats.freeable+=bytes; else stats.unconfirmed+=bytes;
+ };
+ try{ const parsed=JSON.parse(localStorage.getItem(STORE_KEY)||'{}'); for(const [slot,item] of Object.entries(parsed&&typeof parsed==='object'?parsed:{})) visit(slot,item); }catch{}
+ try{ for(const [slot,entries] of Object.entries(readHistoryStore().slots||{})) for(const entry of (Array.isArray(entries)?entries:[])) visit(slot,entry); }catch{}
+ stats.otherChatCount=chats.size;
+ return stats;
+}
+try{ globalThis.__rabbitMirrorCoveredStorageStats=coveredStorageStats; }catch{}
 
 // 给 storage.js 腾空间时也必须逐版确认备份，不能把「旧版本」等同于「可丢弃」。
 function trimHistoryForQuota(){
