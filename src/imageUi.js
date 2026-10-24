@@ -1,12 +1,12 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.80.1';
-import { getSettings } from './settings.js?rmv=1.80.1';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.80.1';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.80.1';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.80.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.80.1';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.80.1';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=1.80.1';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.80.1';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.81.0';
+import { getSettings } from './settings.js?rmv=1.81.0';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.81.0';
+import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.81.0';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.81.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.81.0';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.81.0';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=1.81.0';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.81.0';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.

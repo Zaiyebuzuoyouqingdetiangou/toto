@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.80.1';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.80.1';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.80.1';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.81.0';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.81.0';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.81.0';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -293,9 +293,20 @@ export function buildRabbitMirrorSettingsDialogHtml() {
           </div>
           <div id="rh_name_mask_block" class="rabbit-mirror-regex-helper" style="margin-top:10px;">
             <div style="font-weight:600;margin-bottom:6px;">截图打码名单</div>
-            <div style="opacity:.76;font-size:12px;line-height:1.5;margin-bottom:7px;">兔子镜工具菜单里点「🙈 人名打码（截图用）」，页面上的 user 名自动显示成「小美」、角色名显示成「小帅」，只改显示、不改聊天记录，再点一次或刷新恢复。这里填还要一起换的名字（配角、昵称、地名都行），一行一条：原名 =&gt; 代称；右边留空就换成「小帅」。</div>
-            <label for="rh_name_mask_rules">额外要换的名字</label>
-            <textarea id="rh_name_mask_rules" class="text_pole" spellcheck="false" style="width:100%;min-height:110px;resize:vertical;box-sizing:border-box;" placeholder="阿竹 => 路人甲\n某城 => 某地"></textarea>
+            <div style="opacity:.76;font-size:12px;line-height:1.5;margin-bottom:7px;">兔子镜工具菜单里点「🙈 人名打码（截图用）」，页面上的 user 名自动显示成「小美」、角色名显示成「小帅」，只改显示、不改聊天记录，再点一次或刷新恢复。下面填还要一起换的名字（配角、昵称、地名都行），一行一条：原名 =&gt; 代称；右边留空就换成「小帅」。当前角色卡的名单只在这张卡（群聊按这个群）用，同一个名字以它为准；通用名单每张卡都用。</div>
+            <label for="rh_name_mask_card_rules">当前角色卡：<span id="rh_name_mask_card_label">（没有打开角色）</span></label>
+            <textarea id="rh_name_mask_card_rules" class="text_pole" spellcheck="false" style="width:100%;min-height:110px;resize:vertical;box-sizing:border-box;" placeholder="阿竹 => 路人甲\n阿竹哥 => 路人甲"></textarea>
+            <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px;">
+              <button id="rh_name_mask_find" class="menu_button" type="button">从角色卡和世界书找名字</button>
+              <span id="rh_name_mask_find_status" style="font-size:11px;opacity:.72;"></span>
+            </div>
+            <div id="rh_name_mask_candidates" hidden style="margin-top:7px;padding:8px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:8px;">
+              <div style="font-size:12px;opacity:.76;margin-bottom:6px;">勾上要打码的，点「加入当前卡名单」（加进去后在上面框里改代称，再保存）。只在本机查找，不调用模型。</div>
+              <div id="rh_name_mask_candidate_list" style="display:flex;flex-wrap:wrap;gap:6px 12px;"></div>
+              <button id="rh_name_mask_candidates_add" class="menu_button" type="button" style="margin-top:7px;">加入当前卡名单</button>
+            </div>
+            <label for="rh_name_mask_rules" style="display:block;margin-top:9px;">通用名单（每张卡都用）</label>
+            <textarea id="rh_name_mask_rules" class="text_pole" spellcheck="false" style="width:100%;min-height:90px;resize:vertical;box-sizing:border-box;" placeholder="某城 => 某地"></textarea>
             <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:7px;">
               <button id="rh_name_mask_save" class="menu_button" type="button">保存打码名单</button>
               <span id="rh_name_mask_status" style="font-size:11px;opacity:.72;"></span>

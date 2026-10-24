@@ -276,9 +276,28 @@ export function unmaskNameMaskClone(clone, source = null) {
 
 export function isNameMaskActive() { return active; }
 
+/** 名单按角色卡分开：{ 钥匙: 名单 }，最多记 200 张卡。 */
+export function normalizeNameMaskCardRules(value) {
+    const out = {};
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
+    for (const [key, list] of Object.entries(value).slice(-200)) {
+        const name = String(key || '').trim().slice(0, 300);
+        const rules = normalizeNameMaskRules(list);
+        if (name && rules.length) out[name] = rules;
+    }
+    return out;
+}
+
+/** 这次打码用的自填名单：当前卡的在前（同名以卡为准），再接通用名单。 */
+export function nameMaskRulesFor(settings, cardKey) {
+    const card = cardKey ? normalizeNameMaskRules(settings?.nameMaskRulesByCard?.[cardKey]) : [];
+    return normalizeNameMaskRules([...card, ...normalizeNameMaskRules(settings?.nameMaskRules)]);
+}
+
 export function enableNameMask({ doc = globalThis.document, ctx = hostContext(), extra = [] } = {}) {
     if (!doc?.body) return 0;
-    rules = buildNameMaskRules(ctx, extra);
+    // 名单可以是函数：换聊天时按新聊天的角色卡重新取。
+    rules = buildNameMaskRules(ctx, typeof extra === 'function' ? extra(ctx) : extra);
     if (!rules.length) return 0;
     active = true;
     maskedChatId = chatIdOf(ctx);
