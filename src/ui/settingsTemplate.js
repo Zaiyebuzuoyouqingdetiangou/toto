@@ -1,8 +1,8 @@
 // Split from ui.js — settings HTML strings only.
 
-import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.82.5';
-import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.82.5';
-import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.82.5';
+import { INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS } from '../settings.js?rmv=1.83.0';
+import { BEHAVIOR_RULE_MAX_CHARS } from '../behaviorRules.js?rmv=1.83.0';
+import { RUNTIME_VERSION, SETTINGS_UI_VERSION } from './runtime.js?rmv=1.83.0';
 
 export function buildRabbitMirrorSettingsDialogHtml() {
     return `
@@ -329,6 +329,15 @@ export function buildRabbitMirrorSettingsDialogHtml() {
               <button id="rh_storage_cleanup_refresh" class="menu_button" type="button">统计占用</button>
               <button id="rh_storage_cleanup_run" class="menu_button" type="button">清理勾选的</button>
               <span id="rh_storage_cleanup_status" style="font-size:11px;opacity:.72;"></span>
+            </div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px dashed color-mix(in srgb,currentColor 20%,transparent);">
+              <div style="font-size:12px;opacity:.78;line-height:1.5;">别的聊天的缓存不用一个个打开：点「统计所有聊天」，会逐个读那些聊天文件核对，聊天文件里确实有同一份成品、同一组版本、同一张图的，本机这份才算能清；读不到、对不上的不动。聊天多时要等一会儿，不调用模型。</div>
+              <div class="flex-container" style="gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px;">
+                <button id="rh_storage_cleanup_all_scan" class="menu_button" type="button">统计所有聊天</button>
+                <button id="rh_storage_cleanup_all_stop" class="menu_button" type="button" hidden>停止</button>
+                <button id="rh_storage_cleanup_all_run" class="menu_button" type="button" hidden>清理所有聊天已确认的</button>
+                <span id="rh_storage_cleanup_all_status" style="font-size:11px;opacity:.78;"></span>
+              </div>
             </div>
           </div>
           <div id="rh_external_library_actions" style="padding:10px 11px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:10px;">
