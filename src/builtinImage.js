@@ -1,13 +1,13 @@
-import { getSettings } from './settings.js?rmv=1.83.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.83.1';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.83.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=1.83.1';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.83.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.83.1';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=1.83.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.83.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.83.1';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.83.1';
+import { getSettings } from './settings.js?rmv=1.83.2';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=1.83.2';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=1.83.2';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=1.83.2';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=1.83.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.83.2';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=1.83.2';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=1.83.2';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=1.83.2';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=1.83.2';
 
 // 同一提示词在滚动、重挂载时共用这一次请求，避免每刷一次工具就再打一次柏宝绘。
 const inflight = new Map();
@@ -456,7 +456,7 @@ const automaticFrames = new WeakMap();
 // A late paid completion remains in history but must not override a later
 // request or an explicit history selection for the same message entry.
 function imageJobIdentity(owner, matchEntry = true) {
-    return JSON.stringify([owner.scope || `chat:${owner.chat}`, owner.token, owner.swipe, matchEntry ? owner.entry : null, owner.source]);
+    return JSON.stringify([owner.scope || `chat:${owner.chat}`, owner.token, owner.swipe, matchEntry ? owner.entry : null, mirrorImageOwnerSourceKey(owner)]);
 }
 // 用户在挪过位置的图框上手动重画／选图：挪开前那个序号下还没回音的旧请求，也是这一格的，一并作废（晚回来只进历史）。
 // 这一面别的图框自己的键不算。
@@ -1151,7 +1151,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
         cast = rows.map(row => JSON.stringify(row)).join('\n');
     } catch { cast = ''; }
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.83.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.83.2');
     const merged = people.map(person => ({ ...person }));
     // 角色卡里提到 Persona、Persona 里提到角色：摘到对方的名字就停，不把对方的长相算进来。
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
@@ -1226,7 +1226,7 @@ function readWorldCast(names) {
     const key = JSON.stringify([ctx?.characterId ?? '', character?.avatar || character?.name || '', character?.data?.extensions?.world || '', disabled, [...names].sort()]);
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.83.1'), import('./independentApi/connection.js?rmv=1.83.1')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=1.83.2'), import('./independentApi/connection.js?rmv=1.83.2')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1240,7 +1240,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
     const cast = await readWorldCast(names);
     if (signal?.aborted) throw Object.assign(new Error('生图已取消。'), { name: 'AbortError', code: 'aborted' });
     if (!cast) return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.83.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=1.83.2');
     const merged = people.map(person => ({ ...person }));
     // 世界书里没出场的第三人（角色卡主角、Persona）也算「别人」，他们的长相不会被算到这个人头上。
     let others = names;
@@ -1363,7 +1363,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         // 「跳过的标签」也管千千结档案里的文字。
         let cleanRef = value => value;
-        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.83.1')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
+        try { cleanRef = (await import('./independentApi/connection.js?rmv=1.83.2')).stripExcludedTagsFromReference; } catch { /* 读不到就原样 */ }
         for (const person of myriad) {
             const keys = [person.name, ...person.aliases].filter(key => mentionedIn(faceText, key, allKeys));
             const name = keys.find(key => keyOwners.get(key) === 1);
@@ -1507,7 +1507,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             // 只记看图要的那份（有文件路径时不留整张图的 data:），最多记 200 张。
             const { dataUrl, ...light } = record;
             if (!superseded) {
-                for (const [savedKey, saved] of sessionRecords) if (saved.owner.scope === owner.scope && saved.owner.token === owner.token && saved.owner.entry === owner.entry && saved.owner.source === owner.source) sessionRecords.delete(savedKey);
+                for (const [savedKey, saved] of sessionRecords) if (saved.owner.scope === owner.scope && saved.owner.token === owner.token && saved.owner.entry === owner.entry && mirrorImageOwnerSourceKey(saved.owner) === mirrorImageOwnerSourceKey(owner)) sessionRecords.delete(savedKey);
                 sessionRecords.set(owner, { record: record.path ? light : record, owner });
             }
             if (sessionRecords.size > 200) sessionRecords.delete(sessionRecords.keys().next().value);

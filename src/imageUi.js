@@ -1,12 +1,12 @@
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.83.1';
-import { getSettings } from './settings.js?rmv=1.83.1';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.83.1';
-import { captureMirrorImageOwner, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.83.1';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.83.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=1.83.1';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.83.1';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=1.83.1';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.83.1';
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=1.83.2';
+import { getSettings } from './settings.js?rmv=1.83.2';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=1.83.2';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft } from './imageStore.js?rmv=1.83.2';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.83.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=1.83.2';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.83.2';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=1.83.2';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=1.83.2';
 
 // The lock lives beyond a panel's lifetime. Closing, reopening or aborting a UI
 // cannot release a provider reservation before its Promise actually settles.
@@ -108,7 +108,7 @@ function rememberDraft(key, draft, owner) {
     saveMirrorImageDraft(key, { ...value, imageOwnerReceipt: mirrorImageOwnerReceipt(owner) });
 }
 function sameOwner(left, right) {
-    return left.token === right.token && left.entry === right.entry && left.chat === right.chat && left.source === right.source
+    return left.token === right.token && left.entry === right.entry && left.chat === right.chat && mirrorImageOwnerSourceKey(left) === mirrorImageOwnerSourceKey(right)
         && (left.scope || '') === (right.scope || '');
 }
 function ownedForTarget(entries, target) {

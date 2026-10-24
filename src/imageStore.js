@@ -9,6 +9,15 @@ const REMOVED_KEY = 'rabbitMirrorImagesRemoved';
 let ownerSequence = 0;
 function imageSource(msg, swipe) { return String(Number(msg?.swipe_id || 0) === swipe ? msg?.mes ?? '' : msg?.swipes?.[swipe] ?? ''); }
 function imageSourceHash(text) { let hash = 2166136261; for (const char of String(text)) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619); return (hash >>> 0).toString(36); }
+// 图片归属认的是「这条消息的原文」。宿主或别的扩展常在末尾补个换行、换行符换成 \r\n、行尾多个空格，
+// 这些不算原文变了：比较前先把它们抹平。旧记录按原样算的指纹照样认。
+function normalizedImageSource(text) { return String(text ?? '').replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '').trim(); }
+function sourceHashOf(text) { return imageSourceHash(normalizedImageSource(text)); }
+function sourceHashMatches(hash, text) { return typeof hash === 'string' && !!hash && (hash === sourceHashOf(text) || hash === imageSourceHash(text)); }
+function sameImageSource(left, right) { return left === right || normalizedImageSource(left) === normalizedImageSource(right); }
+/** 同一格的归属身份里，原文按抹平后的指纹算（别处比较两个归属是不是同一个时用）。 */
+export function mirrorImageOwnerSourceKey(owner) { return typeof owner?.source === 'string' ? sourceHashOf(owner.source) : String(owner?.sourceHash || ''); }
+function sourceHashCandidates(text) { return [...new Set([sourceHashOf(text), imageSourceHash(text)])]; }
 // 1.77.0 放在聊天信息里的那一格：读到就搬到对应的消息上。
 const LEGACY_META_KEY = 'rabbitMirrorImages';
 
@@ -172,7 +181,7 @@ function requestChatSave(mes) {
         const request = saveRequest;
         saveRequest = null;
         if (!liveChatSaveContext(request)) return;
-        import('./independentApi/persistence.js?rmv=1.83.1')
+        import('./independentApi/persistence.js?rmv=1.83.2')
             .then(module => {
                 // 动态模块加载期间也可能切聊天；取得接口后再核对一次。
                 const live = liveChatSaveContext(request);
@@ -230,7 +239,7 @@ function readMessageImage(key) {
             let retained = readArchive(scopedKey);
             // A completion whose source changed while it was in flight is kept
             // separately. It may restore only its exact source and an empty slot.
-            if (!retained && !current) retained = readArchive(ownerArchiveKey(token.id, scope, target.entry, imageSourceHash(imageSource(target.msg, target.swipe))));
+            if (!retained && !current) for (const hash of sourceHashCandidates(imageSource(target.msg, target.swipe))) { retained = readArchive(ownerArchiveKey(token.id, scope, target.entry, hash)); if (retained) break; }
             let scoped = !!retained;
             if (!retained) {
                 // Inherit a copied message's existing art once. A different
@@ -239,7 +248,7 @@ function readMessageImage(key) {
                 const inherited = fromScope && fromScope !== scope
                     ? readArchive(ownerArchiveKey(token.id, fromScope, target.entry)) : null;
                 let legacy = !inherited ? readArchive(`owner:${token.id}:${target.entry}`) : null;
-                if (!inherited && !legacy && !current) legacy = readArchive(`owner:${token.id}:retired:${imageSourceHash(imageSource(target.msg, target.swipe))}:${target.entry}`);
+                if (!inherited && !legacy && !current) for (const hash of sourceHashCandidates(imageSource(target.msg, target.swipe))) { legacy = readArchive(`owner:${token.id}:retired:${hash}:${target.entry}`); if (legacy) break; }
                 let source = inherited || legacy;
                 if (source?.current?.imageOwner?.token === token.id) {
                     const sourceVersions = [...source.history, source.current];
@@ -300,7 +309,7 @@ function recordMatchesMessage(value, msg, swipe, matchSource = true) {
     const owner = value?.current?.imageOwner;
     if (!owner) return true; // Legacy records already carried by their message.
     return swipeExtras(msg, swipe).some(extra => extra?.[OWNER_KEY]?.id === owner.token && Number(extra?.[OWNER_KEY]?.swipe) === swipe)
-        && (!matchSource || owner.source === imageSourceHash(imageSource(msg, swipe)));
+        && (!matchSource || sourceHashMatches(owner.source, imageSource(msg, swipe)));
 }
 
 function imageIdentity(entry) { return JSON.stringify([entry?.path || entry?.url || entry?.dataUrl, entry?.generatedAt || '', entry?.promptMetadata?.seed ?? null]); }
@@ -316,7 +325,7 @@ export function captureMirrorImageOwner(key) {
     if (!target) return null;
     let extra = swipeExtras(target.msg, target.swipe).find(Boolean);
     let token = extra[OWNER_KEY];
-    const sourceHash = imageSourceHash(imageSource(target.msg, target.swipe));
+    const sourceHash = sourceHashOf(imageSource(target.msg, target.swipe));
     if (!token?.id || Number(token.swipe) !== target.swipe) {
         // Some host versions temporarily alias a newly copied swipe's extra to
         // the old swipe. Give only the new swipe a copy before changing tokens.
@@ -342,8 +351,8 @@ function ownedTarget(owner, { matchSource = true } = {}) {
     ctx.chat.forEach((msg, mes) => {
         const swipes = new Set([Number(msg?.swipe_id || 0), ...(Array.isArray(msg?.swipe_info) ? msg.swipe_info.map((_, index) => index) : [])]);
         for (const swipe of swipes) for (const extra of swipeExtras(msg, swipe).filter(Boolean)) {
-            const sourceMatches = !matchSource || (typeof owner.source === 'string' ? imageSource(msg, swipe) === owner.source
-                : typeof owner.sourceHash === 'string' && imageSourceHash(imageSource(msg, swipe)) === owner.sourceHash);
+            const sourceMatches = !matchSource || (typeof owner.source === 'string' ? sameImageSource(imageSource(msg, swipe), owner.source)
+                : sourceHashMatches(owner.sourceHash, imageSource(msg, swipe)));
             if (extra[OWNER_KEY]?.id === owner.token && Number(extra[OWNER_KEY]?.swipe) === swipe && sourceMatches) matches.push({ ctx, msg, mes, swipe, extra });
         }
     });
@@ -355,7 +364,7 @@ function ownedTarget(owner, { matchSource = true } = {}) {
 // message or its source body into every draft. Paid saves require the full owner.
 export function mirrorImageOwnerReceipt(owner) {
     if (!owner?.token || !owner.entry || !owner.chat || typeof owner.source !== 'string') return null;
-    return { chat: owner.chat, token: owner.token, entry: owner.entry, sourceHash: imageSourceHash(owner.source), ...(owner.scope ? { scope: owner.scope } : {}) };
+    return { chat: owner.chat, token: owner.token, entry: owner.entry, sourceHash: sourceHashOf(owner.source), ...(owner.scope ? { scope: owner.scope } : {}) };
 }
 
 export function mirrorImageOwnerMatchesKey(owner, key, { matchEntry = true } = {}) {
@@ -373,10 +382,10 @@ function markMessageCopySaved(error) {
 export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = false } = {}) {
     if (!owner?.message || !owner.extra || typeof owner.source !== 'string') throw new TypeError('图片请求缺少原始消息归属。');
     const target = ownedTarget(owner);
-    const changedSource = !target && (ownedTarget(owner, { matchSource: false }) || imageSource(owner.message, owner.swipe) !== owner.source);
+    const changedSource = !target && (ownedTarget(owner, { matchSource: false }) || !sameImageSource(imageSource(owner.message, owner.swipe), owner.source));
     const scope = owner.scope || `chat:${owner.chat}`;
-    const retainedKey = ownerArchiveKey(owner.token, scope, owner.entry, changedSource ? imageSourceHash(owner.source) : '');
-    record = { ...record, imageOwner: { token: owner.token, source: imageSourceHash(owner.source) } };
+    const retainedKey = ownerArchiveKey(owner.token, scope, owner.entry, changedSource ? sourceHashOf(owner.source) : '');
+    record = { ...record, imageOwner: { token: owner.token, source: sourceHashOf(owner.source) } };
     // Refuse to overwrite an unreadable paid archive. The caller retains the
     // new completion in its session and can report that durable saving failed.
     let previous = loadMirrorImage(retainedKey);
@@ -391,7 +400,7 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
     if (keepCurrent) record = storedRecord(previous);
     const retained = { ...storedRecord(record), history };
     const archive = { version: 1, current: storedRecord(retained), history: retained.history,
-        owner: { chat: owner.chat, message: owner.originalMes, swipe: owner.swipe, source: imageSourceHash(owner.source), scope } };
+        owner: { chat: owner.chat, message: owner.originalMes, swipe: owner.swipe, source: sourceHashOf(owner.source), scope } };
     let archiveError = null;
     try { write(retainedKey, 'images', archive); } catch (error) { archiveError = error; }
     if (target) {
@@ -421,7 +430,7 @@ export function saveMirrorImageForOwner(key, record, owner, { preserveCurrent = 
     }
     // The original object can be reinserted/recovered during this session. Do
     // not alter it after its content or swipe has changed into another output.
-    if (imageSource(owner.message, owner.swipe) === owner.source && owner.extra[OWNER_KEY]?.id === owner.token) {
+    if (sameImageSource(imageSource(owner.message, owner.swipe), owner.source) && owner.extra[OWNER_KEY]?.id === owner.token) {
         if (!archiveError) rememberArchiveScope(owner.extra, owner.token, owner.entry, scope, null, archive.current, archive.history);
         const store = owner.extra[EXTRA_KEY] ||= {};
         const copy = chatCopy(archive);
@@ -881,7 +890,7 @@ function builtinKeyForOwnedArchive(name, target) {
         if (scoped) { scope = scoped[1]; entry = entry.slice(scoped[0].length); }
         const retired = /^retired:([^:]+):/.exec(entry);
         if (retired) {
-            if (retired[1] !== imageSourceHash(imageSource(target.msg, target.swipe))) continue;
+            if (!sourceHashMatches(retired[1], imageSource(target.msg, target.swipe))) continue;
             entry = entry.slice(retired[0].length);
         }
         if (scope && scope !== encodeURIComponent(archiveScope(target.ctx)) && scope !== encodeURIComponent(inheritedArchiveScope(marker, entry))) continue;
