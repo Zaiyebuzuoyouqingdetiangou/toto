@@ -1,12 +1,12 @@
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=1.83.0';
-import { normalizePresentationModes } from './presentationMode.js?rmv=1.83.0';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.83.0';
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=1.83.1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=1.83.1';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.83.1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=1.83.0';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.83.0';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.83.0';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.83.0';
+import { independentGenerationTiming } from './independentTiming.js?rmv=1.83.1';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=1.83.1';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=1.83.1';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=1.83.1';
 
 export const MODULE_NAME = 'rabbit_mirror_theater';
 
@@ -746,4 +746,40 @@ export async function resetSettingsAndSaveNow() {
     } catch { /* 拿不到就用下面的等待 */ }
     await new Promise(resolve => setTimeout(resolve, 1800));
     return true;
+}
+
+
+/**
+ * 立刻存盘并到服务器读回核对（不等酒馆的延迟存盘）：读回的设置里 check(兔子镜那份设置) 为真才算存好。
+ * 返回 { ok, reason }；ok 为 false 时内存里的设置不动，调用方提示用户。
+ */
+export async function saveSettingsNowAndVerify(check = () => true) {
+    let host = null;
+    try { host = await import('../../../../../script.js'); } catch { host = null; }
+    try {
+        if (typeof host?.saveSettings !== 'function') return { ok: false, reason: '拿不到酒馆的立即存盘' };
+        await host.saveSettings();
+    } catch (error) { return { ok: false, reason: `存盘失败：${String(error?.message || error).slice(0, 80)}` }; }
+    // 酒馆刚打开、设置还没就绪时 saveSettings 会改到约 1 秒后再存：第一次对不上就隔一会儿再读，最多三次。
+    let last = { ok: false, reason: '' };
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (attempt) await new Promise(resolve => setTimeout(resolve, 1500));
+        last = await readBackSettings(host, check);
+        if (last.ok) return last;
+    }
+    return last;
+}
+
+async function readBackSettings(host, check) {
+    try {
+        const ctx = globalThis.SillyTavern?.getContext?.();
+        const headers = new Headers(typeof ctx?.getRequestHeaders === 'function' ? await ctx.getRequestHeaders() : (typeof host?.getRequestHeaders === 'function' ? host.getRequestHeaders() : {}));
+        headers.set('Content-Type', 'application/json');
+        const response = await fetch('/api/settings/get', { method: 'POST', credentials: 'same-origin', headers, body: '{}' });
+        if (!response.ok) return { ok: false, reason: `读回失败：HTTP ${response.status}` };
+        const payload = await response.json();
+        const saved = typeof payload?.settings === 'string' ? JSON.parse(payload.settings) : payload?.settings;
+        const mine = saved?.extension_settings?.[MODULE_NAME];
+        return check(mine || {}) ? { ok: true, reason: '' } : { ok: false, reason: '服务器上的设置里没有这次的内容' };
+    } catch (error) { return { ok: false, reason: `读回失败：${String(error?.message || error).slice(0, 80)}` }; }
 }

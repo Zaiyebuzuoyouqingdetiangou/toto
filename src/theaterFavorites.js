@@ -1,8 +1,8 @@
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.83.0';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.83.0';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.83.0';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.83.0';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.83.0';
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.83.1';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.83.1';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.83.1';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.83.1';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.83.1';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -493,7 +493,7 @@ export async function deleteTheaterFavorite(id) {
 // 查和写在同一个事务里；记录里存下内容指纹，以后查重不用再解析。
 async function favoriteImagesFor(captured) {
     if (!Number.isInteger(captured?.mesid) || !Number.isInteger(captured?.swipe)) return null;
-    try { return (await import('./imageStore.js?rmv=1.83.0')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || ''); } catch { return null; }
+    try { return (await import('./imageStore.js?rmv=1.83.1')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || ''); } catch { return null; }
 }
 
 export async function toggleTheaterFavorite(input, intent = 'auto') {
@@ -603,7 +603,7 @@ export async function removeDuplicateTheaterFavorites() {
     if (!remap.size) return 0;
     // 先把图鉴里指向要删那几份的格子改指向留下的那份，改成功了再删收藏；
     // 以前先删后改，图鉴改失败（比如另一个页面占着）时，那些格子就默默变空了。
-    const atlases = await import('./favoriteAtlases.js?rmv=1.83.0');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.83.1');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};

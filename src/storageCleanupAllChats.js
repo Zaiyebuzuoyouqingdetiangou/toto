@@ -2,7 +2,7 @@
 // 逐个去服务器读那个聊天文件核对——聊天文件里确实有同一份成品、同一组版本、同一张图，本机这份才算可删。
 // 读不到、对不上、不知道是哪个聊天的，一律不动。当前打开的聊天交给「已存进聊天的镜面缓存」那一类处理。
 // 只读聊天文件，不改聊天文件，不调用模型。
-import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.83.0';
+import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.83.1';
 
 const OUTPUTS = 'rabbit_mirror_independent_outputs_v1';
 const HISTORY = 'rabbit_mirror_independent_history_v1';
