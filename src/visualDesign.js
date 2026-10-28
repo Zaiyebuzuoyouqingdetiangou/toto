@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.8";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.9";
 export function visualDesignMode(settings) {
     return 'guided1553';
 }
