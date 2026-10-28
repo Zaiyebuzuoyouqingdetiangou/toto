@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.7";
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.7';
+import { rmR as __rmR } from "../textTable.js?rmv=1.99.8";
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.8';
 const BOUND_ATTR = 'data-rm-dice-track';
 const BOUND = new WeakSet();
 const TRACK_HINT = __rmR("LA54G80I.roo.REPEhFpw.ryOBVOTUw3br0ds4JgiT8dT.BfjYZipydWngzPdLMjhO5D.sqHKDym_91cj6nZ24ZjFyWQfjQ3Yo3g0GiPT42MZNd29C_CKtlW7YmqywmCFBOgf8ZyJyzN2d4bwFUDK9_o_aihiArrgjnPRf", "i");

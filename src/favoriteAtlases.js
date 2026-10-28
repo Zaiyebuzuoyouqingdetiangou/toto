@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.7";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.8";
 const DB_NAME = 'rabbit_mirror_favorite_atlases_v1';
 const STORE = 'atlases';
 const clean = value => String(value ?? '').trim();
