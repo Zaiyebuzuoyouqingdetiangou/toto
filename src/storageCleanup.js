@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.7";
-import { clearLastCombo } from './storage.js?rmv=1.99.7';
-import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag, clearAllMirrorImagePrompts, measureAllMirrorImagePromptCleanup, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=1.99.7';
-import { compactFaceSwipeStoreForQuota, faceSwipeCleanupStats, prepareFaceSwipeArchiveCleanup } from './swipeVersions.js?rmv=1.99.7';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.8";
+import { clearLastCombo } from './storage.js?rmv=1.99.8';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag, clearAllMirrorImagePrompts, measureAllMirrorImagePromptCleanup, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=1.99.8';
+import { compactFaceSwipeStoreForQuota, faceSwipeCleanupStats, prepareFaceSwipeArchiveCleanup } from './swipeVersions.js?rmv=1.99.8';
 const storage = () => { try {
     return globalThis.localStorage || null;
 }
@@ -242,7 +242,7 @@ export async function prepareStorageCleanup(ids = []) {
     if (!Array.isArray(ids) || !ids.includes('covered'))
         return { checked: 0, available: true };
     try {
-        await import('./independentApi/persistence.js?rmv=1.99.7');
+        await import('./independentApi/persistence.js?rmv=1.99.8');
     }
     catch { }
     const slots = new Set();

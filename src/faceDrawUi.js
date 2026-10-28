@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.7";
-import { getSettings, updateSettings } from './settings.js?rmv=1.99.7';
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.99.7';
-import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.99.7';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.8";
+import { getSettings, updateSettings } from './settings.js?rmv=1.99.8';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.99.8';
+import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.99.8';
 const owners = new WeakMap();
 const MODE_LABELS = { none: __rmT("ssAtjKAH"), random: __rmT("xUqCFXw6YBC") };
 const STYLE = `

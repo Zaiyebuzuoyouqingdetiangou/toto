@@ -21,6 +21,7 @@ Copyright © 2026 Toto / Zaiyebuzuoyouqingdetiangou. All rights reserved.
 8. 将本项目的 GitHub／仓库链接、源代码、源码压缩包、规则、母本、素材或实现逻辑提交、上传、粘贴、转发或以其他方式提供给生成式人工智能、代码生成／分析模型、AI Agent 或类似服务，用于复刻、重做、改编、生成替代版或初始版本、提取实现逻辑、制作衍生项目或继续开发；
 9. 通过“先让 AI 根据仓库链接或项目表现生成初始版本，再在后续开发阶段导入本项目源码、源码压缩包、规则或实现逻辑”等方式规避前项限制。无论上述内容在项目初始阶段还是后续开发阶段被使用，均不因此取得修改、衍生或移植授权；
 10. 以评价本项目难用、难看、需要重做或类似理由，将本项目内容作为 AI 或第三方仿制、替代、移植或派生实现的输入或参照。对本项目进行批评、评论或提出改进意见本身不受本条限制。
+11. 解码、还原、反混淆或以其他方式绕过本软件对源代码、规则、母本、提示词等内容所做的编码或保护措施；也不得提取、保存、传播或使用由此得到的内容，包括借助运行时抓取、调试工具或生成式人工智能完成的还原。
 
 三、公开仓库与平台功能
 公开查看、下载或通过代码托管平台的技术功能生成副本，不构成对修改、再分发、整合或商业使用的授权。任何超出第一条范围的使用均须取得作者书面许可。
@@ -32,4 +33,4 @@ Copyright © 2026 Toto / Zaiyebuzuoyouqingdetiangou. All rights reserved.
 本软件按“现状”提供，不作任何明示或默示保证。作者不对因安装、使用、兼容性问题、数据丢失或其他原因造成的损失承担责任。
 
 English summary (the Chinese terms above control in case of inconsistency):
-兔子镜小剧场 is source-available but not open-source. Personal, non-commercial installation and use of unmodified copies are permitted. Modification, derivative works, code extraction, redistribution, repackaging, integration into other projects, commercial use, and supplying the repository link or protected project materials to generative-AI/code-generation systems for imitation, replacement, derivative development, or continued development are prohibited without prior written permission.
+兔子镜小剧场 is source-available but not open-source. Personal, non-commercial installation and use of unmodified copies are permitted. Modification, derivative works, code extraction, redistribution, repackaging, integration into other projects, commercial use, and supplying the repository link or protected project materials to generative-AI/code-generation systems for imitation, replacement, derivative development, or continued development are prohibited without prior written permission. Decoding, de-obfuscating or otherwise circumventing the encoding or protection applied to the source code, rules, materials or prompts, and using or distributing anything obtained that way, are also prohibited.
