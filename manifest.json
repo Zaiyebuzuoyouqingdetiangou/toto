@@ -1,0 +1,17 @@
+{
+    "display_name": "兔子镜小剧场",
+    "loading_order": 100,
+    "js": "index.js?rmv=1.99.7",
+    "css": "style.css?rmv=1.99.7",
+    "author": "Toto",
+    "version": "1.99.7",
+    "homePage": "https://github.com/Zaiyebuzuoyouqingdetiangou/toto",
+    "auto_update": true,
+    "generate_interceptor": "rabbitMirrorGenerateInterceptor",
+    "minimum_client_version": "1.13.0",
+    "hooks": {
+        "disable": "onDisable",
+        "clean": "onClean"
+    },
+    "description": "兔子镜小剧场：展现形式优先、视觉增强与三候选交互；副 API 同次响应兼容接收、快速重说与维修。"
+}

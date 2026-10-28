@@ -1,0 +1,63 @@
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.99.7';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.99.7';
+export function normalizePresentationModes(value) {
+    return Array.from({ length: 5 }, (_, index) => {
+        const mode = value?.[index] === 'text' ? 'longtext' : value?.[index];
+        return ['auto', 'html', 'longtext'].includes(mode) ? mode : 'html';
+    });
+}
+export function normalizeLongTextSource(value) {
+    return ['blank', 'text', 'mixed'].includes(value) ? value : 'blank';
+}
+export function isBlankLongTextSelection(source) {
+    return source?.requestedPresentationMode === 'longtext' && source.presentationMode === 'text'
+        && source.blankLongText === true && source.customDirective !== true
+        && Array.isArray(source.themeIds) && source.themeIds.length === 0
+        && Array.isArray(source.formatIds) && source.formatIds.length === 0
+        && (source.textIds === undefined || (Array.isArray(source.textIds) && source.textIds.length === 0));
+}
+export function requestedPresentationMode(settings, index = 0) {
+    return normalizePresentationModes(settings?.rabbitMirrorPresentationModes)[index] || 'html';
+}
+export function isTextPresentation(source) {
+    return source?.presentationMode === 'text';
+}
+export function hasExplicitTextFace(settings) {
+    const count = Math.min(5, Math.max(1, Number(settings?.rabbitMirrorFaceCount) || 1));
+    return normalizePresentationModes(settings?.rabbitMirrorPresentationModes).slice(0, count)
+        .some(mode => mode === 'text');
+}
+export function visualSceneryCombinationEnabled(settings) {
+    return settings?.visualSceneryCombination === true;
+}
+export function visualSceneryEnabled(settings) {
+    return settings?.forceVisualScenery === true || visualSceneryCombinationEnabled(settings);
+}
+export function presentationModeFields(source) {
+    const combination = source?.visualSceneryCombination === true && source?.presentationMode !== 'text' && !(Array.isArray(source?.faces) && source.faces.length >= 2 && !Number.isInteger(source.faceIndex))
+        ? { visualSceneryCombination: true } : {};
+    if (!source || !['html', 'text'].includes(source.presentationMode))
+        return { ...combination, ...interactionRecipeFields(source), ...generationPaletteFields(source) };
+    const fields = {
+        ...combination,
+        ...interactionRecipeFields(source), ...generationPaletteFields(source),
+        requestedPresentationMode: ['auto', 'html', 'text', 'longtext'].includes(source.requestedPresentationMode)
+            ? source.requestedPresentationMode : 'auto',
+        presentationMode: source.presentationMode,
+    };
+    if (isBlankLongTextSelection(source))
+        fields.blankLongText = true;
+    if (Array.isArray(source.textIds))
+        fields.textIds = source.textIds.slice(0, 16)
+            .filter(id => typeof id === 'string' && id.length <= 2048 && /^ext:[A-Za-z0-9:._!~*'()-]+$/.test(id));
+    if (Array.isArray(source.textLabels))
+        fields.textLabels = source.textLabels.slice(0, 16)
+            .filter(label => typeof label === 'string').map(label => label.slice(0, 160));
+    const worldBookEntryId = String(source.worldBookEntryId || '').trim().slice(0, 360);
+    if (worldBookEntryId) {
+        fields.worldBookEntryId = worldBookEntryId;
+        fields.worldBookTitle = String(source.worldBookTitle || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 200);
+        fields.worldBookExcerpt = String(source.worldBookExcerpt || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 1800);
+    }
+    return fields;
+}

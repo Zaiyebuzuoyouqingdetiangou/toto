@@ -1,0 +1,328 @@
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.7";
+import { presentationModeFields } from './presentationMode.js?rmv=1.99.7';
+const TOKEN_METER_STORAGE_KEY = 'rabbit_mirror_theater:token_meter:v1';
+const TOKEN_METER_SOURCE_STORAGE_KEYS = Object.freeze({
+    follow: 'rabbit_mirror_theater:token_meter:follow:v1',
+    independent: 'rabbit_mirror_theater:token_meter:independent:v1',
+});
+export const TOKEN_METER_EVENT = 'rabbit-mirror-token-meter-update';
+function safeInteger(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, Math.round(number)) : 0;
+}
+function isCjkLikeCodePoint(codePoint) {
+    return ((codePoint >= 0x3400 && codePoint <= 0x4DBF)
+        || (codePoint >= 0x4E00 && codePoint <= 0x9FFF)
+        || (codePoint >= 0xF900 && codePoint <= 0xFAFF)
+        || (codePoint >= 0x20000 && codePoint <= 0x3134F)
+        || (codePoint >= 0x3040 && codePoint <= 0x30FF)
+        || (codePoint >= 0x31F0 && codePoint <= 0x31FF)
+        || (codePoint >= 0xAC00 && codePoint <= 0xD7AF));
+}
+function isEmojiLikeCodePoint(codePoint) {
+    return ((codePoint >= 0x1F000 && codePoint <= 0x1FAFF)
+        || (codePoint >= 0x2600 && codePoint <= 0x27BF));
+}
+function isAsciiWordCharacter(character) {
+    return /[A-Za-z0-9_]/.test(character);
+}
+export function estimatePromptTokens(text) {
+    const value = String(text || '');
+    if (!value) {
+        return Object.freeze({
+            chars: 0,
+            codePoints: 0,
+            estimatedTokens: 0,
+            minTokens: 0,
+            maxTokens: 0,
+            cjkChars: 0,
+            asciiWordChars: 0,
+            emojiChars: 0,
+            otherChars: 0,
+        });
+    }
+    let cjkChars = 0;
+    let asciiWordChars = 0;
+    let asciiWordRuns = 0;
+    let emojiChars = 0;
+    let punctuationChars = 0;
+    let otherChars = 0;
+    let whitespaceRuns = 0;
+    let inAsciiWord = false;
+    let inWhitespace = false;
+    for (const character of value) {
+        const codePoint = character.codePointAt(0) || 0;
+        if (/\s/.test(character)) {
+            if (!inWhitespace)
+                whitespaceRuns += 1;
+            inWhitespace = true;
+            inAsciiWord = false;
+            continue;
+        }
+        inWhitespace = false;
+        if (isCjkLikeCodePoint(codePoint)) {
+            cjkChars += 1;
+            inAsciiWord = false;
+            continue;
+        }
+        if (isAsciiWordCharacter(character)) {
+            asciiWordChars += 1;
+            if (!inAsciiWord)
+                asciiWordRuns += 1;
+            inAsciiWord = true;
+            continue;
+        }
+        inAsciiWord = false;
+        if (isEmojiLikeCodePoint(codePoint)) {
+            emojiChars += 1;
+        }
+        else if (/[^\p{L}\p{N}]/u.test(character)) {
+            punctuationChars += 1;
+        }
+        else {
+            otherChars += 1;
+        }
+    }
+    const asciiEstimate = asciiWordChars / 3.55 + asciiWordRuns * 0.18;
+    const estimated = (cjkChars * 0.84
+        + asciiEstimate
+        + otherChars * 0.62
+        + punctuationChars * 0.46
+        + emojiChars * 1.85
+        + whitespaceRuns * 0.12);
+    const minimum = (cjkChars * 0.55
+        + asciiWordChars / 4.6
+        + otherChars * 0.38
+        + punctuationChars * 0.24
+        + emojiChars * 1.0
+        + whitespaceRuns * 0.04);
+    const maximum = (cjkChars * 1.16
+        + asciiWordChars / 2.7
+        + asciiWordRuns * 0.25
+        + otherChars * 0.95
+        + punctuationChars * 0.82
+        + emojiChars * 3.0
+        + whitespaceRuns * 0.2);
+    const codePoints = [...value].length;
+    const estimatedTokens = Math.max(1, Math.round(estimated));
+    const minTokens = Math.max(1, Math.min(estimatedTokens, Math.floor(minimum)));
+    const maxTokens = Math.max(estimatedTokens, Math.ceil(maximum));
+    return Object.freeze({
+        chars: value.length,
+        codePoints,
+        estimatedTokens,
+        minTokens,
+        maxTokens,
+        cjkChars,
+        asciiWordChars,
+        emojiChars,
+        otherChars: otherChars + punctuationChars,
+    });
+}
+function readStoredRecord(storageKey = TOKEN_METER_STORAGE_KEY) {
+    try {
+        const raw = globalThis.localStorage?.getItem?.(storageKey);
+        if (!raw)
+            return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    }
+    catch {
+        return null;
+    }
+}
+function sourceForRecord(record) {
+    if (record?.status === 'independent')
+        return 'independent';
+    if (record?.status === 'injected')
+        return 'follow';
+    return '';
+}
+function publishRecord(record) {
+    globalThis.__rabbitMirrorLastTokenMeterRecord = record;
+    const source = sourceForRecord(record);
+    if (source) {
+        const records = globalThis.__rabbitMirrorLastTokenMeterRecordsBySource || {};
+        records[source] = record;
+        globalThis.__rabbitMirrorLastTokenMeterRecordsBySource = records;
+    }
+    try {
+        globalThis.localStorage?.setItem?.(TOKEN_METER_STORAGE_KEY, JSON.stringify(record));
+        if (source)
+            globalThis.localStorage?.setItem?.(TOKEN_METER_SOURCE_STORAGE_KEYS[source], JSON.stringify(record));
+    }
+    catch {
+    }
+    try {
+        if (typeof globalThis.CustomEvent === 'function' && typeof globalThis.dispatchEvent === 'function') {
+            globalThis.dispatchEvent(new CustomEvent(TOKEN_METER_EVENT, { detail: record }));
+        }
+    }
+    catch {
+    }
+    return record;
+}
+export function getLastRabbitMirrorTokenRecord() {
+    const inMemory = globalThis.__rabbitMirrorLastTokenMeterRecord;
+    if (inMemory && typeof inMemory === 'object')
+        return inMemory;
+    const stored = readStoredRecord();
+    if (stored)
+        globalThis.__rabbitMirrorLastTokenMeterRecord = stored;
+    return stored;
+}
+export function getLastRabbitMirrorTokenRecordForSource(generationSource = '') {
+    const source = String(generationSource || '').toLowerCase() === 'independent' ? 'independent' : 'follow';
+    const bySource = globalThis.__rabbitMirrorLastTokenMeterRecordsBySource;
+    if (bySource?.[source] && typeof bySource[source] === 'object')
+        return bySource[source];
+    const current = getLastRabbitMirrorTokenRecord();
+    if (sourceForRecord(current) === source)
+        return current;
+    const stored = readStoredRecord(TOKEN_METER_SOURCE_STORAGE_KEYS[source]);
+    if (stored) {
+        const records = bySource && typeof bySource === 'object' ? bySource : {};
+        records[source] = stored;
+        globalThis.__rabbitMirrorLastTokenMeterRecordsBySource = records;
+        return stored;
+    }
+    return sourceForRecord(current) ? null : current;
+}
+export function promptSectionBreakdown(text, limit = 14) {
+    const totals = new Map();
+    let label = __rmT("nD2TBh");
+    for (const line of String(text || '').split('\n')) {
+        const trimmed = line.trim();
+        const topLevel = !!trimmed && !/^\s/.test(line) && !trimmed.startsWith('-');
+        if (topLevel && __rmR("61e5Ofq6BER_Th", "").test(trimmed) && trimmed.length <= 32)
+            label = trimmed.replace(__rmR("61e5Ofq6BER_Th", ""), '');
+        else if (topLevel && __rmR("bmLM0qQMU7vWQFgfIpiRmoXo5rz7usciN0gmvFLQqiZ8Tdp.X2_", "").test(trimmed))
+            label = trimmed.replace(__rmR("61e5Ofq6BER_Th", ""), '');
+        else if (topLevel && /^<\/?[^>\s]{1,24}>$/.test(trimmed))
+            label = trimmed;
+        totals.set(label, (totals.get(label) || 0) + line.length + 1);
+    }
+    const sorted = [...totals.entries()].filter(([, chars]) => chars > 2).sort((a, b) => b[1] - a[1]);
+    const head = sorted.slice(0, limit).map(([name, chars]) => Object.freeze({ label: String(name).slice(0, 40), chars }));
+    const rest = sorted.slice(limit).reduce((sum, [, chars]) => sum + chars, 0);
+    return Object.freeze(rest ? [...head, Object.freeze({ label: __rmT("tFGD5UWVIeh"), chars: rest })] : head);
+}
+function safeSections(value) {
+    return Object.freeze((Array.isArray(value) ? value : []).slice(0, 24)
+        .map(item => Object.freeze({ label: String(item?.label || '').slice(0, 40), chars: safeInteger(item?.chars) }))
+        .filter(item => item.label && item.chars > 0));
+}
+export function recordRabbitMirrorInjection({ prompt, basePrompt, generationType = 'normal', metadata = {}, } = {}) {
+    const finalPrompt = String(prompt || '');
+    const base = String(basePrompt || '');
+    const suffix = finalPrompt.startsWith(base) ? finalPrompt.slice(base.length) : '';
+    const totalTokens = estimatePromptTokens(finalPrompt);
+    const baseTokens = estimatePromptTokens(base);
+    const feedbackTokens = estimatePromptTokens(suffix);
+    return publishRecord({
+        version: 1,
+        status: finalPrompt ? 'injected' : 'empty',
+        recordedAt: Date.now(),
+        generationType: String(generationType || 'normal'),
+        chars: Object.freeze({
+            total: finalPrompt.length,
+            base: base.length,
+            feedback: suffix.length,
+            motherLibrary: safeInteger(metadata.motherLibraryChars),
+            sharedMemory: safeInteger(metadata.memoryChars),
+            selectedThemes: safeInteger(metadata.selectedThemeChars),
+            selectedFormats: safeInteger(metadata.selectedFormatChars),
+            editableVisual: safeInteger(metadata.editableVisualChars),
+        }),
+        tokens: Object.freeze({
+            estimated: totalTokens.estimatedTokens,
+            min: totalTokens.minTokens,
+            max: totalTokens.maxTokens,
+            baseEstimated: baseTokens.estimatedTokens,
+            feedbackEstimated: feedbackTokens.estimatedTokens,
+        }),
+        rawPolicy: String(metadata.rawPolicy || ''),
+        samplingMode: String(metadata.samplingMode || ''),
+        themeIds: Array.isArray(metadata.themeIds) ? metadata.themeIds.slice(0, 8) : [],
+        formatIds: Array.isArray(metadata.formatIds) ? metadata.formatIds.slice(0, 8) : [],
+        ...presentationModeFields(metadata),
+        visualScenery: !!metadata.visualSceneryMode,
+        tarotRules: !!metadata.tarotRules,
+        touchTheaterRules: !!metadata.touchTheaterRules,
+        sections: promptSectionBreakdown(finalPrompt),
+    });
+}
+export function recordRabbitMirrorIndependentPrompt({ extensionPrompt, basePrompt, feedbackPrompt = '', executionLock = '', contextChars = 0, totalRequestChars = 0, contextLayers = 0, contextMaxLayers = 0, filteredRabbitMirrorChars = 0, filteredContextTagChars = 0, metadata = {}, sections = [], contextParts = {}, } = {}) {
+    const finalPrompt = String(extensionPrompt || '');
+    const base = String(basePrompt || '');
+    const feedback = String(feedbackPrompt || '');
+    const lock = String(executionLock || '');
+    const totalTokens = estimatePromptTokens(finalPrompt);
+    const baseTokens = estimatePromptTokens(base);
+    const feedbackTokens = estimatePromptTokens(feedback);
+    const lockTokens = estimatePromptTokens(lock);
+    return publishRecord({
+        version: 2,
+        status: finalPrompt ? 'independent' : 'empty',
+        recordedAt: Date.now(),
+        generationType: 'independent',
+        chars: Object.freeze({
+            total: finalPrompt.length,
+            totalRequest: safeInteger(totalRequestChars),
+            base: base.length,
+            feedback: feedback.length,
+            executionLock: lock.length,
+            independentContext: safeInteger(contextChars),
+            independentContextLayers: safeInteger(contextLayers),
+            independentContextMaxLayers: safeInteger(contextMaxLayers),
+            filteredRabbitMirrorChars: safeInteger(filteredRabbitMirrorChars),
+            filteredContextTagChars: safeInteger(filteredContextTagChars),
+            motherLibrary: safeInteger(metadata.motherLibraryChars),
+            sharedMemory: safeInteger(metadata.memoryChars),
+            selectedThemes: safeInteger(metadata.selectedThemeChars),
+            selectedFormats: safeInteger(metadata.selectedFormatChars),
+            editableVisual: safeInteger(metadata.editableVisualChars),
+        }),
+        tokens: Object.freeze({
+            estimated: totalTokens.estimatedTokens,
+            min: totalTokens.minTokens,
+            max: totalTokens.maxTokens,
+            baseEstimated: baseTokens.estimatedTokens,
+            feedbackEstimated: feedbackTokens.estimatedTokens,
+            executionLockEstimated: lockTokens.estimatedTokens,
+        }),
+        rawPolicy: String(metadata.rawPolicy || ''),
+        samplingMode: String(metadata.samplingMode || ''),
+        themeIds: Array.isArray(metadata.themeIds) ? metadata.themeIds.slice(0, 8) : [],
+        formatIds: Array.isArray(metadata.formatIds) ? metadata.formatIds.slice(0, 8) : [],
+        ...presentationModeFields(metadata),
+        visualScenery: !!metadata.visualSceneryMode,
+        tarotRules: !!metadata.tarotRules,
+        touchTheaterRules: !!metadata.touchTheaterRules,
+        sections: safeSections(sections),
+        contextParts: Object.freeze({
+            transcript: safeInteger(contextParts?.transcript),
+            reference: safeInteger(contextParts?.reference),
+            worldInfo: safeInteger(contextParts?.worldInfo),
+            characterWorldBook: safeInteger(contextParts?.characterWorldBook),
+        }),
+    });
+}
+export function recordRabbitMirrorNoInjection(reason = 'cleared', generationType = '') {
+    return publishRecord({
+        version: 1,
+        status: 'not_injected',
+        recordedAt: Date.now(),
+        generationType: String(generationType || ''),
+        reason: String(reason || 'cleared'),
+        chars: Object.freeze({ total: 0, base: 0, feedback: 0, motherLibrary: 0, sharedMemory: 0, selectedThemes: 0, selectedFormats: 0, editableVisual: 0 }),
+        tokens: Object.freeze({ estimated: 0, min: 0, max: 0, baseEstimated: 0, feedbackEstimated: 0 }),
+        rawPolicy: '',
+        samplingMode: '',
+        themeIds: [],
+        formatIds: [],
+        visualScenery: false,
+        tarotRules: false,
+        touchTheaterRules: false,
+    });
+}
