@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.8";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.9";
 export const CSS_METHODS = Object.freeze([__rmT("cgECNk"), __rmT("tNMgqU1gF2C"), __rmT(".MNdPk"), __rmT(".Fa_qt1MEBh"), __rmT("4OXCYEyJX0ANTguG2yA"), __rmT("sqVjDushwsnu4SMX"), __rmT("02jLcgYfOCs"), __rmT("nFWxFesQ2Ph")]);
 export const OFFER_LIMITS_187 = false;
 export const DRIVER_METHODS = Object.freeze({

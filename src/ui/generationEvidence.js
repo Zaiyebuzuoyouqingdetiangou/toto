@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.8";
-import { armGenerationEvidence, cancelGenerationEvidenceArm, clearGenerationEvidence, exportGenerationEvidence, exportRecentGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.99.8';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.99.8';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.9";
+import { armGenerationEvidence, cancelGenerationEvidenceArm, clearGenerationEvidence, exportGenerationEvidence, exportRecentGenerationEvidence, getGenerationEvidenceState, subscribeGenerationEvidence } from '../generationEvidence.js?rmv=1.99.9';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=1.99.9';
 let cleanup = null;
 export function destroyGenerationEvidenceUi() { cleanup?.(); cleanup = null; }
 export function mountGenerationEvidenceUi(root, getSettings) {

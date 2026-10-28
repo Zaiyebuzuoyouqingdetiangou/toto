@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.8";
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.9";
 const BOARD_ATTR = 'data-rm-bingo-board';
 const LINE_ATTR = 'data-rm-bingo-line';
 const SEAL_ATTR = 'data-rm-bingo-seal';

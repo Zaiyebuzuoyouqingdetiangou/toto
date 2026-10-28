@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.8";
-import { getSettings } from '../settings.js?rmv=1.99.8';
-import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.99.8';
-import { baseSlotOf } from './connection.js?rmv=1.99.8';
-import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.99.8';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.9";
+import { getSettings } from '../settings.js?rmv=1.99.9';
+import { configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, stallTimeoutError } from '../automaticReroll.js?rmv=1.99.9';
+import { baseSlotOf } from './connection.js?rmv=1.99.9';
+import { automaticGenerationCutovers } from './lifecycle.js?rmv=1.99.9';
 export const pending = new Map();
 export const automaticFailureStops = new Map();
 const AUTOMATIC_FAILURE_STOP_LIMIT = 320;
