@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.20";
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.99.20';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.99.20';
-import { entryIdentity } from './selectionState.js?rmv=1.99.20';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.99.20';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.21";
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION } from './classifier.js?rmv=1.99.21';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.99.21';
+import { entryIdentity } from './selectionState.js?rmv=1.99.21';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, getExternalPoolRevision, getExternalPoolSnapshot, removeExternalPoolLibrary, setExternalPoolMetadataSnapshot, upsertExternalPoolLibrary, validExternalPoolMetadata } from './externalPool.js?rmv=1.99.21';
 export const EXTERNAL_WORLD_BOOK_DB_NAME = 'rabbitmirror_external_worldbooks';
 export const EXTERNAL_WORLD_BOOK_DB_VERSION = 2;
 export const EXTERNAL_WORLD_BOOK_LIBRARY_SCHEMA_VERSION = 1;
@@ -19,7 +19,7 @@ export function getExternalPoolHydrationStatus() { return hydrationStatus; }
 function noteLibraryChanged(options = {}, detail = {}) {
     if (options?.indexedDBFactory || options?.skipServerBackup === true)
         return;
-    void import('./serverBackup.js?rmv=1.99.20')
+    void import('./serverBackup.js?rmv=1.99.21')
         .then(module => module.scheduleMotherLibraryServerBackup(detail))
         .catch(() => { });
 }

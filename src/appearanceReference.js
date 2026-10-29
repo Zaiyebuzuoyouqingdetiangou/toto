@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.20";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.21";
 export const APPEARANCE_REFERENCE_INPUT_BYTES = 128 * 1024;
 export const APPEARANCE_REFERENCE_MAX_CHARS = 12000;
 const DB_NAME = 'RabbitMirrorAppearanceReference';

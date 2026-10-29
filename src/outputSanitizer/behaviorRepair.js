@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.20";
-import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=1.99.20';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.99.20';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.21";
+import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=1.99.21';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.99.21';
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
 const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls], [data-rm-released]';
@@ -364,7 +364,7 @@ function mergeNestedToggles(root) {
         for (const inner of outer.querySelectorAll('[data-rm-ui="toggle"]')) {
             if (inner.parentElement?.closest('[data-rm-ui]') !== outer)
                 continue;
-            const shownBy = inner.parentElement?.closest('[data-rm-show]');
+            const shownBy = inner.closest('[data-rm-show]');
             if (shownBy && outer.contains(shownBy) && shownBy !== outer)
                 continue;
             const theirs = tokens(inner);
