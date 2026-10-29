@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmTpl as __rmTpl } from "./textTable.js?rmv=1.99.11";
+import { rmT as __rmT, rmTpl as __rmTpl } from "./textTable.js?rmv=1.99.12";
 import { setExtensionPrompt, extension_prompt_types, extension_prompt_roles, eventSource, event_types } from '../../../../../script.js';
 const FEEDBACK_STORAGE_KEY = 'rabbit_mirror_theater:feedback_cat:v1';
 const FEEDBACK_PENDING_KEY = 'rabbit_mirror_theater:feedback_cat_pending:v2';

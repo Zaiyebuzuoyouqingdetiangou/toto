@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.11";
+import { rmR as __rmR } from "../textTable.js?rmv=1.99.12";
 const results = new WeakMap();
 const chooserStates = new WeakMap();
 const DISPLAY = new Set(['', 'block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid',
