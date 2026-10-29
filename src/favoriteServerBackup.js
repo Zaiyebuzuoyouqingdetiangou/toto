@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
-import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=1.99.17';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
+import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=1.99.18';
 export const FAVORITE_BACKUP_INDEX_NAME = 'rabbitmirror-favorites.json';
 const FORMAT = 'rabbitmirror-favorites';
 const VERSION = 1;
@@ -8,6 +8,7 @@ const SAVE_DELAY_MS = 3000;
 const STATUS_KEY = 'rabbit_mirror_favorite_server_backup:v1';
 const PENDING_DELETE_KEY = 'rabbit_mirror_favorite_pending_delete:v1';
 const RETRY_DELAYS_MS = [30000, 120000, 600000];
+const PROGRESS_EVERY = 8;
 let timer = 0;
 let saving = null;
 let retryCount = 0;
@@ -154,8 +155,8 @@ async function removeServerFile(name, { fetchImpl = globalThis.fetch, headerProv
     }
 }
 async function localState() {
-    const favorites = await import('./theaterFavorites.js?rmv=1.99.17');
-    const atlases = await import('./favoriteAtlases.js?rmv=1.99.17');
+    const favorites = await import('./theaterFavorites.js?rmv=1.99.18');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.99.18');
     return { rows: await favorites.listTheaterFavorites(), atlases: await atlases.listFavoriteAtlases().catch(() => null) };
 }
 export function noteFavoriteBackupDeletes({ favorites = [], atlases = [] } = {}) {
@@ -189,6 +190,12 @@ export async function saveFavoriteServerBackup({ fetchImpl, headerProvider, loca
     const localIds = new Set(rows.map(row => row.id));
     let uploaded = 0;
     const items = [];
+    const writeProgress = async () => {
+        const done = new Set(items.map(item => item.id));
+        const rest = [...serverItems.values()].filter(item => !done.has(item.id));
+        await upload(FAVORITE_BACKUP_INDEX_NAME, JSON.stringify({ format: FORMAT, version: VERSION, savedAt: Date.now(), items: [...items, ...rest], atlases: server?.atlases || [] }), { fetchImpl, headerProvider });
+    };
+    let sinceProgress = 0;
     for (const row of rows) {
         const file = favoriteBackupFileName(row.id);
         const sig = signature(row);
@@ -196,8 +203,13 @@ export async function saveFavoriteServerBackup({ fetchImpl, headerProvider, loca
         if (!known || known.sig !== sig || known.file !== file) {
             await upload(file, JSON.stringify({ format: `${FORMAT}-item`, version: VERSION, record: row }), { fetchImpl, headerProvider });
             uploaded += 1;
+            sinceProgress += 1;
         }
         items.push({ id: row.id, file, sig, createdAt: Number(row.createdAt) || 0, title: String(row.title || '').slice(0, 120) });
+        if (sinceProgress >= PROGRESS_EVERY) {
+            await writeProgress();
+            sinceProgress = 0;
+        }
     }
     const kept = [...serverItems.values()].filter(item => !localIds.has(item.id) && !goneFavorites.has(item.id));
     const removed = [...serverItems.values()].filter(item => !localIds.has(item.id) && goneFavorites.has(item.id));
@@ -269,13 +281,13 @@ export async function restoreFavoritesFromServerBackup({ fetchImpl } = {}) {
             failed += 1;
         }
     }
-    const favorites = await import('./theaterFavorites.js?rmv=1.99.17');
+    const favorites = await import('./theaterFavorites.js?rmv=1.99.18');
     const restored = records.length ? await favorites.importTheaterFavoriteRecords(records) : 0;
     let atlasCount = 0;
     if (!Array.isArray(atlases))
         return { restored, atlases: 0, failed, empty: false };
     const haveAtlases = new Set(atlases.map(atlas => String(atlas.id)));
-    const atlasModule = await import('./favoriteAtlases.js?rmv=1.99.17');
+    const atlasModule = await import('./favoriteAtlases.js?rmv=1.99.18');
     const usable = atlas => typeof atlas?.name === 'string' && Array.isArray(atlas.slots)
         && atlas.slots.every(slot => slot && typeof slot.id === 'string' && typeof slot.label === 'string' && Array.isArray(slot.keywords));
     for (const atlas of index.atlases) {

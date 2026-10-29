@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
-import { getSettings, updateSettings } from './settings.js?rmv=1.99.17';
-import { getContext } from './independentApi/runtime.js?rmv=1.99.17';
-import { fetchIndependentModels, getIndependentConnectionProfiles, normalizeIndependentConnectionText, validatedIndependentConnectionProfile } from './independentApi/connection.js?rmv=1.99.17';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
+import { getSettings, updateSettings } from './settings.js?rmv=1.99.18';
+import { getContext } from './independentApi/runtime.js?rmv=1.99.18';
+import { fetchIndependentModels, getIndependentConnectionProfiles, normalizeIndependentConnectionText, validatedIndependentConnectionProfile } from './independentApi/connection.js?rmv=1.99.18';
 export function imageLlmConfigured(settings = getSettings()) {
     return settings?.imageLlmEnabled === true
         && !!(String(settings.imageLlmProfileId || '').trim() || String(settings.imageLlmBaseUrl || '').trim())

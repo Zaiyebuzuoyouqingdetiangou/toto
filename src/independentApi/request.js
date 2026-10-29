@@ -1,39 +1,39 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.17";
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.99.17';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.99.17';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.99.17';
-import { getRabbitMirrorRecipe } from '../blacklist.js?rmv=1.99.17';
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.99.17';
-import { createGenerationTimer } from '../generationTiming.js?rmv=1.99.17';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.99.17';
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.99.17';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.99.17';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.99.17';
-import { getSettings } from '../settings.js?rmv=1.99.17';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.99.17';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=1.99.17';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.99.17';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, } from '../independentSecurityGuard.js?rmv=1.99.17';
-import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, } from '../advancedRequestOptions.js?rmv=1.99.17';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, promptPlanSelections, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings, } from '../promptBuilder.js?rmv=1.99.17';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.99.17';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.99.17';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.99.17';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.99.17';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.99.17';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.99.17';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.99.17';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.99.17';
-import { createVisualHistorySelection, resolveVisualHistorySelection, parseVisualFamilySkeleton, visualFamilyForCooldown, markPendingBatchAttempt, findPendingComboBatchPlan, releasePendingComboBatch, setChatRecentFacesProvider, } from '../storage.js?rmv=1.99.17';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.99.17';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.99.17';
-import { RUNTIME_VERSION, EXTERNAL_SHELL_ATTR, FOLLOW_EXTERNAL_ANCHOR_ATTR, FOLLOW_ORIGIN_ATTR, INLINE_ANCHOR_ATTR, SOURCE_ATTR, byteLength, getContext, hashText, } from './runtime.js?rmv=1.99.17';
-import { operationEpochForBase } from './flights.js?rmv=1.99.17';
-import { INDEPENDENT_HTML_BUDGET_BYTES, INDEPENDENT_MAX_APPROX_DEPTH, INDEPENDENT_MAX_ATTRIBUTES, INDEPENDENT_MAX_CSS_CHARS, INDEPENDENT_MAX_CSS_RULES, INDEPENDENT_MAX_DATA_URI_CHARS, INDEPENDENT_MAX_TAGS, INDEPENDENT_RAW_MARKUP_BUDGET_CHARS, historyEntriesForSlot, normalizeHistoryEntry, normalizedConfiguredTemperature, readHistoryStore, readStore, } from './persistence.js?rmv=1.99.17';
-import { API_PROFILE_ORDER, chatKey, contextBundle, createIndependentVisibleTextReader, explainEmptyIndependentVisibleBody, endpoint, fetchIndependentUrl, forgetRememberedApiProfileIfMatches, getRememberedApiProfile, getStagedApiProfile, globalWorldInfoContextView, globalWorldInfoSnapshotFor, headers, independentBatchPlanPreflightError, independentConnectionProfilePreflightError, independentConnectionProxyPresets, independentDiagnosticBase, independentLocalPreflightFailure, isRabbitMirrorEligibleAssistantMessage, messageBaseSlotKey, messageBody, messageSourceFingerprint, normalizeIndependentConnectionText, profileTokenField, profileUsesStreaming, profileUsesSystemMessage, publishIndependentApiRequestDiagnostic, readLastIndependentApiRequestDiagnostic, rememberApiProfile, safeJson, stageNextApiProfile, stripExcludedTagsFromReference, isOutputFormatInstruction, swipeId, validatedIndependentConnectionProfile, connectionProfileSecretState, } from './connection.js?rmv=1.99.17';
-import { externalGeometryCycleSequence, externalGeometryLifecycleEpoch, externalGeometryLifecycleReason, externalGeometryOwnerNodes, prepareIndependentReadyHtml, readyDetailsFromHost, writeExternalGeometryCycleSequence, writeExternalGeometryLifecycleEpoch, writeExternalGeometryLifecycleReason, } from './geometry.js?rmv=1.99.17';
-import { INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS, INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES, automaticIndependentTiming, externalFaceDetails, externalHostSyncIndex, independentRejectedFaceControlsWired, independentRejectedFacePreviews, independentRejectedPreviewChars, independentRejectedPreviewSequence, manualBodyOwnerCurrent, writeExternalHostSyncIndex, writeIndependentRejectedPreviewChars, writeIndependentRejectedPreviewSequence, } from './mount.js?rmv=1.99.17';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.99.17';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.18";
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=1.99.18';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=1.99.18';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=1.99.18';
+import { getRabbitMirrorRecipe } from '../blacklist.js?rmv=1.99.18';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=1.99.18';
+import { createGenerationTimer } from '../generationTiming.js?rmv=1.99.18';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=1.99.18';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=1.99.18';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=1.99.18';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=1.99.18';
+import { getSettings } from '../settings.js?rmv=1.99.18';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=1.99.18';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=1.99.18';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=1.99.18';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, } from '../independentSecurityGuard.js?rmv=1.99.18';
+import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, } from '../advancedRequestOptions.js?rmv=1.99.18';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, promptPlanSelections, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings, } from '../promptBuilder.js?rmv=1.99.18';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=1.99.18';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=1.99.18';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=1.99.18';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=1.99.18';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=1.99.18';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=1.99.18';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=1.99.18';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=1.99.18';
+import { createVisualHistorySelection, resolveVisualHistorySelection, parseVisualFamilySkeleton, visualFamilyForCooldown, markPendingBatchAttempt, findPendingComboBatchPlan, releasePendingComboBatch, setChatRecentFacesProvider, } from '../storage.js?rmv=1.99.18';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=1.99.18';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=1.99.18';
+import { RUNTIME_VERSION, EXTERNAL_SHELL_ATTR, FOLLOW_EXTERNAL_ANCHOR_ATTR, FOLLOW_ORIGIN_ATTR, INLINE_ANCHOR_ATTR, SOURCE_ATTR, byteLength, getContext, hashText, } from './runtime.js?rmv=1.99.18';
+import { operationEpochForBase } from './flights.js?rmv=1.99.18';
+import { INDEPENDENT_HTML_BUDGET_BYTES, INDEPENDENT_MAX_APPROX_DEPTH, INDEPENDENT_MAX_ATTRIBUTES, INDEPENDENT_MAX_CSS_CHARS, INDEPENDENT_MAX_CSS_RULES, INDEPENDENT_MAX_DATA_URI_CHARS, INDEPENDENT_MAX_TAGS, INDEPENDENT_RAW_MARKUP_BUDGET_CHARS, historyEntriesForSlot, normalizeHistoryEntry, normalizedConfiguredTemperature, readHistoryStore, readStore, } from './persistence.js?rmv=1.99.18';
+import { API_PROFILE_ORDER, chatKey, contextBundle, createIndependentVisibleTextReader, explainEmptyIndependentVisibleBody, endpoint, fetchIndependentUrl, forgetRememberedApiProfileIfMatches, getRememberedApiProfile, getStagedApiProfile, globalWorldInfoContextView, globalWorldInfoSnapshotFor, headers, independentBatchPlanPreflightError, independentConnectionProfilePreflightError, independentConnectionProxyPresets, independentDiagnosticBase, independentLocalPreflightFailure, isRabbitMirrorEligibleAssistantMessage, messageBaseSlotKey, messageBody, messageSourceFingerprint, normalizeIndependentConnectionText, profileTokenField, profileUsesStreaming, profileUsesSystemMessage, publishIndependentApiRequestDiagnostic, readLastIndependentApiRequestDiagnostic, rememberApiProfile, safeJson, stageNextApiProfile, stripExcludedTagsFromReference, isOutputFormatInstruction, swipeId, validatedIndependentConnectionProfile, connectionProfileSecretState, } from './connection.js?rmv=1.99.18';
+import { externalGeometryCycleSequence, externalGeometryLifecycleEpoch, externalGeometryLifecycleReason, externalGeometryOwnerNodes, prepareIndependentReadyHtml, readyDetailsFromHost, writeExternalGeometryCycleSequence, writeExternalGeometryLifecycleEpoch, writeExternalGeometryLifecycleReason, } from './geometry.js?rmv=1.99.18';
+import { INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS, INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES, automaticIndependentTiming, externalFaceDetails, externalHostSyncIndex, independentRejectedFaceControlsWired, independentRejectedFacePreviews, independentRejectedPreviewChars, independentRejectedPreviewSequence, manualBodyOwnerCurrent, writeExternalHostSyncIndex, writeIndependentRejectedPreviewChars, writeIndependentRejectedPreviewSequence, } from './mount.js?rmv=1.99.18';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=1.99.18';
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE = {
     chat_system_user_full: 'chat_system_user_full_nostream',
     chat_system_user_completion: 'chat_system_user_completion_nostream',
@@ -2025,7 +2025,7 @@ export function wireIndependentRejectedFaceControls(host) {
             resay.addEventListener('click', event => {
                 event.preventDefault();
                 event.stopPropagation();
-                void import('../outputSanitizer/toolsChrome.js?rmv=1.99.17').then(module => module.openRabbitMirrorResayChooser(details)).catch(() => globalThis.toastr?.warning?.(__rmT("Qpl_vG7HBRK8aT5PZ2ApY1YuYGFaQMxLx7YyEINjKZ_.QzQX")));
+                void import('../outputSanitizer/toolsChrome.js?rmv=1.99.18').then(module => module.openRabbitMirrorResayChooser(details)).catch(() => globalThis.toastr?.warning?.(__rmT("Qpl_vG7HBRK8aT5PZ2ApY1YuYGFaQMxLx7YyEINjKZ_.QzQX")));
             }, true);
         }
     }
@@ -2253,7 +2253,7 @@ async function loadIndependentAppearanceReference(owner) {
     assertIndependentPromptOwner(owner);
     try {
         try {
-            module = await import('../appearanceReference.js?rmv=1.99.17');
+            module = await import('../appearanceReference.js?rmv=1.99.18');
         }
         catch {
             const error = new Error(__rmT("IS67c4vVThP1Ly.hIHwohgJTlK4AnIsOwptpMBsmkfV43khz3.ytHEzTNaGYuyMbYxZPOYn6ZdtH0StbyfW9hLGu"));

@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const copy = value => JSON.parse(JSON.stringify(value));
 const str = max => value => typeof value === 'string' && value.length <= max && !value.includes('\0');

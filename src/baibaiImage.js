@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.99.17';
-import { getSettings } from './settings.js?rmv=1.99.17';
-import { getContext } from './independentApi/runtime.js?rmv=1.99.17';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.99.17';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.99.17';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=1.99.18';
+import { getSettings } from './settings.js?rmv=1.99.18';
+import { getContext } from './independentApi/runtime.js?rmv=1.99.18';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=1.99.18';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.99.18';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 function imageApi() {
     const api = globalThis.STBaiBaiImage;

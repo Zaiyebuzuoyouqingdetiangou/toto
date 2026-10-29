@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
 const setting = (id, name, description, target, page = '') => ({ id, name, description, target, page });
 const mirror = (id, name, description, path) => ({ id, name, description, mirror: path });
 export const QUICK_START_GROUPS = [

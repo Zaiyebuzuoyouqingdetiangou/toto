@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.17";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.18";
 function getSettings() {
     try {
         return globalThis.SillyTavern?.getContext?.()?.extensionSettings?.rabbit_mirror_theater || {};
