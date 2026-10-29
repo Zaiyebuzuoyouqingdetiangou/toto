@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.11";
-import { getContext, RUNTIME_VERSION } from './runtime.js?rmv=1.99.11';
-import { chatKey, legacyChatKey, swipeId, messageSourceFingerprint, legacyMessageSourceFingerprints } from './connection.js?rmv=1.99.11';
-import { readStore, chatPersistedOwnerEntries, chatMovedOwners, persistedOwnerForMessage } from './persistence.js?rmv=1.99.11';
-import { loadFaceSwipeArchiveRows } from '../swipeVersions.js?rmv=1.99.11';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.12";
+import { getContext, RUNTIME_VERSION } from './runtime.js?rmv=1.99.12';
+import { chatKey, legacyChatKey, swipeId, messageSourceFingerprint, legacyMessageSourceFingerprints } from './connection.js?rmv=1.99.12';
+import { readStore, chatPersistedOwnerEntries, chatMovedOwners, persistedOwnerForMessage } from './persistence.js?rmv=1.99.12';
+import { loadFaceSwipeArchiveRows } from '../swipeVersions.js?rmv=1.99.12';
 const pad = (value, width) => String(value ?? '').padEnd(width);
 function describe(record) {
     if (!record || typeof record !== 'object')

@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.11";
-import { recentDiversityRecords } from './compositionFingerprint.js?rmv=1.99.11';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.12";
+import { recentDiversityRecords } from './compositionFingerprint.js?rmv=1.99.12';
 export const INTERACTION_FAMILY_LABELS = Object.freeze({
     tabbed_radio_family: __rmT("MlvxSsOT12y235kF8nBbY3wEzh_"),
     multi_control_panel_family: __rmT("bnncb5L27IEe6hvE_3Y"),

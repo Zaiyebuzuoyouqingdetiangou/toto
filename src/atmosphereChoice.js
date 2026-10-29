@@ -1,6 +1,6 @@
-import { stripAtmosphereThinkMarkup } from './atmosphereMarkup.js?rmv=1.99.11';
-import { generationPaletteFields } from './paletteRecipes.js?rmv=1.99.11';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.99.11';
+import { stripAtmosphereThinkMarkup } from './atmosphereMarkup.js?rmv=1.99.12';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=1.99.12';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=1.99.12';
 const ATMOSPHERE_REASON_LIMIT = 300;
 export function parseAtmosphereTicketIndex(html, menuLength) {
     const count = Number(menuLength);
