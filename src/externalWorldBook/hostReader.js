@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.12";
-import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.99.12';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.99.12';
-import { normalizeHostWorldBook } from './normalize.js?rmv=1.99.12';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.13";
+import { detectWorldBookCapabilities, getHostRequestHeaders, requireHostHeaders } from './capabilities.js?rmv=1.99.13';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.99.13';
+import { normalizeHostWorldBook } from './normalize.js?rmv=1.99.13';
 const DEFAULT_TIMEOUT_MS = 10000;
 async function postJson(path, body, options = {}) {
     const fetchFn = options.fetchFn || globalThis.fetch;

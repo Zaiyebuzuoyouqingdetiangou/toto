@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.12";
-import { INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT } from '../data/independentBehaviorPatch.js?rmv=1.99.12';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.13";
+import { INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT } from '../data/independentBehaviorPatch.js?rmv=1.99.13';
 export const BEHAVIOR_RULE_MAX_CHARS = 20000;
 export const DEFAULT_BEHAVIOR_RULE_TEXT = String(INDEPENDENT_BEHAVIOR_EDITOR_DEFAULT || '').trim();
 export function normalizeBehaviorRuleMode(value) {

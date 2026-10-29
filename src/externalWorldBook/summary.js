@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.12";
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.13";
 const SUMMARY_MAX_CHARS = 240;
 const LEGACY_SUMMARY_SCAN_CHARS = 12000;
 function plainBody(value) {

@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.12";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.13";
 export const AUTOMATIC_REROLL_DEFAULT = 2;
 export const AUTOMATIC_REROLL_MIN = 0;
 export const AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS = 90;

@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.12";
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.99.12';
-import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.99.12';
-import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.99.12';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.13";
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=1.99.13';
+import { COLOR_FAMILIES } from '../data/structured/generationPaletteIndex.js?rmv=1.99.13';
+import { COLOR_SCALES } from '../data/structured/generationColorScales.js?rmv=1.99.13';
 const BY_ID = new Map(COLOR_FAMILIES.map(item => [item.id, item]));
 function luminance(hex) {
     const [r, g, b] = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255)

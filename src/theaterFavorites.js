@@ -1,9 +1,9 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.12";
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.99.12';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.99.12';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.99.12';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.12';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.99.12';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.13";
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.99.13';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.99.13';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.99.13';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.13';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.99.13';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -518,7 +518,7 @@ async function favoriteImagesFor(captured) {
     if (!Number.isInteger(captured?.mesid) || !Number.isInteger(captured?.swipe))
         return null;
     try {
-        return (await import('./imageStore.js?rmv=1.99.12')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || '');
+        return (await import('./imageStore.js?rmv=1.99.13')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || '');
     }
     catch {
         return null;
@@ -661,7 +661,7 @@ export async function removeDuplicateTheaterFavorites() {
     const remap = await findDuplicateTheaterFavorites();
     if (!remap.size)
         return 0;
-    const atlases = await import('./favoriteAtlases.js?rmv=1.99.12');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.99.13');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};

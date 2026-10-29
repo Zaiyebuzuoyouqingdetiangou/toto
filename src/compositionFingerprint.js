@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.12";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.13";
 export const VISUAL_SKELETON_MAX_CHARS = 640;
 export const COMPOSITION_LABELS = Object.freeze({
     scene_above_text: __rmT("8F5nRyaTdRcDfxAuANYmoCyc0egcyAjAAZKee9LjeEdymSEk"),

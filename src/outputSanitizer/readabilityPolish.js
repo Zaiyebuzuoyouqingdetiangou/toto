@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.12";
+import { rmR as __rmR } from "../textTable.js?rmv=1.99.13";
 const POLISH_ATTR = 'data-rm-polish';
 const FONT_ATTR = 'data-rm-polish-font';
 const LINE_ATTR = 'data-rm-polish-line';
