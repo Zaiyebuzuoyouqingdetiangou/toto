@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.19";
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.99.19';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.99.19';
-import { listExternalLibraries } from './store.js?rmv=1.99.19';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.20";
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.99.20';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.99.20';
+import { listExternalLibraries } from './store.js?rmv=1.99.20';
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;
 const STATUS_KEY = 'rabbit_mirror_mother_library_server_backup:v1';
@@ -140,6 +140,12 @@ export async function saveMotherLibraryServerBackup({ deletedLibraryIds = [], fe
         throw failure;
     }
     const localIds = new Set(local.libraries.map(item => item.library.libraryId));
+    try {
+        const latest = await readMotherLibraryServerBackup({ fetchImpl });
+        if (latest && Number(latest.exportedAt) !== Number(server?.exportedAt || 0))
+            server = latest;
+    }
+    catch { }
     const kept = (server?.libraries || []).filter(item => !localIds.has(item.library.libraryId) && !deleted.has(item.library.libraryId));
     const merged = validateExternalLibraryBackup({ format: EXTERNAL_BACKUP_FORMAT, version: EXTERNAL_BACKUP_VERSION, exportedAt: Date.now(),
         libraries: [...local.libraries, ...kept] });

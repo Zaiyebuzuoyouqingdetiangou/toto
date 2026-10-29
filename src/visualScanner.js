@@ -1,21 +1,21 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.19";
-import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.99.19';
-import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.99.19';
-import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.99.19';
-import { visualSceneryEnabled } from './presentationMode.js?rmv=1.99.19';
-import { presentationModeFields } from './presentationMode.js?rmv=1.99.19';
-import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget, updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.99.19';
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.99.19';
-import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.99.19';
-import { getSettings } from './settings.js?rmv=1.99.19';
-import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.99.19';
-import { commitRabbitMirrorFollowBatch, getRabbitMirrorFollowSingleOwner, commitRabbitMirrorFollowSingle, captureRabbitMirrorGenerationSnapshots, getRabbitMirrorGenerationSnapshot, getRabbitMirrorFollowBatchSources, getRabbitMirrorFollowBatchTargetIndexes, inspectRabbitMirrorGenerationSource, releaseRabbitMirrorFollowBatch, releaseRabbitMirrorFollowBatchAtMessage, } from './generationGuard.js?rmv=1.99.19';
-import { clearSanitizedRabbitMirrorFaceProof, getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.99.19';
-import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.99.19';
-import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.99.19';
-import { saveFollowPartialResult, readFollowPartialResult } from './followPartialResults.js?rmv=1.99.19';
-import { markFreshDrawSlot, isFreshDrawSlot } from './freshDrawSlots.js?rmv=1.99.19';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.19';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.20";
+import { clamp, luminanceFromRgb, classifyPaletteSamples } from './paletteObservation.js?rmv=1.99.20';
+import { activeRoleColorHtml, bindRolePaletteCode } from './roleColorVariants.js?rmv=1.99.20';
+import { detectCompositionFingerprint, VISUAL_SKELETON_MAX_CHARS } from './compositionFingerprint.js?rmv=1.99.20';
+import { visualSceneryEnabled } from './presentationMode.js?rmv=1.99.20';
+import { presentationModeFields } from './presentationMode.js?rmv=1.99.20';
+import { getCurrentChatKey, commitFollowVisualHistory, bindVisualHistoryTarget, updateLatestVisualSignature, visualHistoryTarget } from './storage.js?rmv=1.99.20';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.99.20';
+import { consumeInjectedFeedbackForSuccessfulRabbitMirror } from './feedbackCat.js?rmv=1.99.20';
+import { getSettings } from './settings.js?rmv=1.99.20';
+import { applyRabbitMirrorBannedWordsToDom } from './bannedWords.js?rmv=1.99.20';
+import { commitRabbitMirrorFollowBatch, getRabbitMirrorFollowSingleOwner, commitRabbitMirrorFollowSingle, captureRabbitMirrorGenerationSnapshots, getRabbitMirrorGenerationSnapshot, getRabbitMirrorFollowBatchSources, getRabbitMirrorFollowBatchTargetIndexes, inspectRabbitMirrorGenerationSource, releaseRabbitMirrorFollowBatch, releaseRabbitMirrorFollowBatchAtMessage, } from './generationGuard.js?rmv=1.99.20';
+import { clearSanitizedRabbitMirrorFaceProof, getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.99.20';
+import { detectMissingVisualProgram } from './presentationQuality.js?rmv=1.99.20';
+import { createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, parseMultifaceOutput } from './multifaceProtocol.js?rmv=1.99.20';
+import { saveFollowPartialResult, readFollowPartialResult } from './followPartialResults.js?rmv=1.99.20';
+import { markFreshDrawSlot, isFreshDrawSlot } from './freshDrawSlots.js?rmv=1.99.20';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.20';
 export const FOLLOW_MULTIFACE_COMMITTED_EVENT = 'rabbit-mirror:follow-multiface-committed';
 export const FOLLOW_MULTIFACE_REJECTED_EVENT = 'rabbit-mirror:follow-multiface-rejected';
 export const FOLLOW_GENERATION_SETTLED_EVENT = 'rabbit-mirror:follow-generation-settled';
@@ -1876,7 +1876,7 @@ function templateSingleFollowRoot(template) {
 }
 function loadFollowBatchSanitizer() {
     if (!followBatchSanitizerModulePromise) {
-        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.99.19').catch(error => {
+        followBatchSanitizerModulePromise = import('./outputSanitizer.js?rmv=1.99.20').catch(error => {
             followBatchSanitizerModulePromise = null;
             console.debug('[RabbitMirror] follow multiface sanitizer unavailable:', error);
             return null;
@@ -2118,7 +2118,7 @@ function authorizeFreshFollowDraws(owner, rendered) {
     else
         for (const item of accepted)
             markFreshDrawSlot(chatKey, messageIndex, swipeId, item.proof.faceIndex, { message, outputIdentity, getOutputIdentity });
-    void import('./builtinImage.js?rmv=1.99.19').then(module => {
+    void import('./builtinImage.js?rmv=1.99.20').then(module => {
         for (const item of accepted) {
             const index = chat.indexOf(message), face = item.proof?.faceIndex ?? null;
             if (item.root?.isConnected && index >= 0 && isFreshDrawSlot(chatKey, index, swipeId, face))
@@ -2149,7 +2149,7 @@ async function scanFollowBatches(chat, lifecycle = visualScannerLifecycle) {
     const terminalMessageIndexes = getRabbitMirrorFollowBatchTargetIndexes(chat).filter(index => terminalFollowMessageIndexes.has(terminalFollowOwnerKey(chat, index)));
     const sets = getRabbitMirrorFollowBatchSources(chat, { terminalMessageIndexes });
     const sanitizer = sets.length ? await loadFollowBatchSanitizer() : null;
-    const imageModule = sets.length ? await import('./builtinImage.js?rmv=1.99.19').catch(() => null) : null;
+    const imageModule = sets.length ? await import('./builtinImage.js?rmv=1.99.20').catch(() => null) : null;
     if (lifecycle !== visualScannerLifecycle)
         return committed;
     for (const set of sets) {
@@ -2305,7 +2305,7 @@ function followDrawContentIdentity(details, adoptDrawNotes) {
 }
 async function singleFollowDrawContentMatches(rendered, inspection) {
     try {
-        const [sanitizer, imageModule] = await Promise.all([loadFollowBatchSanitizer(), import('./builtinImage.js?rmv=1.99.19')]);
+        const [sanitizer, imageModule] = await Promise.all([loadFollowBatchSanitizer(), import('./builtinImage.js?rmv=1.99.20')]);
         if (!sanitizer?.sanitizeRabbitMirrorUntrustedTemplate || !imageModule?.adoptDrawNotes)
             return false;
         const template = document.createElement('template');

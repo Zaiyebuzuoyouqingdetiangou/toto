@@ -1,8 +1,8 @@
-import { diagnosticIsInternalUiNode } from './diagnostics.js?rmv=1.99.19';
-import { ensureNestedDetailsPopupRescueStyle } from './fallbackRescue.js?rmv=1.99.19';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.99.19';
-import { hashInteractionSignature } from './runtime.js?rmv=1.99.19';
-import { NESTED_DETAILS_POPUP_RESCUE_ATTR, NESTED_DETAILS_POPUP_CONTENT_ATTR, NESTED_DETAILS_POPUP_HOST_ATTR, NESTED_DETAILS_POPUP_COUNT_ATTR, } from './checkedStateRescue.js?rmv=1.99.19';
+import { diagnosticIsInternalUiNode } from './diagnostics.js?rmv=1.99.20';
+import { ensureNestedDetailsPopupRescueStyle } from './fallbackRescue.js?rmv=1.99.20';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=1.99.20';
+import { hashInteractionSignature } from './runtime.js?rmv=1.99.20';
+import { NESTED_DETAILS_POPUP_RESCUE_ATTR, NESTED_DETAILS_POPUP_CONTENT_ATTR, NESTED_DETAILS_POPUP_HOST_ATTR, NESTED_DETAILS_POPUP_COUNT_ATTR, } from './checkedStateRescue.js?rmv=1.99.20';
 const SAFE_VALUES = Object.freeze({
     'height': ['auto'], 'max-height': ['none'], 'min-width': ['0', '0px'],
     'width': ['100%'], 'max-width': ['100%'], 'box-sizing': ['border-box'],

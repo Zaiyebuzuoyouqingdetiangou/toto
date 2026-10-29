@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.19";
-import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=1.99.19';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.20";
+import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=1.99.20';
 export const FAVORITE_BACKUP_INDEX_NAME = 'rabbitmirror-favorites.json';
 const FORMAT = 'rabbitmirror-favorites';
 const VERSION = 1;
@@ -155,8 +155,8 @@ async function removeServerFile(name, { fetchImpl = globalThis.fetch, headerProv
     }
 }
 async function localState() {
-    const favorites = await import('./theaterFavorites.js?rmv=1.99.19');
-    const atlases = await import('./favoriteAtlases.js?rmv=1.99.19');
+    const favorites = await import('./theaterFavorites.js?rmv=1.99.20');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.99.20');
     return { rows: await favorites.listTheaterFavorites(), atlases: await atlases.listFavoriteAtlases().catch(() => null) };
 }
 export function noteFavoriteBackupDeletes({ favorites = [], atlases = [] } = {}) {
@@ -211,6 +211,17 @@ export async function saveFavoriteServerBackup({ fetchImpl, headerProvider, loca
             sinceProgress = 0;
         }
     }
+    try {
+        const latest = await readFavoriteServerIndex({ fetchImpl });
+        if (latest && Number(latest.savedAt) !== Number(server?.savedAt || 0)) {
+            for (const item of latest.items)
+                if (!serverItems.has(item.id))
+                    serverItems.set(item.id, item);
+            const known = new Set((server?.atlases || []).map(atlas => atlas.id));
+            server = { ...(server || {}), atlases: [...(server?.atlases || []), ...latest.atlases.filter(atlas => !known.has(atlas.id))] };
+        }
+    }
+    catch { }
     const kept = [...serverItems.values()].filter(item => !localIds.has(item.id) && !goneFavorites.has(item.id));
     const removed = [...serverItems.values()].filter(item => !localIds.has(item.id) && goneFavorites.has(item.id));
     const localAtlases = Array.isArray(atlases) ? atlases : null;
@@ -281,13 +292,13 @@ export async function restoreFavoritesFromServerBackup({ fetchImpl } = {}) {
             failed += 1;
         }
     }
-    const favorites = await import('./theaterFavorites.js?rmv=1.99.19');
+    const favorites = await import('./theaterFavorites.js?rmv=1.99.20');
     const restored = records.length ? await favorites.importTheaterFavoriteRecords(records) : 0;
     let atlasCount = 0;
     if (!Array.isArray(atlases))
         return { restored, atlases: 0, failed, empty: false };
     const haveAtlases = new Set(atlases.map(atlas => String(atlas.id)));
-    const atlasModule = await import('./favoriteAtlases.js?rmv=1.99.19');
+    const atlasModule = await import('./favoriteAtlases.js?rmv=1.99.20');
     const usable = atlas => typeof atlas?.name === 'string' && Array.isArray(atlas.slots)
         && atlas.slots.every(slot => slot && typeof slot.id === 'string' && typeof slot.label === 'string' && Array.isArray(slot.keywords));
     for (const atlas of index.atlases) {
