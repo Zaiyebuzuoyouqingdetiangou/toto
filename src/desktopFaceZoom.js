@@ -1,22 +1,21 @@
-import { getSettings } from './settings.js?rmv=1.100.0';
+import { getSettings } from './settings.js?rmv=2.0.0';
+import { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, zoomInlineOriginals, restoreZoomInlineStyle, faceZoomEvents, evaluateMediaForVirtualPhone } from './faceZoomMetrics.js?rmv=2.0.0';
+export { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, evaluateMediaForVirtualPhone };
 export const FACE_DESIGN_WIDTH = 400;
 export const FACE_MAX_VISUAL_WIDTH = 640;
 export const FACE_NARROW_FALLBACK_WIDTH = 460;
-export const VIRTUAL_PHONE_WIDTH = 440;
-export const VIRTUAL_PHONE_HEIGHT = 900;
 const WIDE_QUERY = '(min-width: 900px)';
 const MODE_ATTR = 'data-rm-face-zoom';
 const ZOOM_VAR = '--rm-face-zoom';
-export const DESKTOP_ZOOM_FACE_SELECTOR = [
-    '#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder)',
-    '#chat toto[data-rabbit-mirror="true"] > details',
-].join(', ');
+const VW_VAR = '--rm-face-vw';
+const VH_VAR = '--rm-face-vh';
+const LANE_HYSTERESIS_PX = 24;
 let installed = null;
-let syncFrame = 0;
-let pendingFaces = new Set();
-let facesFrame = 0;
+let syncHandle = null;
 let supportCache = null;
+let lastLane = 0;
 const originalMedia = new WeakMap();
+const originalDeclarations = new WeakMap();
 const virtualizedSheets = new WeakMap();
 export function desktopFaceZoomEnabled(settings = getSettings()) {
     return settings?.desktopFaceZoom !== false;
@@ -87,19 +86,22 @@ function laneWidth(doc) {
     const chat = doc.getElementById('chat');
     if (!chat || !view)
         return 0;
+    let narrowest = 0;
     const faces = chat.querySelectorAll(DESKTOP_ZOOM_FACE_SELECTOR);
     for (let index = faces.length - 1; index >= 0 && index >= faces.length - 6; index -= 1) {
         const width = faceLaneWidth(faces[index], view);
-        if (width > 0)
-            return width;
+        if (width > 0 && (!narrowest || width < narrowest))
+            narrowest = width;
     }
+    if (narrowest)
+        return narrowest;
     const texts = chat.querySelectorAll('.mes .mes_text');
     for (let index = texts.length - 1; index >= 0 && index >= texts.length - 6; index -= 1) {
         const width = contentWidth(texts[index], view);
-        if (width > 0)
-            return width;
+        if (width > 0 && (!narrowest || width < narrowest))
+            narrowest = width;
     }
-    return 0;
+    return narrowest;
 }
 export function desktopFaceZoomFactor(lane) {
     const width = Math.min(Number(lane) || 0, FACE_MAX_VISUAL_WIDTH);
@@ -108,152 +110,86 @@ export function desktopFaceZoomFactor(lane) {
         return 1;
     return Math.round(factor * 1000) / 1000;
 }
-function splitTopLevel(text, separator) {
-    const parts = [];
-    let depth = 0, start = 0;
-    const lower = text.toLowerCase();
-    for (let index = 0; index < text.length; index += 1) {
-        const char = text[index];
-        if (char === '(')
-            depth += 1;
-        else if (char === ')')
-            depth = Math.max(0, depth - 1);
-        else if (depth === 0 && lower.startsWith(separator, index)) {
-            parts.push(text.slice(start, index));
-            start = index + separator.length;
-            index = start - 1;
+const VIEWPORT_UNIT = /(-?(?:\d+\.?\d*|\.\d+))(s|l|d)?(vw|vh|vi|vb|vmin|vmax)\b/gi;
+function replaceViewportUnits(value) {
+    return String(value).replace(VIEWPORT_UNIT, (match, number, prefix, unit) => {
+        const kind = unit.toLowerCase();
+        const variable = kind === 'vw' || kind === 'vi' || kind === 'vmin' ? VW_VAR : VH_VAR;
+        return `calc(${number} * var(${variable}, 1${(prefix || '') + unit}))`;
+    });
+}
+function virtualizeDeclarations(rule, on) {
+    const style = rule?.style;
+    if (!style || typeof style.getPropertyValue !== 'function')
+        return;
+    if (on) {
+        if (originalDeclarations.has(rule))
+            return;
+        const changed = [];
+        for (let index = 0; index < style.length; index += 1) {
+            const name = style.item(index);
+            const value = style.getPropertyValue(name);
+            VIEWPORT_UNIT.lastIndex = 0;
+            if (!value || !VIEWPORT_UNIT.test(value))
+                continue;
+            changed.push([name, value, style.getPropertyPriority(name)]);
+        }
+        if (!changed.length)
+            return;
+        originalDeclarations.set(rule, changed);
+        for (const [name, value, priority] of changed) {
+            try {
+                style.setProperty(name, replaceViewportUnits(value), priority);
+            }
+            catch { }
         }
     }
-    parts.push(text.slice(start));
-    return parts;
+    else if (originalDeclarations.has(rule)) {
+        for (const [name, value, priority] of originalDeclarations.get(rule)) {
+            try {
+                style.setProperty(name, value, priority);
+            }
+            catch { }
+        }
+        originalDeclarations.delete(rule);
+    }
 }
-function lengthPx(value) {
-    const match = String(value || '').trim().match(/^(-?\d*\.?\d+)\s*(px|em|rem)?$/i);
-    if (!match)
-        return null;
-    const number = Number(match[1]);
-    if (!Number.isFinite(number))
-        return null;
-    const unit = String(match[2] || 'px').toLowerCase();
-    if (!match[2] && number !== 0)
-        return null;
-    return unit === 'px' ? number : number * 16;
-}
-const WIDTH_FEATURE = /^(?:(min|max)-)?(?:device-)?(width|aspect-ratio)$/;
-function ratioValue(value) {
-    const match = String(value || '').trim().match(/^(\d*\.?\d+)\s*(?:\/\s*(\d*\.?\d+))?$/);
-    if (!match)
-        return null;
-    const ratio = Number(match[1]) / (match[2] ? Number(match[2]) : 1);
-    return Number.isFinite(ratio) ? ratio : null;
-}
-function compare(actual, op, expected) {
-    if (expected === null || !Number.isFinite(actual))
-        return null;
-    if (op === 'min')
-        return actual >= expected;
-    if (op === 'max')
-        return actual <= expected;
-    if (op === '=')
-        return Math.abs(actual - expected) < 0.01;
-    if (op === '<')
-        return actual < expected;
-    if (op === '<=')
-        return actual <= expected;
-    if (op === '>')
-        return actual > expected;
-    if (op === '>=')
-        return actual >= expected;
-    return null;
-}
-const FLIP = { '<': '>', '<=': '>=', '>': '<', '>=': '<=', '=': '=' };
-function evaluateCondition(condition, virtual, view) {
-    const inner = condition.trim().replace(/^\(\s*|\s*\)$/g, '').trim();
-    if (!inner || /\(|\bor\b|\bnot\b/i.test(inner))
-        return null;
-    const colon = inner.indexOf(':');
-    if (colon > 0 && !/[<>=]/.test(inner)) {
-        const name = inner.slice(0, colon).trim().toLowerCase();
-        const value = inner.slice(colon + 1).trim();
-        if (name === 'orientation')
-            return value.toLowerCase() === (virtual.height >= virtual.width ? 'portrait' : 'landscape');
-        const match = name.match(WIDTH_FEATURE);
-        if (match) {
-            const op = match[1] || '=';
-            if (match[2] === 'width')
-                return compare(virtual.width, op, lengthPx(value));
-            return compare(virtual.width / Math.max(1, virtual.height), op, ratioValue(value));
+const INLINE_VIEWPORT_SELECTOR = '[style*="vw" i], [style*="vh" i], [style*="vmin" i], [style*="vmax" i]';
+function virtualizeInline(face, on) {
+    const nodes = [...(face?.querySelectorAll?.(INLINE_VIEWPORT_SELECTOR) || [])];
+    if (face?.matches?.(INLINE_VIEWPORT_SELECTOR))
+        nodes.push(face);
+    for (const node of nodes) {
+        const style = node.style;
+        if (!style)
+            continue;
+        if (on) {
+            if (zoomInlineOriginals.has(node))
+                continue;
+            const changed = [];
+            for (let index = 0; index < style.length; index += 1) {
+                const name = style.item(index);
+                const value = style.getPropertyValue(name);
+                VIEWPORT_UNIT.lastIndex = 0;
+                if (value && VIEWPORT_UNIT.test(value))
+                    changed.push([name, value, style.getPropertyPriority(name)]);
+            }
+            if (!changed.length)
+                continue;
+            const text = node.getAttribute('style');
+            for (const [name, value, priority] of changed) {
+                try {
+                    style.setProperty(name, replaceViewportUnits(value), priority);
+                }
+                catch { }
+            }
+            zoomInlineOriginals.set(node, { text, zoomed: node.getAttribute('style'), props: changed });
+        }
+        else if (zoomInlineOriginals.has(node)) {
+            restoreZoomInlineStyle(node, node, zoomInlineOriginals.get(node));
+            zoomInlineOriginals.delete(node);
         }
     }
-    else if (/[<>=]/.test(inner)) {
-        const tokens = inner.split(/\s*(<=|>=|<|>|=)\s*/).map(token => token.trim()).filter(token => token !== '');
-        const nameAt = tokens.findIndex(token => /^(?:device-)?width$/i.test(token));
-        if (nameAt >= 0 && (tokens.length === 3 || tokens.length === 5)) {
-            const checks = [];
-            if (nameAt + 2 < tokens.length)
-                checks.push(compare(virtual.width, tokens[nameAt + 1], lengthPx(tokens[nameAt + 2])));
-            if (nameAt - 2 >= 0)
-                checks.push(compare(virtual.width, FLIP[tokens[nameAt - 1]], lengthPx(tokens[nameAt - 2])));
-            if (!checks.length || checks.some(result => result === null))
-                return null;
-            return checks.every(Boolean);
-        }
-        if (/width|aspect-ratio|orientation/i.test(inner))
-            return null;
-    }
-    if (/width|aspect-ratio|orientation/i.test(inner))
-        return null;
-    try {
-        return !!view.matchMedia(`(${inner})`).matches;
-    }
-    catch {
-        return null;
-    }
-}
-function evaluateQuery(query, virtual, view) {
-    let text = query.trim();
-    let negate = false;
-    if (/^not\s/i.test(text)) {
-        negate = true;
-        text = text.replace(/^not\s+/i, '');
-    }
-    else
-        text = text.replace(/^only\s+/i, '');
-    const parts = splitTopLevel(text, ' and ').map(part => part.trim()).filter(Boolean);
-    if (!parts.length)
-        return null;
-    let result = true;
-    for (const part of parts) {
-        if (part.startsWith('(')) {
-            const value = evaluateCondition(part, virtual, view);
-            if (value === null)
-                return null;
-            result = result && value;
-        }
-        else if (/^(?:all|screen)$/i.test(part)) {
-        }
-        else if (/^[a-z-]+$/i.test(part)) {
-            result = false;
-        }
-        else
-            return null;
-    }
-    return negate ? !result : result;
-}
-export function evaluateMediaForVirtualPhone(mediaText, view = globalThis.window, virtual = null) {
-    const text = String(mediaText || '').trim();
-    if (!text || !/width|aspect-ratio|orientation/i.test(text))
-        return null;
-    const size = virtual || { width: VIRTUAL_PHONE_WIDTH, height: VIRTUAL_PHONE_HEIGHT };
-    let any = false;
-    for (const query of splitTopLevel(text, ',')) {
-        const value = evaluateQuery(query, size, view);
-        if (value === null)
-            return null;
-        if (value)
-            any = true;
-    }
-    return any;
 }
 function walkMediaRules(owner, on, view) {
     let rules = null;
@@ -288,6 +224,7 @@ function walkMediaRules(owner, on, view) {
                 originalMedia.delete(rule);
             }
         }
+        virtualizeDeclarations(rule, on);
         if (rule?.cssRules)
             walkMediaRules(rule, on, view);
     }
@@ -302,6 +239,7 @@ function faceStyleElements(face) {
     return styles;
 }
 export function virtualizeFaceMedia(face, on, view = face?.ownerDocument?.defaultView) {
+    virtualizeInline(face, on);
     for (const style of faceStyleElements(face)) {
         let sheet = null;
         try {
@@ -328,6 +266,22 @@ function clearCompactShells(doc) {
         delete host.dataset.rmIndependentExternalCompactShell;
     }
 }
+function clearZoomVars(root) {
+    for (const name of [ZOOM_VAR, VW_VAR, VH_VAR])
+        root.style.removeProperty(name);
+    lastLane = 0;
+}
+function writeViewportVars(doc, factor) {
+    const root = doc.documentElement;
+    const view = doc.defaultView;
+    const vw = `${VIRTUAL_PHONE_WIDTH / 100}px`;
+    const height = Math.max(1, Number(view?.innerHeight) || VIRTUAL_PHONE_HEIGHT);
+    const vh = `${Math.round(height / Math.max(1, factor) / 100 * 1000) / 1000}px`;
+    if (root.style.getPropertyValue(VW_VAR) !== vw)
+        root.style.setProperty(VW_VAR, vw);
+    if (root.style.getPropertyValue(VH_VAR) !== vh)
+        root.style.setProperty(VH_VAR, vh);
+}
 export function syncDesktopFaceZoom(doc = installed?.doc || globalThis.document) {
     const root = doc?.documentElement;
     if (!root)
@@ -335,13 +289,18 @@ export function syncDesktopFaceZoom(doc = installed?.doc || globalThis.document)
     const mode = desktopFaceZoomMode(doc);
     const before = root.getAttribute(MODE_ATTR) || '';
     if (mode === 'zoom') {
-        const factor = desktopFaceZoomFactor(laneWidth(doc));
-        const value = String(factor);
-        if (root.style.getPropertyValue(ZOOM_VAR) !== value)
-            root.style.setProperty(ZOOM_VAR, value);
+        clearCompactShells(doc);
         if (before !== 'zoom')
             root.setAttribute(MODE_ATTR, 'zoom');
-        clearCompactShells(doc);
+        const lane = laneWidth(doc);
+        const current = root.style.getPropertyValue(ZOOM_VAR);
+        if (lane > 0 && (!current || Math.abs(lane - lastLane) >= LANE_HYSTERESIS_PX)) {
+            const value = String(desktopFaceZoomFactor(lane));
+            if (current !== value)
+                root.style.setProperty(ZOOM_VAR, value);
+            lastLane = lane;
+        }
+        writeViewportVars(doc, Number(root.style.getPropertyValue(ZOOM_VAR)) || 1);
         for (const face of doc.querySelectorAll(DESKTOP_ZOOM_FACE_SELECTOR))
             virtualizeFaceMedia(face, true);
     }
@@ -350,45 +309,49 @@ export function syncDesktopFaceZoom(doc = installed?.doc || globalThis.document)
             root.setAttribute(MODE_ATTR, mode);
         else
             root.removeAttribute(MODE_ATTR);
-        root.style.removeProperty(ZOOM_VAR);
+        clearZoomVars(root);
         if (before === 'zoom')
             for (const face of doc.querySelectorAll(DESKTOP_ZOOM_FACE_SELECTOR))
                 virtualizeFaceMedia(face, false);
     }
     observeChat(doc, mode === 'zoom');
+    if (before !== (mode || '')) {
+        try {
+            faceZoomEvents?.dispatchEvent(new Event('change'));
+        }
+        catch { }
+    }
     return mode;
+}
+function cancelHandle(view, handle) {
+    if (!handle)
+        return;
+    if (handle.frame) {
+        try {
+            view?.cancelAnimationFrame?.(handle.id);
+        }
+        catch { }
+    }
+    else
+        clearTimeout(handle.id);
 }
 export function scheduleDesktopFaceZoomSync() {
     const view = installed?.view || globalThis.window;
-    if (syncFrame)
+    if (syncHandle)
         return;
-    const run = () => { syncFrame = 0; try {
+    const run = () => { syncHandle = null; try {
         syncDesktopFaceZoom();
     }
     catch (error) {
         console.debug('[RabbitMirror] desktop zoom sync failed', error);
     } };
-    syncFrame = typeof view?.requestAnimationFrame === 'function' ? view.requestAnimationFrame(run) : setTimeout(run, 16);
+    syncHandle = typeof view?.requestAnimationFrame === 'function'
+        ? { id: view.requestAnimationFrame(run), frame: true }
+        : { id: setTimeout(run, 16), frame: false };
 }
-function flushPendingFaces() {
-    facesFrame = 0;
-    const doc = installed?.doc || globalThis.document;
-    const faces = [...pendingFaces];
-    pendingFaces = new Set();
-    if (!desktopFaceZoomActive(doc))
-        return;
-    for (const face of faces)
-        if (face?.isConnected && face.matches?.(DESKTOP_ZOOM_FACE_SELECTOR))
-            virtualizeFaceMedia(face, true);
-}
-function queueFace(face) {
-    if (!face)
-        return;
-    pendingFaces.add(face);
-    if (facesFrame)
-        return;
-    const view = installed?.view || globalThis.window;
-    facesFrame = typeof view?.requestAnimationFrame === 'function' ? view.requestAnimationFrame(flushPendingFaces) : setTimeout(flushPendingFaces, 16);
+function virtualizeNow(face) {
+    if (face?.isConnected && face.matches?.(DESKTOP_ZOOM_FACE_SELECTOR))
+        virtualizeFaceMedia(face, true);
 }
 function faceOf(node) {
     const element = node?.nodeType === 1 ? node : node?.parentElement;
@@ -430,31 +393,45 @@ function observeChat(doc, on) {
         let newFace = false;
         for (const record of records) {
             if (record.target?.nodeName === 'STYLE') {
-                queueFace(faceOf(record.target));
+                virtualizeNow(faceOf(record.target));
                 continue;
             }
             for (const node of record.addedNodes || []) {
                 if (node.nodeType !== 1)
                     continue;
                 if (node.nodeName === 'STYLE')
-                    queueFace(faceOf(node));
+                    virtualizeNow(faceOf(node));
                 else if (node.nodeName === 'DETAILS' || node.querySelector?.('details, style')) {
                     for (const style of node.querySelectorAll?.('style') || [])
-                        queueFace(faceOf(style));
-                    if (node.nodeName === 'DETAILS' || node.querySelector?.('details'))
+                        virtualizeNow(faceOf(style));
+                    if (node.nodeName === 'DETAILS' || node.querySelector?.('details')) {
                         newFace = true;
+                        let faces = [];
+                        try {
+                            faces = node.matches?.(DESKTOP_ZOOM_FACE_SELECTOR) ? [node] : [...node.querySelectorAll(DESKTOP_ZOOM_FACE_SELECTOR)];
+                        }
+                        catch {
+                            faces = [];
+                        }
+                        if (!faces.length)
+                            faces = [faceOf(node)];
+                        for (const face of faces)
+                            virtualizeNow(face);
+                    }
                 }
             }
         }
         if (newFace && !doc.documentElement.style.getPropertyValue(ZOOM_VAR))
             scheduleDesktopFaceZoomSync();
     });
-    installed.mutationObserver.observe(chat, { childList: true, subtree: true });
+    installed.mutationObserver.observe(chat, { childList: true, subtree: true, characterData: false });
     installed.mutationTarget = chat;
 }
 export function noteDesktopZoomFace(root) {
     const doc = root?.ownerDocument;
     if (!doc || !installed || !root.closest?.('#chat'))
+        return;
+    if (!desktopFaceZoomActive(doc))
         return;
     let face = null;
     try {
@@ -463,10 +440,7 @@ export function noteDesktopZoomFace(root) {
     catch {
         face = null;
     }
-    if (!desktopFaceZoomActive(doc))
-        return;
-    if (face)
-        queueFace(face);
+    virtualizeNow(face);
     if (!doc.documentElement.style.getPropertyValue(ZOOM_VAR))
         scheduleDesktopFaceZoomSync();
 }
@@ -521,30 +495,22 @@ export function destroyDesktopFaceZoom() {
     resizeObserver?.disconnect();
     mutationObserver?.disconnect();
     cancelResize?.();
-    if (syncFrame) {
-        try {
-            view.cancelAnimationFrame?.(syncFrame);
-        }
-        catch { }
-        clearTimeout(syncFrame);
-        syncFrame = 0;
-    }
-    if (facesFrame) {
-        try {
-            view.cancelAnimationFrame?.(facesFrame);
-        }
-        catch { }
-        clearTimeout(facesFrame);
-        facesFrame = 0;
-    }
-    pendingFaces = new Set();
+    cancelHandle(view, syncHandle);
+    syncHandle = null;
     installed = null;
     const root = doc.documentElement;
-    if (root.getAttribute(MODE_ATTR) === 'zoom')
+    const before = root.getAttribute(MODE_ATTR) || '';
+    if (before === 'zoom')
         for (const face of doc.querySelectorAll(DESKTOP_ZOOM_FACE_SELECTOR))
             virtualizeFaceMedia(face, false);
     root.removeAttribute(MODE_ATTR);
-    root.style.removeProperty(ZOOM_VAR);
+    clearZoomVars(root);
+    if (before) {
+        try {
+            faceZoomEvents?.dispatchEvent(new Event('change'));
+        }
+        catch { }
+    }
 }
 export function refreshDesktopFaceZoom() {
     if (installed)

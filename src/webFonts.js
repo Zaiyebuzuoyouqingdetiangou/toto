@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.100.0";
-import { getSettings } from './settings.js?rmv=1.100.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.0.0";
+import { getSettings } from './settings.js?rmv=2.0.0';
 export const WEB_FONTS = Object.freeze([
     { family: 'Ma Shan Zheng', note: __rmT("C94JX5jvsgl"), css: ['@fontsource/ma-shan-zheng@5/400.css'] },
     { family: 'Zhi Mang Xing', note: __rmT("kVrS3f"), css: ['@fontsource/zhi-mang-xing@5/400.css'] },

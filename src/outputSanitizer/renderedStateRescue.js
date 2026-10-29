@@ -1,12 +1,13 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.100.0";
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.100.0';
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.100.0';
-import { CHANGE_PSEUDO_RESCUE_ATTR, PSEUDO_ACTIVE_ATTR, RENDERED_INPUT_ROUTE_ATTR, REVERSIBLE_TARGET_CLOSE_ATTR, restoreInteractionInlineOverrides, reversibleTargetCloseStates, } from './checkedStateRescue.js?rmv=1.100.0';
-import { RAW_SELF_MUTATION_RESCUE_ATTR, applyPseudoStyleAssignments, capturePseudoStyleState, captureStableTextState, chooseMatchingRawRabbitMirrorRoot, decodeSafeInlineString, filterRabbitMirrorRuntimeText, getCapturedStyleValue, getElementChildIndexPath, getRawAssistantMessageForRenderedRoot, isRabbitMirrorRuntimeTextTarget, normalizeInteractionMatchText, preparePseudoTrigger, resolveElementChildIndexPath, restorePseudoStyleState, shouldIgnorePseudoToggleEvent, } from './scriptedInteractionRescue.js?rmv=1.100.0';
-import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=1.100.0';
-import { interactionScopeStates } from './idsAndRearm.js?rmv=1.100.0';
-import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=1.100.0';
-import { cssContainsUnsafeGeneratedResource, cssDeclarationBlockContainsUnsafeOverlayGeometry, sanitizeGeneratedCssDeclarationBlock, splitCssDeclarationList, splitCssSelectorList, } from './markup.js?rmv=1.100.0';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.0";
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.0.0';
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=2.0.0';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.0.0';
+import { CHANGE_PSEUDO_RESCUE_ATTR, PSEUDO_ACTIVE_ATTR, RENDERED_INPUT_ROUTE_ATTR, REVERSIBLE_TARGET_CLOSE_ATTR, restoreInteractionInlineOverrides, reversibleTargetCloseStates, } from './checkedStateRescue.js?rmv=2.0.0';
+import { RAW_SELF_MUTATION_RESCUE_ATTR, applyPseudoStyleAssignments, capturePseudoStyleState, captureStableTextState, chooseMatchingRawRabbitMirrorRoot, decodeSafeInlineString, filterRabbitMirrorRuntimeText, getCapturedStyleValue, getElementChildIndexPath, getRawAssistantMessageForRenderedRoot, isRabbitMirrorRuntimeTextTarget, normalizeInteractionMatchText, preparePseudoTrigger, resolveElementChildIndexPath, restorePseudoStyleState, shouldIgnorePseudoToggleEvent, } from './scriptedInteractionRescue.js?rmv=2.0.0';
+import { TOUCH_HOVER_STYLE_ATTR, setRescuedCheckedState } from './fallbackRescue.js?rmv=2.0.0';
+import { interactionScopeStates } from './idsAndRearm.js?rmv=2.0.0';
+import { INTERACTION_DIAGNOSTIC_PANEL_ATTR } from './diagnostics.js?rmv=2.0.0';
+import { cssContainsUnsafeGeneratedResource, cssDeclarationBlockContainsUnsafeOverlayGeometry, sanitizeGeneratedCssDeclarationBlock, splitCssDeclarationList, splitCssSelectorList, } from './markup.js?rmv=2.0.0';
 export const RENDERED_STATE_LAYER_RESCUE_ATTR = 'data-rabbit-mirror-rendered-state-layer-rescue';
 const RENDERED_STATE_LAYER_ROLE_ATTR = 'data-rm-rendered-state-layer-role';
 export const renderedStateLayerRescueStates = new WeakMap();
@@ -609,7 +610,7 @@ function getComputedOverflowValue(element) {
 }
 function getRenderedElementHeight(element) {
     try {
-        return Number(element?.getBoundingClientRect?.().height || 0);
+        return Number(layoutRect(element)?.height || 0);
     }
     catch {
         return 0;
@@ -903,7 +904,7 @@ function applyRenderedLabelAdjacentResultEntry(entry) {
         for (const visualState of entry.visualStates || []) {
             let size = 130;
             try {
-                const rect = visualState.target.parentElement?.getBoundingClientRect?.();
+                const rect = layoutRect(visualState.target.parentElement);
                 const candidate = Math.min(Number(rect?.width || 0), Number(rect?.height || 0)) * 0.72;
                 if (Number.isFinite(candidate) && candidate >= 56)
                     size = Math.max(72, Math.min(160, Math.round(candidate)));
@@ -1677,7 +1678,7 @@ function applyRenderedCssStateSiblingEntry(entry, active = entry?.active) {
         try {
             const computed = typeof getComputedStyle === 'function' ? getComputedStyle(state.target) : null;
             computedLineHeight = Number.parseFloat(computed?.lineHeight || '') || 20;
-            availableWidth = Number(state.parent?.getBoundingClientRect?.().width || state.target.getBoundingClientRect?.().width || 320);
+            availableWidth = Number(layoutRect(state.parent)?.width || layoutRect(state.target)?.width || 320);
         }
         catch {
             computedLineHeight = 20;

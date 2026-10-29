@@ -1536,13 +1536,18 @@ details + [data-rm-face-swipe-position="bottom"][data-rm-pager-tone="dark"] .rab
 }
 
 @media (min-width:900px){
-  html[data-rm-face-zoom="zoom"] #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder),
+  html[data-rm-face-zoom="zoom"] #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],
   html[data-rm-face-zoom="zoom"] #chat toto[data-rabbit-mirror="true"] > details{
     zoom:var(--rm-face-zoom, 1) !important;
     width:400px !important;
     max-width:100% !important;
     margin-inline:auto !important;
     box-sizing:border-box !important;
+  }
+
+  html[data-rm-face-zoom="zoom"] #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"] > summary,
+  html[data-rm-face-zoom="zoom"] #chat toto[data-rabbit-mirror="true"] > details > summary{
+    zoom:calc(1 / var(--rm-face-zoom, 1)) !important;
   }
   html[data-rm-face-zoom="zoom"] #chat details + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]{
     max-width:min(100%, calc(400px * var(--rm-face-zoom, 1))) !important;

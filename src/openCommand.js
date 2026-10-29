@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.100.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.0.0";
 const NAME = __rmT("9.JSSv1i");
 const ALIASES = ['rabbitmirror'];
 const MARK = Symbol.for('rabbit-mirror-open-command');

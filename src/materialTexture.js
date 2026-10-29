@@ -1,4 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.100.0";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.0.0";
+import { layoutRect } from './faceZoomMetrics.js?rmv=2.0.0';
 function getSettings() {
     try {
         return globalThis.SillyTavern?.getContext?.()?.extensionSettings?.rabbit_mirror_theater || {};
@@ -193,7 +194,7 @@ function edgeVars(el, view, tone) {
     }
     if (!tone?.rgb || /inset/.test(style.boxShadow || ''))
         return null;
-    const rect = el.getBoundingClientRect();
+    const rect = layoutRect(el);
     if (!rect.width || !rect.height)
         return null;
     const mix = (color, target, amount) => color.map((value, i) => Math.round(value + (target[i] - value) * amount));
@@ -291,7 +292,7 @@ function sheenVars(el, view, tone, descriptor, seedText) {
     catch {
         return null;
     }
-    const rect = el.getBoundingClientRect();
+    const rect = layoutRect(el);
     if (!rect.width || !rect.height)
         return null;
     const mix = (color, target, amount) => color.map((value, i) => Math.round(value + (target[i] - value) * amount));
@@ -336,7 +337,7 @@ function fuzzVars(el, view, tone, descriptor) {
     }
     if (/hidden|clip|scroll|auto/.test(`${style.overflowX} ${style.overflowY}`))
         return null;
-    const rect = el.getBoundingClientRect();
+    const rect = layoutRect(el);
     if (!rect.width || !rect.height)
         return null;
     return { size: `${Math.max(3, Math.min(6, Math.round(Math.min(rect.width, rect.height) * 0.015)))}px`, color: `rgb(${tone.rgb.join(',')})` };
@@ -396,7 +397,7 @@ function laySvgTexture(el, descriptor, seedText, view) {
     catch {
         box = null;
     }
-    const rect = el.getBoundingClientRect?.();
+    const rect = layoutRect(el);
     if (!box?.width || !box?.height || !rect?.width || !rect?.height)
         return false;
     const ratio = Math.max(rect.width / box.width, rect.height / box.height);
@@ -468,7 +469,7 @@ function layTexture(el, descriptor, seedText, view, { spread = false } = {}) {
         el.style.removeProperty('--rm-texture-blend');
     let ao = 16;
     try {
-        const rect = el.getBoundingClientRect();
+        const rect = layoutRect(el);
         if (rect.width && rect.height)
             ao = Math.max(5, Math.min(22, Math.round(Math.min(rect.width, rect.height) * 0.14)));
     }

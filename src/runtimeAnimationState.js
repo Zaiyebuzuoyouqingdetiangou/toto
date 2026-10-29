@@ -1,4 +1,5 @@
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.100.0';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=2.0.0';
+import { restoreZoomInlineStyle } from './faceZoomMetrics.js?rmv=2.0.0';
 const authoredAnimationStyles = new WeakMap();
 export const ANIMATION_SUSPENDED_ATTR = 'data-rm-animation-suspended';
 export function rememberRuntimeAnimationStyle(element, property = 'animation-play-state') {
@@ -15,6 +16,7 @@ export function restoreRuntimeAnimationClone(source, clone) {
         if (!before || !after || before.nodeType !== after.nodeType || before.nodeName !== after.nodeName)
             continue;
         after.removeAttribute?.(ANIMATION_SUSPENDED_ATTR);
+        restoreZoomInlineStyle(before, after);
         const baseline = authoredAnimationStyles.get(before);
         if (baseline && after.style) {
             if (baseline.value)

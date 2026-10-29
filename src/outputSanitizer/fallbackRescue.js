@@ -1,21 +1,23 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.100.0";
-import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=1.100.0';
-import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=1.100.0';
-import { installBingoLineRescue } from './bingoLineRescue.js?rmv=1.100.0';
-import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=1.100.0';
-import { installDialLockRescue } from './dialLockRescue.js?rmv=1.100.0';
-import { installWordCycleRescue } from './wordCycleRescue.js?rmv=1.100.0';
-import { installRadioTabMark } from './radioTabMark.js?rmv=1.100.0';
-import { installDiceTrackRescue } from './diceTrackRescue.js?rmv=1.100.0';
-import { FEEDBACK_CAT_ATTR, MAINTENANCE_RABBIT_ATTR, TOOL_ENTRY_HOST_ATTR, escapeRegExp, getRabbitMirrorLocalStyleElements, } from './runtime.js?rmv=1.100.0';
-import { CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR, CROSS_PARENT_CHECKED_VERIFIED_ATTR, DECORATIVE_OVERLAY_PASS_THROUGH_ATTR, DETACHED_CHECKED_HAS_CONTROL_ATTR, DETACHED_CHECKED_HAS_RULE_COUNT_ATTR, EXCLUSIVE_STACKED_STATE_CONTROL_ATTR, FOCUS_WITHIN_PERSISTENT_ACTIVE_ATTR, FOCUS_WITHIN_PERSISTENT_CONTROL_ATTR, FOCUS_WITHIN_PERSISTENT_HOST_ATTR, FOCUS_WITHIN_PERSISTENT_ROOT_ATTR, FOCUS_WITHIN_PERSISTENT_ROUTE, FOCUS_WITHIN_PERSISTENT_STYLE_ATTR, INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR, LABELED_CHECKED_VERIFY_CONTROL_ATTR, LABELED_CHECKED_VERIFY_LAST_ATTR, LABELED_CHECKED_VERIFY_ROOT_ATTR, LABELED_CHECKED_VERIFY_TARGET_ATTR, MARKDOWN_CSS_COMMENT_RESCUE_ATTR, MOBILE_INLINE_ANNOTATION_COUNT_ATTR, MOBILE_INLINE_ANNOTATION_HOST_ATTR, MOBILE_INLINE_ANNOTATION_MIRROR_ATTR, MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR, MOBILE_INLINE_ANNOTATION_RESCUE_ATTR, MOBILE_INLINE_ANNOTATION_STYLE_ATTR, MOBILE_INLINE_ANNOTATION_VISIBLE_ATTR, NESTED_DETAILS_DEFERRED_BINDING_PROP, NESTED_DETAILS_DEFERRED_BINDING_VERSION, NESTED_DETAILS_POPUP_CONTENT_ATTR, NESTED_DETAILS_POPUP_COUNT_ATTR, NESTED_DETAILS_POPUP_HOST_ATTR, NESTED_DETAILS_POPUP_RESCUE_ATTR, NESTED_DETAILS_POPUP_STYLE_ATTR, NESTED_DETAILS_REPLACEMENT_ATTR, NESTED_DETAILS_REPLACEMENT_BINDING_PROP, NESTED_DETAILS_REPLACEMENT_BINDING_VERSION, NESTED_DETAILS_REPLACEMENT_BOUND_ATTR, NESTED_DETAILS_REPLACEMENT_HOST_ATTR, NESTED_DETAILS_REPLACEMENT_STYLE_ATTR, PAIRED_CHECKED_STATE_CONTROL_ATTR, RENDERED_INPUT_ROUTE_ATTR, REVERSIBLE_CHECKED_RESULT_RESCUE_ATTR, REVERSIBLE_CHECKED_RESULT_ROOT_ATTR, REVERSIBLE_CHECKED_RESULT_TARGET_ATTR, TARGET_ACTIVE_ATTR, TARGET_RESCUE_STYLE_ATTR, UNLABELED_CHECKED_CONTROL_RESCUE_ATTR, UNLABELED_CHECKED_HOST_RESCUE_ATTR, WEBKIT_3D_FLIP_RESCUE_ATTR, addImportantToDeclarationBlock, applyCheckedRuleInlineFallback, applyCheckedRuleTextFallback, clearPersistedCheckedInlineArtifacts, CHECKED_TEXT_RULE_RESCUE_ATTR, clearUncheckedRadioCheckedInlineArtifacts, crossParentCheckedCandidateFingerprint, crossParentCheckedCandidateVerified, findCrossParentCheckedRuleFallbackCandidates, focusWithinPersistentRescueStates, installChannelDialCycleRescue, installCheckedHasStateFallback, installCrossParentCheckedRuleFallback, installDetachedCheckedHasFallback, installExclusiveStackedStateRescue, installMissingCheckedSubjectClassRescue, installPairedCheckedStateRescue, interactionLabelFallbackRoots, labeledCheckedVerificationStates, nestedDetailsDeferredChecks, parseCheckedRulesFromText, refreshExclusiveStackedStateRescue, refreshFocusToCheckedRescue, repairMalformedNestedInteractiveLabels, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides, interactionInlineOverrideBaselines, reversibleCheckedResultRescueStates, scheduleExclusiveStackedStateRefresh, strengthenRabbitMirrorCheckedStateCss, syncCrossParentCheckedRuleFallback, unlabeledCheckedHostRescueStates, webKit3DFlipInlineStates, webKit3DFlipRescueStates, webKit3DFlipStyleStates, } from './checkedStateRescue.js?rmv=1.100.0';
-import { EXISTING_INTERACTIVE_SELECTOR, RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR, RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR, RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR, applyRenderedLabelInternalHiddenEntries, claimRenderedInputRoute, dispatchRescuedInputState, getRenderedInputRoute, getRenderedStyleSnapshot, installRenderedAdjacentHiddenGroupRescue, installRenderedButtonAdjacentHiddenRescue, installRenderedCheckedIdTargetRescue, installRenderedClickableAdjacentHiddenRescue, installRenderedClickableAdjacentPopupRescue, installRenderedContainerInternalRevealRescue, installRenderedCssStateSiblingRescue, installRenderedLabelAdjacentResultRescue, installRenderedLabelInternalHiddenRescue, installRenderedListDetailRescue, installRenderedMaskRevealRescue, installRenderedStateLayerRescue, installReversibleTargetClose, isCollapsedDimensionValue, normalizeStylePropertyName, parseCssStateSiblingAssignments, } from './renderedStateRescue.js?rmv=1.100.0';
-import { chooseMatchingRawRabbitMirrorRoot, detectInteractionCapabilities, getRawAssistantMessageForRenderedRoot, installPassportDocumentRescue, installPseudoInteractionRescue, installRawMessageCheckedChangeProgramRescue, installRawMessageDirectIdClickProgramRescue, installRawMessageHoverPseudoRescue, installRawMessageNamedFunctionClassRescue, installRawMessageRadioResetProgramRescue, installRawMessageScriptTimelineRescue, installRawMessageSelfMutationRescue, preparePseudoTrigger, shouldIgnorePseudoToggleEvent, } from './scriptedInteractionRescue.js?rmv=1.100.0';
-import { FEEDBACK_CAT_MENU_ATTR, FILL_IN_CHOICE_BLANK_ATTR, INTERACTION_DIAGNOSTIC_PANEL_ATTR, MAINTENANCE_MENU_ATTR, MOBILE_LAYOUT_BREAKPOINT_PX, diagnosticComputedStyle, diagnosticElementName, diagnosticFindClippingAncestor, maintenanceSafeComputedStyle, mobileInlineAnnotationRescueStates, } from './diagnostics.js?rmv=1.100.0';
-import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=1.100.0';
-import { checkedDeclarationCreatesContentReveal, checkedTargetCarriesResultContent, pseudoStateTargetSelector, } from './maintenanceInspect.js?rmv=1.100.0';
-import { splitCssSelectorList } from './markup.js?rmv=1.100.0';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=1.100.0';
+import { rmT as __rmT } from "../textTable.js?rmv=2.0.0";
+import { RADIO_BRANCH_CONTROL_ATTR, installRadioBranchRepair, applyRadioBranchState, applyRadioProxyState, radioBranchVerificationTargets } from './radioBranchRepair.js?rmv=2.0.0';
+import { isBehaviorInteractionOwned, behaviorInlineBaselines } from './behaviorInteractions.js?rmv=2.0.0';
+import { installBingoLineRescue } from './bingoLineRescue.js?rmv=2.0.0';
+import { toLayoutPx, layoutRect, layoutViewportWidthFor, insideDesktopZoomFace } from '../faceZoomMetrics.js?rmv=2.0.0';
+import { virtualizeFaceMedia } from '../desktopFaceZoom.js?rmv=2.0.0';
+import { installSiblingTabRescue, installNumberedStageRescue } from './siblingTabRescue.js?rmv=2.0.0';
+import { installDialLockRescue } from './dialLockRescue.js?rmv=2.0.0';
+import { installWordCycleRescue } from './wordCycleRescue.js?rmv=2.0.0';
+import { installRadioTabMark } from './radioTabMark.js?rmv=2.0.0';
+import { installDiceTrackRescue } from './diceTrackRescue.js?rmv=2.0.0';
+import { FEEDBACK_CAT_ATTR, MAINTENANCE_RABBIT_ATTR, TOOL_ENTRY_HOST_ATTR, escapeRegExp, getRabbitMirrorLocalStyleElements, } from './runtime.js?rmv=2.0.0';
+import { CROSS_PARENT_CHECKED_RULE_RESCUE_ATTR, CROSS_PARENT_CHECKED_VERIFIED_ATTR, DECORATIVE_OVERLAY_PASS_THROUGH_ATTR, DETACHED_CHECKED_HAS_CONTROL_ATTR, DETACHED_CHECKED_HAS_RULE_COUNT_ATTR, EXCLUSIVE_STACKED_STATE_CONTROL_ATTR, FOCUS_WITHIN_PERSISTENT_ACTIVE_ATTR, FOCUS_WITHIN_PERSISTENT_CONTROL_ATTR, FOCUS_WITHIN_PERSISTENT_HOST_ATTR, FOCUS_WITHIN_PERSISTENT_ROOT_ATTR, FOCUS_WITHIN_PERSISTENT_ROUTE, FOCUS_WITHIN_PERSISTENT_STYLE_ATTR, INDEPENDENT_NATIVE_CHECKED_RESTORE_ATTR, LABELED_CHECKED_VERIFY_CONTROL_ATTR, LABELED_CHECKED_VERIFY_LAST_ATTR, LABELED_CHECKED_VERIFY_ROOT_ATTR, LABELED_CHECKED_VERIFY_TARGET_ATTR, MARKDOWN_CSS_COMMENT_RESCUE_ATTR, MOBILE_INLINE_ANNOTATION_COUNT_ATTR, MOBILE_INLINE_ANNOTATION_HOST_ATTR, MOBILE_INLINE_ANNOTATION_MIRROR_ATTR, MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR, MOBILE_INLINE_ANNOTATION_RESCUE_ATTR, MOBILE_INLINE_ANNOTATION_STYLE_ATTR, MOBILE_INLINE_ANNOTATION_VISIBLE_ATTR, NESTED_DETAILS_DEFERRED_BINDING_PROP, NESTED_DETAILS_DEFERRED_BINDING_VERSION, NESTED_DETAILS_POPUP_CONTENT_ATTR, NESTED_DETAILS_POPUP_COUNT_ATTR, NESTED_DETAILS_POPUP_HOST_ATTR, NESTED_DETAILS_POPUP_RESCUE_ATTR, NESTED_DETAILS_POPUP_STYLE_ATTR, NESTED_DETAILS_REPLACEMENT_ATTR, NESTED_DETAILS_REPLACEMENT_BINDING_PROP, NESTED_DETAILS_REPLACEMENT_BINDING_VERSION, NESTED_DETAILS_REPLACEMENT_BOUND_ATTR, NESTED_DETAILS_REPLACEMENT_HOST_ATTR, NESTED_DETAILS_REPLACEMENT_STYLE_ATTR, PAIRED_CHECKED_STATE_CONTROL_ATTR, RENDERED_INPUT_ROUTE_ATTR, REVERSIBLE_CHECKED_RESULT_RESCUE_ATTR, REVERSIBLE_CHECKED_RESULT_ROOT_ATTR, REVERSIBLE_CHECKED_RESULT_TARGET_ATTR, TARGET_ACTIVE_ATTR, TARGET_RESCUE_STYLE_ATTR, UNLABELED_CHECKED_CONTROL_RESCUE_ATTR, UNLABELED_CHECKED_HOST_RESCUE_ATTR, WEBKIT_3D_FLIP_RESCUE_ATTR, addImportantToDeclarationBlock, applyCheckedRuleInlineFallback, applyCheckedRuleTextFallback, clearPersistedCheckedInlineArtifacts, CHECKED_TEXT_RULE_RESCUE_ATTR, clearUncheckedRadioCheckedInlineArtifacts, crossParentCheckedCandidateFingerprint, crossParentCheckedCandidateVerified, findCrossParentCheckedRuleFallbackCandidates, focusWithinPersistentRescueStates, installChannelDialCycleRescue, installCheckedHasStateFallback, installCrossParentCheckedRuleFallback, installDetachedCheckedHasFallback, installExclusiveStackedStateRescue, installMissingCheckedSubjectClassRescue, installPairedCheckedStateRescue, interactionLabelFallbackRoots, labeledCheckedVerificationStates, nestedDetailsDeferredChecks, parseCheckedRulesFromText, refreshExclusiveStackedStateRescue, refreshFocusToCheckedRescue, repairMalformedNestedInteractiveLabels, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides, interactionInlineOverrideBaselines, reversibleCheckedResultRescueStates, scheduleExclusiveStackedStateRefresh, strengthenRabbitMirrorCheckedStateCss, syncCrossParentCheckedRuleFallback, unlabeledCheckedHostRescueStates, webKit3DFlipInlineStates, webKit3DFlipRescueStates, webKit3DFlipStyleStates, } from './checkedStateRescue.js?rmv=2.0.0';
+import { EXISTING_INTERACTIVE_SELECTOR, RENDERED_BUTTON_ADJACENT_HIDDEN_RESCUE_ATTR, RENDERED_CLICKABLE_ADJACENT_POPUP_RESCUE_ATTR, RENDERED_CSS_STATE_SIBLING_RESCUE_ATTR, applyRenderedLabelInternalHiddenEntries, claimRenderedInputRoute, dispatchRescuedInputState, getRenderedInputRoute, getRenderedStyleSnapshot, installRenderedAdjacentHiddenGroupRescue, installRenderedButtonAdjacentHiddenRescue, installRenderedCheckedIdTargetRescue, installRenderedClickableAdjacentHiddenRescue, installRenderedClickableAdjacentPopupRescue, installRenderedContainerInternalRevealRescue, installRenderedCssStateSiblingRescue, installRenderedLabelAdjacentResultRescue, installRenderedLabelInternalHiddenRescue, installRenderedListDetailRescue, installRenderedMaskRevealRescue, installRenderedStateLayerRescue, installReversibleTargetClose, isCollapsedDimensionValue, normalizeStylePropertyName, parseCssStateSiblingAssignments, } from './renderedStateRescue.js?rmv=2.0.0';
+import { chooseMatchingRawRabbitMirrorRoot, detectInteractionCapabilities, getRawAssistantMessageForRenderedRoot, installPassportDocumentRescue, installPseudoInteractionRescue, installRawMessageCheckedChangeProgramRescue, installRawMessageDirectIdClickProgramRescue, installRawMessageHoverPseudoRescue, installRawMessageNamedFunctionClassRescue, installRawMessageRadioResetProgramRescue, installRawMessageScriptTimelineRescue, installRawMessageSelfMutationRescue, preparePseudoTrigger, shouldIgnorePseudoToggleEvent, } from './scriptedInteractionRescue.js?rmv=2.0.0';
+import { FEEDBACK_CAT_MENU_ATTR, FILL_IN_CHOICE_BLANK_ATTR, INTERACTION_DIAGNOSTIC_PANEL_ATTR, MAINTENANCE_MENU_ATTR, MOBILE_LAYOUT_BREAKPOINT_PX, diagnosticComputedStyle, diagnosticElementName, diagnosticFindClippingAncestor, maintenanceSafeComputedStyle, mobileInlineAnnotationRescueStates, } from './diagnostics.js?rmv=2.0.0';
+import { installStaticChoiceSelectionFallback } from './choiceRescue.js?rmv=2.0.0';
+import { checkedDeclarationCreatesContentReveal, checkedTargetCarriesResultContent, pseudoStateTargetSelector, } from './maintenanceInspect.js?rmv=2.0.0';
+import { splitCssSelectorList } from './markup.js?rmv=2.0.0';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutResolveCheckedTargets } from './layoutRescue.js?rmv=2.0.0';
 const NESTED_DETAILS_FALLBACK_HANDLER_PROP = '__rabbitMirrorNestedDetailsFallbackHandler';
 const NESTED_DETAILS_FALLBACK_HANDLER_VERSION = '1.4.12';
 const REVERSIBLE_RADIO_GROUP_ATTR = 'data-rabbit-mirror-reversible-radio-group';
@@ -267,7 +269,7 @@ function installNestedDetailsReplacementForDetails(root, details, outerDetails =
         if (host) {
             let originalHeight = 0;
             try {
-                originalHeight = Math.round(host.getBoundingClientRect?.().height || 0);
+                originalHeight = Math.round(toLayoutPx(host, host.getBoundingClientRect?.().height || 0));
             }
             catch { }
             if (originalHeight > 0)
@@ -603,7 +605,7 @@ function mobileInlineAnnotationCheckedTargets(root, input) {
 export function findMobileInlineAnnotationCandidates(root) {
     if (!root?.querySelectorAll)
         return [];
-    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    const viewportWidth = layoutViewportWidthFor(root);
     if (viewportWidth > MOBILE_LAYOUT_BREAKPOINT_PX + 40)
         return [];
     const result = [];
@@ -1002,7 +1004,7 @@ function inputHasVisibleNativeToggle(input) {
     const snapshot = getRenderedStyleSnapshot(input);
     let rect = null;
     try {
-        rect = input.getBoundingClientRect?.();
+        rect = layoutRect(input);
     }
     catch {
         rect = null;
@@ -1811,7 +1813,7 @@ function isFullInsetComputed(style) {
 function collapsedCoverNeededHeight(control, style) {
     let needed = (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
     for (const child of control.children || []) {
-        const rect = child.getBoundingClientRect?.();
+        const rect = layoutRect(child);
         if (!rect)
             continue;
         let childStyle = null;
@@ -1851,13 +1853,13 @@ export function repairCollapsedCoverControls(root, candidates = null) {
             continue;
         if (style.display === 'none' || style.visibility === 'hidden')
             continue;
-        const rect = control.getBoundingClientRect();
+        const rect = layoutRect(control);
         if (rect.height > 6)
             continue;
         const container = control.offsetParent;
         if (!container || container === root || !root.contains(container) || container.matches?.('details, summary, toto, body'))
             continue;
-        const box = container.getBoundingClientRect();
+        const box = layoutRect(container);
         if (box.width < 40)
             continue;
         if (container.clientHeight > 6)
@@ -1928,7 +1930,7 @@ function localPanelLayoutRule(root, element, kind, declarations) {
 function restoreContainedCheckedPanels(root) {
     if (!root?.isConnected || typeof getComputedStyle !== 'function')
         return 0;
-    const bounds = root.getBoundingClientRect();
+    const bounds = layoutRect(root);
     let count = 0;
     for (const input of [...root.querySelectorAll('input[type="checkbox"],input[type="radio"]')].slice(0, 32)) {
         if (input.disabled)
@@ -1943,7 +1945,7 @@ function restoreContainedCheckedPanels(root) {
                     continue;
                 if (!labels.some(label => target.contains(label)) || !labels.some(label => !target.contains(label)))
                     continue;
-                const style = getComputedStyle(target), hostStyle = getComputedStyle(parent), rect = parent.getBoundingClientRect();
+                const style = getComputedStyle(target), hostStyle = getComputedStyle(parent), rect = layoutRect(parent);
                 if (style.position !== 'static' || hostStyle.position !== 'relative')
                     continue;
                 if (!['hidden', 'clip', 'auto', 'scroll'].includes(hostStyle.overflowX) || !['hidden', 'clip', 'auto', 'scroll'].includes(hostStyle.overflowY))
@@ -1962,7 +1964,7 @@ function restoreContainedCheckedPanels(root) {
                     const previousStyle = getComputedStyle(previous);
                     if (previousStyle.display === 'none' || ['absolute', 'fixed'].includes(previousStyle.position))
                         continue;
-                    if (previous.getBoundingClientRect().height >= rect.height * .85)
+                    if (layoutRect(previous).height >= rect.height * .85)
                         canvas = previous;
                     break;
                 }
@@ -2376,7 +2378,7 @@ function captureLabeledCheckedTargetState(entry) {
     }
     let rect = { width: 0, height: 0 };
     try {
-        rect = target.getBoundingClientRect?.() || rect;
+        rect = layoutRect(target) || rect;
     }
     catch {
     }
@@ -2627,7 +2629,8 @@ export function createMaintenanceLabeledCheckedProbeSandbox(root) {
     host.setAttribute(MAINTENANCE_CHECKED_SANDBOX_ATTR, 'true');
     host.setAttribute('aria-hidden', 'true');
     host.inert = true;
-    const width = Math.max(280, Math.min(960, Math.round(root.getBoundingClientRect?.().width || 360)));
+    const zoomFace = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root;
+    const width = Math.max(280, Math.min(960, Math.round(toLayoutPx(zoomFace, root.getBoundingClientRect?.().width || 0) || 360)));
     host.style.cssText = `all:initial!important;position:fixed!important;left:-100000px!important;top:0!important;width:${width}px!important;min-height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden!important;contain:layout style paint!important;z-index:-2147483648!important;`;
     let mount = host;
     try {
@@ -2642,6 +2645,13 @@ export function createMaintenanceLabeledCheckedProbeSandbox(root) {
     quietStyle.textContent = '*,:before,:after{animation:none!important;transition:none!important;scroll-behavior:auto!important;}';
     mount.append(quietStyle, cloneShell);
     document.body.appendChild(host);
+    if (insideDesktopZoomFace(zoomFace)) {
+        try {
+            const face = cloneRoot.matches?.('details') ? cloneRoot : cloneRoot.querySelector?.('details') || cloneRoot;
+            virtualizeFaceMedia(face, true, document.defaultView);
+        }
+        catch { }
+    }
     return { host, root: cloneRoot, destroy: () => host.remove() };
 }
 function applyMaintenanceSandboxCheckedState(root, input, nextChecked) {
@@ -2870,7 +2880,7 @@ function movingLabeledCheckableBridgeMap(root) {
         let rect = null;
         let ownStyle = null;
         try {
-            rect = label.getBoundingClientRect();
+            rect = layoutRect(label);
         }
         catch {
             rect = null;

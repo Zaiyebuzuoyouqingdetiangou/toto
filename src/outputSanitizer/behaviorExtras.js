@@ -1,5 +1,6 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.100.0";
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.100.0';
+import { rmR as __rmR } from "../textTable.js?rmv=2.0.0";
+import { normalizeShowToken } from './behaviorResults.js?rmv=2.0.0';
+import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.0.0';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],
@@ -220,7 +221,7 @@ function slideTo(state, index, smooth = true) {
         return false;
     const track = state.track || slideTrack(state);
     const box = track.getBoundingClientRect(), rect = target.getBoundingClientRect();
-    const left = rect.left - box.left + track.scrollLeft, top = rect.top - box.top + track.scrollTop;
+    const left = toLayoutPx(track, rect.left - box.left) + track.scrollLeft, top = toLayoutPx(track, rect.top - box.top) + track.scrollTop;
     try {
         track.scrollTo({ left: state.vertical ? track.scrollLeft : left, top: state.vertical ? top : track.scrollTop, behavior: smooth ? 'smooth' : 'instant' });
     }
@@ -821,11 +822,23 @@ const SENSES = Object.freeze([
     ['(max-width: 640px)', 'data-rm-width', 'narrow', 'wide'],
     ['(pointer: coarse)', 'data-rm-pointer', 'touch', 'mouse'],
 ]);
+const SCREEN_SENSES = new Set(['(orientation: landscape)', '(max-width: 640px)']);
+function readSenses(state) {
+    const view = state.group.ownerDocument?.defaultView;
+    const zoomed = insideDesktopZoomFace(state.group);
+    for (const [query, attribute, yes, no, media] of state.senseMedia || []) {
+        const virtual = zoomed && SCREEN_SENSES.has(query) ? evaluateMediaForVirtualPhone(query, view) : null;
+        state.senses.set(attribute, (virtual ?? media.matches) ? yes : no);
+    }
+}
 function prepareSense(state) {
     const view = state.group.ownerDocument?.defaultView;
     state.senses = new Map();
+    state.senseMedia = [];
     if (typeof view?.matchMedia !== 'function')
         return;
+    const refresh = () => { readSenses(state); if (alive(state))
+        H.refreshResults(state); };
     for (const [query, attribute, yes, no] of SENSES) {
         let media;
         try {
@@ -834,19 +847,24 @@ function prepareSense(state) {
         catch {
             continue;
         }
-        state.senses.set(attribute, media.matches ? yes : no);
-        const listener = event => { state.senses.set(attribute, event.matches ? yes : no); if (alive(state))
-            H.refreshResults(state); };
+        state.senseMedia.push([query, attribute, yes, no, media]);
         try {
-            media.addEventListener('change', listener);
-            state.extra.medias.push([media, listener]);
+            media.addEventListener('change', refresh);
+            state.extra.medias.push([media, refresh]);
         }
         catch { }
     }
+    try {
+        faceZoomEvents?.addEventListener('change', refresh);
+        if (faceZoomEvents)
+            state.extra.medias.push([faceZoomEvents, refresh]);
+    }
+    catch { }
+    readSenses(state);
 }
 function senseSync(state) { for (const [attribute, value] of state.senses)
     state.group.setAttribute(attribute, value); }
-function senseKeys(state, keys) { for (const value of state.senses.values())
+function senseKeys(state, keys) { readSenses(state); for (const value of state.senses.values())
     keys.add(value); }
 export function extraAction(state, control) {
     switch (state.type) {

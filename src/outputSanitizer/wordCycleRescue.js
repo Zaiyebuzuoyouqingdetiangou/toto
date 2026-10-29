@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.100.0";
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=1.100.0';
+import { rmR as __rmR } from "../textTable.js?rmv=2.0.0";
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=2.0.0';
 const BOUND_ATTR = 'data-rm-word-cycle';
 const BOUND = new WeakSet();
 const SWITCH_WORDS = __rmR("OwOwoOCv3vgclrW7Qpw5uVLTsU.zVLieFg5yaxSXgXRrxgyppvVSS1Kbz9EYuSz_LwZ0JFOAo0M3O78Ko9XTIhZzihlCiCXww4jgJTbhbQEfQO3Xwe74Mh", "");

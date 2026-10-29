@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.100.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.0.0";
 export const UI_THEMES = Object.freeze([
     {
         "id": "default",
