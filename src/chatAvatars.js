@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.10";
-import { unmaskNameMaskClone } from './nameMask.js?rmv=1.99.10';
-import { getSettings } from './settings.js?rmv=1.99.10';
-import { getCurrentChatKey } from './storage.js?rmv=1.99.10';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.99.10';
-import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.99.10';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.11";
+import { unmaskNameMaskClone } from './nameMask.js?rmv=1.99.11';
+import { getSettings } from './settings.js?rmv=1.99.11';
+import { getCurrentChatKey } from './storage.js?rmv=1.99.11';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=1.99.11';
+import { subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=1.99.11';
 const MARKERS = '[data-rm-avatar="char"], [data-rm-avatar="user"]';
 const FACES = 'toto, details[data-rabbit-mirror-external-details]';
 const trusted = new WeakSet();

@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.10";
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.99.10';
-import { EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES } from './schema.js?rmv=1.99.10';
-import { normalizeFileWorldBook } from './normalize.js?rmv=1.99.10';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.11";
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=1.99.11';
+import { EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES } from './schema.js?rmv=1.99.11';
+import { normalizeFileWorldBook } from './normalize.js?rmv=1.99.11';
 async function readFileText(file, maxBytes) {
     if (typeof file?.arrayBuffer === 'function' && typeof TextDecoder !== 'undefined') {
         let bytes;
@@ -92,7 +92,7 @@ async function readLocalFile(file, allowLibraryBackup = false) {
         throw new ExternalWorldBookError(EXTERNAL_WORLD_BOOK_ERROR_CODES.JSON_INVALID, __rmT("zoaXyicLG956QEAASrtUtmmiyrMqoC77Q5Mspf"), undefined, { cause });
     }
     if (allowLibraryBackup && raw?.format === 'RabbitMirror.ExternalLibraries') {
-        const { validateExternalLibraryBackup } = await import('./backup.js?rmv=1.99.10');
+        const { validateExternalLibraryBackup } = await import('./backup.js?rmv=1.99.11');
         return { kind: 'backup', backup: validateExternalLibraryBackup(raw) };
     }
     if (size > EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES || actualBytes > EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES) {

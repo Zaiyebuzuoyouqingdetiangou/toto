@@ -1,18 +1,18 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.10";
-import { usesModelOriginalColors } from './visualDesign.js?rmv=1.99.10';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=1.99.10';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=1.99.10';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.99.10';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.99.10';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.10';
-import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=1.99.10';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.99.10';
-import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=1.99.10';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.99.10';
-import { isDocumentFormat } from './documentFormats.js?rmv=1.99.10';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.99.10';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.99.10';
-import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=1.99.10';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.11";
+import { usesModelOriginalColors } from './visualDesign.js?rmv=1.99.11';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=1.99.11';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=1.99.11';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=1.99.11';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.99.11';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.11';
+import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=1.99.11';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=1.99.11';
+import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=1.99.11';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=1.99.11';
+import { isDocumentFormat } from './documentFormats.js?rmv=1.99.11';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=1.99.11';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=1.99.11';
+import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=1.99.11';
 function randomUnit() {
     try {
         const cryptoApi = globalThis.crypto;

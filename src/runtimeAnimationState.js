@@ -1,4 +1,4 @@
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.99.10';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=1.99.11';
 const authoredAnimationStyles = new WeakMap();
 export const ANIMATION_SUSPENDED_ATTR = 'data-rm-animation-suspended';
 export function rememberRuntimeAnimationStyle(element, property = 'animation-play-state') {
