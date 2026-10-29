@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.0.0";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.0.1";
 export const CSS_METHODS = Object.freeze([__rmT("cgECNk"), __rmT("tNMgqU1gF2C"), __rmT(".MNdPk"), __rmT(".Fa_qt1MEBh"), __rmT("4OXCYEyJX0ANTguG2yA"), __rmT("sqVjDushwsnu4SMX"), __rmT("02jLcgYfOCs"), __rmT("nFWxFesQ2Ph")]);
 export const OFFER_LIMITS_187 = false;
 export const DRIVER_METHODS = Object.freeze({
@@ -145,7 +145,7 @@ export function driverFamilyOf(key) {
     return Object.keys(DRIVER_FAMILIES).find(family => DRIVER_FAMILIES[family].drivers.includes(key)) || key;
 }
 const SWITCH_POPUP_DRIVERS = new Set(['toggle', 'popup']);
-export const RETIRED_DRIVERS = new Set(['hold']);
+export const RETIRED_DRIVERS = new Set(['hold', 'input']);
 export const REVEAL_DRIVERS = new Set(['toggle', 'pick', 'pager', 'popup', 'peek', 'spoiler']);
 const OBJECT_FAMILIES = ['drag', 'scroll', 'swipe', 'rhythm', 'fire', 'collect', 'puzzle'];
 const MATCH_ONLY_FAMILIES = new Set(['sense', 'carry']);
