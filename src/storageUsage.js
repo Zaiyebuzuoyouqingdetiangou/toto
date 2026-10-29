@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.0.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.0.1";
 const MB = 1024 * 1024;
 function sizeOf(key, value) {
     return (String(key || '').length + String(value || '').length) * 2;
