@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.22";
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.22';
+import { rmR as __rmR } from "../textTable.js?rmv=1.100.0";
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.100.0';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],
@@ -407,7 +407,8 @@ export function extraPointerMove(state, event, session) {
     if (session.vertical)
         return;
     session.horizontal = true;
-    H.style(state, session.card, 'transform', `translateX(${dx}px) rotate(${(dx / 18).toFixed(1)}deg)`);
+    const move = dx * (Number.isFinite(session.sx) && session.sx > 0 ? session.sx : 1);
+    H.style(state, session.card, 'transform', `translateX(${move}px) rotate(${(move / 18).toFixed(1)}deg)`);
     if (event.cancelable)
         event.preventDefault();
 }

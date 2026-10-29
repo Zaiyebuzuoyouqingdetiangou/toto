@@ -1,6 +1,6 @@
-import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.99.22';
-import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=1.99.22';
-import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=1.99.22';
+import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.100.0';
+import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=1.100.0';
+import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=1.100.0';
 const OUTPUTS = 'rabbit_mirror_independent_outputs_v1';
 const HISTORY = 'rabbit_mirror_independent_history_v1';
 const SWIPES = 'rabbit_mirror_face_swipes_v1';
