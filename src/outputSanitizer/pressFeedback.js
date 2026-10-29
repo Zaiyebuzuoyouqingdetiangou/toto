@@ -1,3 +1,4 @@
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.0.0';
 const KIND_ATTR = 'data-rm-press';
 const PRESSING_ATTR = 'data-rm-pressing';
 const RELEASING_ATTR = 'data-rm-press-release';
@@ -126,11 +127,12 @@ export function pressKindFor(el, face) {
     }
     if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none')
         return '';
-    const rect = el.getBoundingClientRect();
+    const screen = el.getBoundingClientRect();
+    const rect = layoutRect(el);
     if (!rect.width || !rect.height)
         return '';
     const viewportHeight = view.innerHeight || 800;
-    if (rect.height > viewportHeight * 0.45 || rect.height > 320)
+    if (screen.height > viewportHeight * 0.45 || rect.height > 320)
         return '';
     const filled = !transparentColor(style.backgroundColor) || (style.backgroundImage && style.backgroundImage !== 'none');
     const bordered = ['Top', 'Right', 'Bottom', 'Left'].some(side => parseFloat(style[`border${side}Width`]) > 0 && !transparentColor(style[`border${side}Color`]));
@@ -172,8 +174,7 @@ function findPressable(target, face) {
     if (node === face)
         return null;
     const view = node.ownerDocument.defaultView || globalThis;
-    const height = node.getBoundingClientRect().height;
-    if (height > 320 || height > (view.innerHeight || 800) * 0.45)
+    if (layoutRect(node).height > 320 || node.getBoundingClientRect().height > (view.innerHeight || 800) * 0.45)
         return null;
     return node;
 }

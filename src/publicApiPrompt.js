@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.22";
+import { rmT as __rmT } from "./textTable.js?rmv=2.0.0";
 export function buildScriptUserPrompt(prompt) {
     return `${__rmT("bmVWsloXjdVUHRhOeaCRLOcJQwPfBB671fyTIuW8yrA583xxNdEp3SJx76fVxWdf6Qrrab3HsKXOhntQ7B1MTv3ESAYdXG88MZKM95X4Y7Md9dyO26hB0TmVWmSDbCthUKggpkMxZxQynVbDv7WHLjQ5U6e4cZwU7i9jgEytRp35U_4PRafymzcdNCKXkzMNMUkbGCJUQhlyEuKHGzMCM.6.IQ98stwr6N.A1ZlOWylA6o8Uu2Az6Ggfdt5nd7c0")}${prompt}${__rmT("7ftu71jo_xbSGw2.WS0nJAXg5PnVe22iWg0cjg5ly32MiDmZGtMO8kf6KOyB_ZJqiXSFyIhtRhzAqcYh.7uNtxtFOLQlsNHKOhLvSWlgqR5NFQCvCZ.HVKVJ7qrUWvXgVFd0PRf9fTOQrTgeFYu11ivDjxpSIU1g88mIOqo6EaTUp6NqctiHCn_f8K3VieOa0qkuYRGiywi9IvxZvTYxMKyIx4g76cd1Y4ySX2RZEX1QdRSG_8TktV7nzQ.7YEYYl1RZ_h")}`;
 }

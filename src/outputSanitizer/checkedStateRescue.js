@@ -1,14 +1,15 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.22";
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=1.99.22';
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.99.22';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=1.99.22';
-import { capturePseudoStyleState, chooseMatchingRawRabbitMirrorRoot, getRawAssistantMessageForRenderedRoot, normalizeInteractionMatchText, resolveRenderedCounterpart, restorePseudoStyleState, } from './scriptedInteractionRescue.js?rmv=1.99.22';
-import { REVERSIBLE_RADIO_BASELINE_ATTR, applyCheckedVisualFallback, inputHasAssociatedLabel, setRescuedCheckedState, } from './fallbackRescue.js?rmv=1.99.22';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=1.99.22';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=1.99.22';
-import { checkedDeclarationCreatesContentReveal, checkedTargetCarriesResultContent, findMaintenanceElementByRawClass, isIndependentMaintenanceRoot, notifyIndependentRepairPersistence, resolveMaintenanceGeneratedClass, } from './maintenanceInspect.js?rmv=1.99.22';
-import { splitCssSelectorList } from './markup.js?rmv=1.99.22';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutRect, maintenanceMobileLayoutTextLength, viewportLayoutHasAuthoredGridPlacement, } from './layoutRescue.js?rmv=1.99.22';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.0";
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.0.0';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=2.0.0';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.0.0';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=2.0.0';
+import { capturePseudoStyleState, chooseMatchingRawRabbitMirrorRoot, getRawAssistantMessageForRenderedRoot, normalizeInteractionMatchText, resolveRenderedCounterpart, restorePseudoStyleState, } from './scriptedInteractionRescue.js?rmv=2.0.0';
+import { REVERSIBLE_RADIO_BASELINE_ATTR, applyCheckedVisualFallback, inputHasAssociatedLabel, setRescuedCheckedState, } from './fallbackRescue.js?rmv=2.0.0';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=2.0.0';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=2.0.0';
+import { checkedDeclarationCreatesContentReveal, checkedTargetCarriesResultContent, findMaintenanceElementByRawClass, isIndependentMaintenanceRoot, notifyIndependentRepairPersistence, resolveMaintenanceGeneratedClass, } from './maintenanceInspect.js?rmv=2.0.0';
+import { splitCssSelectorList } from './markup.js?rmv=2.0.0';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutRect, maintenanceMobileLayoutTextLength, viewportLayoutHasAuthoredGridPlacement, } from './layoutRescue.js?rmv=2.0.0';
 const interactionInlineOverrideStates = new WeakMap();
 const FOCUS_TO_CHECKED_STYLE_ATTR = 'data-rabbit-mirror-focus-to-checked-rescue';
 export const FOCUS_TO_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-focus-to-checked-rules';
@@ -683,7 +684,7 @@ function applyExpandedOpacityResidualRescue(input, candidates, records) {
             continue;
         let rectHeight = 0;
         try {
-            rectHeight = Number(target.getBoundingClientRect?.().height || 0);
+            rectHeight = Number(layoutRect(target)?.height || 0);
         }
         catch {
             rectHeight = 0;
@@ -813,7 +814,7 @@ function checkedExpandedResultStillCollapsed(target) {
         return false;
     let height = 0;
     try {
-        height = Number(target.getBoundingClientRect?.().height || 0);
+        height = Number(layoutRect(target)?.height || 0);
     }
     catch {
         height = 0;
@@ -866,7 +867,7 @@ function applyNestedCheckedContentResidualRescue(root, input, candidates, record
             rescuedElements.add(child);
             let targetHeight = 0;
             try {
-                targetHeight = Number(target.getBoundingClientRect?.().height || 0);
+                targetHeight = Number(layoutRect(target)?.height || 0);
             }
             catch {
                 targetHeight = 0;
@@ -2832,7 +2833,7 @@ export function findChannelDialCycleCandidates(root) {
         let host = null;
         for (const candidateHost of possibleHosts) {
             const rect = maintenanceMobileLayoutRect(candidateHost);
-            const width = Number(rect?.width || maintenanceMobileLayoutLengthPx(maintenanceSafeComputedStyle(candidateHost)?.width, Number(root.getBoundingClientRect?.().width || 480)) || 0);
+            const width = Number(rect?.width || maintenanceMobileLayoutLengthPx(maintenanceSafeComputedStyle(candidateHost)?.width, Number(layoutRect(root)?.width || 480)) || 0);
             const height = Number(rect?.height || 0);
             if ((width > 0 && width > 180) || (height > 0 && height > 180))
                 continue;

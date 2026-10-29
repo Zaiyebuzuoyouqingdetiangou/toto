@@ -1,3 +1,4 @@
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.0.0';
 export const REVEAL_MOTION_ID = 'rm-motion';
 const BOUND = new WeakSet();
 const CHROME = ['summary', '[data-rabbit-mirror-maintenance-rabbit]', '[data-rabbit-mirror-feedback-cat]', '[data-rabbit-mirror-recipe]',
@@ -44,7 +45,7 @@ function enter(node, view) {
     }
     if (style.display === 'none' || style.visibility === 'hidden')
         return false;
-    const rect = node.getBoundingClientRect?.();
+    const rect = layoutRect(node);
     if (!rect || !rect.width || !rect.height)
         return false;
     if (hasOwnMotion(node, style))

@@ -1,4 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.22";
+import { rmR as __rmR } from "../textTable.js?rmv=2.0.0";
+import { cssZoomOf, layoutRect, layoutViewportWidthFor } from '../faceZoomMetrics.js?rmv=2.0.0';
 const POLISH_ATTR = 'data-rm-polish';
 const FONT_ATTR = 'data-rm-polish-font';
 const LINE_ATTR = 'data-rm-polish-line';
@@ -119,7 +120,7 @@ function lineCount(node) {
     const style = css(node);
     const size = parseFloat(style?.fontSize) || 14;
     const line = style?.lineHeight === 'normal' ? size * 1.3 : (parseFloat(style?.lineHeight) || size * 1.3);
-    return Math.max(1, Math.round(node.getBoundingClientRect().height / line));
+    return Math.max(1, Math.round(layoutRect(node).height / line));
 }
 function tryFix(node, attr, value = '', short = false) {
     const watch = [node, node.parentElement, node.parentElement?.parentElement].filter(Boolean);
@@ -172,14 +173,14 @@ function polishText(node, phone) {
         const parent = css(node.parentElement);
         const differs = !parent || style.backgroundColor !== parent.backgroundColor || (style.backgroundImage && style.backgroundImage !== 'none');
         const pad = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
-        if (own && differs && pad < 4 && node.getBoundingClientRect().width >= 60)
+        if (own && differs && pad < 4 && layoutRect(node).width >= 60)
             tryFix(node, PAD_ATTR);
     }
 }
 function polishTap(node) {
     if (node.hasAttribute(TAP_ATTR) || node.disabled)
         return;
-    const rect = node.getBoundingClientRect();
+    const rect = layoutRect(node);
     if (!rect.width || !rect.height)
         return;
     const small = Math.min(rect.width, rect.height);
@@ -319,13 +320,14 @@ function reserveRoomForStrips(face, state) {
                 if (!rect.height || !outer.height || rect.height > outer.height * 0.4)
                     continue;
                 const boxStyle = css(box);
-                const inner = { top: outer.top + (parseFloat(boxStyle.borderTopWidth) || 0), bottom: outer.bottom - (parseFloat(boxStyle.borderBottomWidth) || 0) };
+                const zoom = cssZoomOf(box);
+                const inner = { top: outer.top + (parseFloat(boxStyle.borderTopWidth) || 0) * zoom, bottom: outer.bottom - (parseFloat(boxStyle.borderBottomWidth) || 0) * zoom };
                 const top = rect.top + rect.height / 2 < inner.top + (inner.bottom - inner.top) / 2;
-                if (top ? rect.top - inner.top > 40 : inner.bottom - rect.bottom > 40)
+                if (top ? (rect.top - inner.top) / zoom > 40 : (inner.bottom - rect.bottom) / zoom > 40)
                     continue;
                 if (!coversFlowText(strip, box, budget, state, rect, outer))
                     continue;
-                const amount = Math.ceil(top ? rect.bottom - inner.top + 6 : inner.bottom - rect.top + 6);
+                const amount = Math.ceil(top ? (rect.bottom - inner.top) / zoom + 6 : (inner.bottom - rect.top) / zoom + 6);
                 if (top)
                     room.top = Math.max(room.top, amount);
                 else
@@ -445,7 +447,7 @@ function runPolish(face, explicit = false) {
     ensureStyle(face.ownerDocument);
     if (!face.hasAttribute(POLISH_ATTR))
         face.setAttribute(POLISH_ATTR, 'true');
-    const phone = (view(face).innerWidth || 1024) <= 520;
+    const phone = (layoutViewportWidthFor(face) || 1024) <= 520;
     const rootSnapshot = snapshot(face), width = view(face).innerWidth;
     const activeElement = face.ownerDocument.activeElement;
     const focused = face.contains(activeElement) ? activeElement : null;

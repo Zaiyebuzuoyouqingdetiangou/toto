@@ -1,3 +1,4 @@
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.0.0';
 const PROBE_ATTR = 'data-rm-frame-probe';
 export const FACE_FRAME_ATTR = 'data-rm-face-frame';
 export const FACE_FRAME_BODY_ATTR = 'data-rm-face-frame-body';
@@ -94,9 +95,9 @@ export function flushFaceBlocks(details) {
         const left = Number.parseFloat(style.marginLeft) || 0, right = Number.parseFloat(style.marginRight) || 0;
         if (left <= 0 || right <= 0 || left > MAX_INSET || right > MAX_INSET || Math.abs(left - right) > 2)
             continue;
-        const before = node.getBoundingClientRect().width;
+        const before = layoutRect(node).width;
         node.setAttribute(FACE_FLUSH_ATTR, 'true');
-        const after = node.getBoundingClientRect().width;
+        const after = layoutRect(node).width;
         if (after - before < (left + right) - 2) {
             node.removeAttribute(FACE_FLUSH_ATTR);
             continue;

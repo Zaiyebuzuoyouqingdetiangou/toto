@@ -1,10 +1,11 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.22";
-import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=1.99.22';
-import { FEEDBACK_CAT_ATTR, MAINTENANCE_RABBIT_ATTR, MIRROR_TOTO_SELECTOR, RECIPE_BUTTON_ATTR, TOOL_ENTRY_HOST_ATTR, isRabbitMirrorDetails, } from './runtime.js?rmv=1.99.22';
-import { EXCLUSIVE_STACKED_STATE_PANEL_ATTR, MOBILE_INLINE_ANNOTATION_MIRROR_ATTR, MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR, PASSPORT_DOCUMENT_COVER_ATTR, PASSPORT_DOCUMENT_HOST_ATTR, PASSPORT_DOCUMENT_PAGES_ATTR, PASSPORT_DOCUMENT_STAMP_ATTR, PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR, findDescendantLabelForId, findSelectorPanelGridSpanCandidates, maintenancePassiveAnimatedStatePanel, parseCheckedRulesFromText, repairRabbitMirrorSelectorPanelGridSpan, resolveTargetsForCheckedRule, } from './checkedStateRescue.js?rmv=1.99.22';
-import { getClassTokens } from './renderedStateRescue.js?rmv=1.99.22';
-import { ensurePassportDocumentRescueStyle, findRenderedPassportDocumentCandidates, markRenderedPassportDocumentCandidate, } from './scriptedInteractionRescue.js?rmv=1.99.22';
-import { FEEDBACK_CAT_MENU_ATTR, INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR, INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR, INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR, INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR, INTERACTION_DIAGNOSTIC_PANEL_ATTR, MAINTENANCE_MENU_ATTR, MOBILE_LAYOUT_BREAKPOINT_PX, MOBILE_LAYOUT_BREAK_TEXT_ATTR, MOBILE_LAYOUT_COMPACT_GAP_ATTR, MOBILE_LAYOUT_COMPACT_PADDING_ATTR, MOBILE_LAYOUT_FIT_ATTR, MOBILE_LAYOUT_FLEX_STACK_ATTR, MOBILE_LAYOUT_FLEX_WRAP_ATTR, MOBILE_LAYOUT_FLUID_TITLE_ATTR, MOBILE_LAYOUT_GRID_COLLAPSE_ATTR, MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR, MOBILE_LAYOUT_MATRIX_CELL_ATTR, MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR, MOBILE_LAYOUT_MEDIA_ATTR, MOBILE_LAYOUT_MIN_ATTR, MOBILE_LAYOUT_RELATION_BRANCH_ATTR, MOBILE_LAYOUT_RELATION_CELL_ATTR, MOBILE_LAYOUT_RELATION_DETAIL_ATTR, MOBILE_LAYOUT_RELATION_SIDE_ATTR, MOBILE_LAYOUT_RELATION_TREE_ATTR, MOBILE_LAYOUT_RESCUE_COUNT_ATTR, MOBILE_LAYOUT_RESCUE_STYLE_ATTR, MOBILE_LAYOUT_SCOPE_ATTR, MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR, MOBILE_LAYOUT_SCROLL_ATTR, MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR, MOBILE_LAYOUT_SINGLE_COLUMN_ATTR, MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR, MOBILE_LAYOUT_STATE_ACTIVE_ATTR, MOBILE_LAYOUT_STATE_CONTENT_ATTR, MOBILE_LAYOUT_STATE_ROW_ATTR, MOBILE_LAYOUT_STATE_ROW_GUARD_STYLE_ATTR, MOBILE_LAYOUT_TARGET_ATTRS, MOBILE_LAYOUT_UNDERFILL_ATTR, RECIPE_MENU_ATTR, RESAY_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR, maintenanceDirectTextLength, maintenanceContainerHasPositionedStackedDescendants, maintenanceHasIntentionalMarquee, maintenanceIsVisibleContentElement, maintenanceSafeComputedStyle, maintenanceVisibleTextRects, mobileLayoutRescueStates, mobileMatrixPreserveStates, rabbitMirrorFacePositionHints, } from './diagnostics.js?rmv=1.99.22';
+import { rmR as __rmR } from "../textTable.js?rmv=2.0.0";
+import { collectBoundedElementDescendants, semanticEnsembleScalePlan } from '../presentationQuality.js?rmv=2.0.0';
+import { layoutRect, layoutViewportWidthFor, phoneFrameRect, phoneFrameMapper } from '../faceZoomMetrics.js?rmv=2.0.0';
+import { FEEDBACK_CAT_ATTR, MAINTENANCE_RABBIT_ATTR, MIRROR_TOTO_SELECTOR, RECIPE_BUTTON_ATTR, TOOL_ENTRY_HOST_ATTR, isRabbitMirrorDetails, } from './runtime.js?rmv=2.0.0';
+import { EXCLUSIVE_STACKED_STATE_PANEL_ATTR, MOBILE_INLINE_ANNOTATION_MIRROR_ATTR, MOBILE_INLINE_ANNOTATION_ORIGINAL_ATTR, PASSPORT_DOCUMENT_COVER_ATTR, PASSPORT_DOCUMENT_HOST_ATTR, PASSPORT_DOCUMENT_PAGES_ATTR, PASSPORT_DOCUMENT_STAMP_ATTR, PASSPORT_DOCUMENT_STAMP_DETAIL_ATTR, findDescendantLabelForId, findSelectorPanelGridSpanCandidates, maintenancePassiveAnimatedStatePanel, parseCheckedRulesFromText, repairRabbitMirrorSelectorPanelGridSpan, resolveTargetsForCheckedRule, } from './checkedStateRescue.js?rmv=2.0.0';
+import { getClassTokens } from './renderedStateRescue.js?rmv=2.0.0';
+import { ensurePassportDocumentRescueStyle, findRenderedPassportDocumentCandidates, markRenderedPassportDocumentCandidate, } from './scriptedInteractionRescue.js?rmv=2.0.0';
+import { FEEDBACK_CAT_MENU_ATTR, INDEPENDENT_MOBILE_SPATIAL_CANVAS_ATTR, INDEPENDENT_MOBILE_SPATIAL_COUNT_ATTR, INDEPENDENT_MOBILE_SPATIAL_SCROLL_ATTR, INDEPENDENT_MOBILE_SPATIAL_STYLE_ATTR, INTERACTION_DIAGNOSTIC_PANEL_ATTR, MAINTENANCE_MENU_ATTR, MOBILE_LAYOUT_BREAKPOINT_PX, MOBILE_LAYOUT_BREAK_TEXT_ATTR, MOBILE_LAYOUT_COMPACT_GAP_ATTR, MOBILE_LAYOUT_COMPACT_PADDING_ATTR, MOBILE_LAYOUT_FIT_ATTR, MOBILE_LAYOUT_FLEX_STACK_ATTR, MOBILE_LAYOUT_FLEX_WRAP_ATTR, MOBILE_LAYOUT_FLUID_TITLE_ATTR, MOBILE_LAYOUT_GRID_COLLAPSE_ATTR, MOBILE_LAYOUT_MATRIX_ACTIVE_ATTR, MOBILE_LAYOUT_MATRIX_CELL_ATTR, MOBILE_LAYOUT_MATRIX_PRESERVE_ATTR, MOBILE_LAYOUT_MEDIA_ATTR, MOBILE_LAYOUT_MIN_ATTR, MOBILE_LAYOUT_RELATION_BRANCH_ATTR, MOBILE_LAYOUT_RELATION_CELL_ATTR, MOBILE_LAYOUT_RELATION_DETAIL_ATTR, MOBILE_LAYOUT_RELATION_SIDE_ATTR, MOBILE_LAYOUT_RELATION_TREE_ATTR, MOBILE_LAYOUT_RESCUE_COUNT_ATTR, MOBILE_LAYOUT_RESCUE_STYLE_ATTR, MOBILE_LAYOUT_SCOPE_ATTR, MOBILE_LAYOUT_SCREEN_SHELL_PRESERVE_ATTR, MOBILE_LAYOUT_SCROLL_ATTR, MOBILE_LAYOUT_SECTION_STACK_PRESERVE_ATTR, MOBILE_LAYOUT_SINGLE_COLUMN_ATTR, MOBILE_LAYOUT_SQUEEZED_TEXT_ATTR, MOBILE_LAYOUT_STATE_ACTIVE_ATTR, MOBILE_LAYOUT_STATE_CONTENT_ATTR, MOBILE_LAYOUT_STATE_ROW_ATTR, MOBILE_LAYOUT_STATE_ROW_GUARD_STYLE_ATTR, MOBILE_LAYOUT_TARGET_ATTRS, MOBILE_LAYOUT_UNDERFILL_ATTR, RECIPE_MENU_ATTR, RESAY_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_COPY_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_COUNT_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_HOST_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_SOURCE_ATTR, VISUAL_SCENERY_MOBILE_OVERFLOW_STYLE_ATTR, maintenanceDirectTextLength, maintenanceContainerHasPositionedStackedDescendants, maintenanceHasIntentionalMarquee, maintenanceIsVisibleContentElement, maintenanceSafeComputedStyle, maintenanceVisibleTextRects, mobileLayoutRescueStates, mobileMatrixPreserveStates, rabbitMirrorFacePositionHints, } from './diagnostics.js?rmv=2.0.0';
 let mobileLayoutScopeCounter = 0;
 const VIEWPORT_LAYOUT_RESCUE_STYLE_ATTR = 'data-rabbit-mirror-viewport-layout-rescue';
 export const VIEWPORT_LAYOUT_COUNT_ATTR = 'data-rabbit-mirror-viewport-layout-count';
@@ -102,8 +103,7 @@ export function maintenanceMobileLayoutComputedStyle(element) {
 }
 export function maintenanceMobileLayoutRect(element) {
     try {
-        const rect = element?.getBoundingClientRect?.();
-        return rect ? { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height } : null;
+        return phoneFrameRect(element);
     }
     catch {
         return null;
@@ -690,7 +690,7 @@ export function repairLegacyMaintenanceMobileStateRows(scope) {
 function visualSceneryMobileOverflowCandidateRecords(root) {
     if (!root?.querySelectorAll)
         return [];
-    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    const viewportWidth = layoutViewportWidthFor(root);
     if (viewportWidth > MOBILE_LAYOUT_BREAKPOINT_PX + 40)
         return [];
     const records = [];
@@ -806,12 +806,12 @@ export function installVisualSceneryMobileNarrativeOverflowRescue(root) {
 function independentMobileSpatialViewportNarrow(root) {
     let rootWidth = 0;
     try {
-        rootWidth = Number(root?.getBoundingClientRect?.().width || root?.parentElement?.getBoundingClientRect?.().width || 0);
+        rootWidth = Number(layoutRect(root)?.width || layoutRect(root?.parentElement)?.width || 0);
     }
     catch { }
     if (rootWidth > 0)
         return rootWidth <= 760;
-    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    const viewportWidth = layoutViewportWidthFor(root);
     return viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40;
 }
 function independentMobileSpatialClippingAncestor(host, root) {
@@ -1100,7 +1100,8 @@ function maintenanceMobileLayoutVisibleOverflow(element, rect) {
         }
         return false;
     };
-    const outside = box => box && box.width > 0 && box.height > 0 && (box.right > rect.right + 3 || box.left < rect.left - 3);
+    const frame = phoneFrameMapper(element);
+    const outside = raw => { const box = frame(raw); return box && box.width > 0 && box.height > 0 && (box.right > rect.right + 3 || box.left < rect.left - 3); };
     try {
         const walker = element.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
         const range = element.ownerDocument.createRange();
@@ -1132,8 +1133,8 @@ function maintenanceMobileLayoutClippedByAncestor(element, root, viewportWidth) 
         }
         if (!style || !/^(?:hidden|clip|auto|scroll)$/.test(String(style.overflowX || '').toLowerCase()))
             continue;
-        const box = current.getBoundingClientRect();
-        if (box.left >= -3 && box.right <= viewportWidth + 3)
+        const box = phoneFrameRect(current);
+        if (box && box.left >= -3 && box.right <= viewportWidth + 3)
             return true;
     }
     return false;
@@ -1141,7 +1142,7 @@ function maintenanceMobileLayoutClippedByAncestor(element, root, viewportWidth) 
 export function inspectMaintenanceMobileLayout(root) {
     const empty = {
         candidateCount: 0,
-        viewportWidth: Number(globalThis.innerWidth || 0),
+        viewportWidth: layoutViewportWidthFor(root),
         narrowViewport: false,
         horizontalOverflowCount: 0,
         fixedWidthCount: 0,
@@ -1161,7 +1162,7 @@ export function inspectMaintenanceMobileLayout(root) {
     };
     if (!root?.querySelectorAll)
         return empty;
-    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    const viewportWidth = layoutViewportWidthFor(root);
     const narrowViewport = viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40;
     if (!narrowViewport)
         return { ...empty, viewportWidth, narrowViewport };
@@ -1348,7 +1349,7 @@ export function installMaintenanceMobileLayoutRescue(root) {
         root.querySelectorAll(`[${attr}]`).forEach(element => element.removeAttribute(attr));
     }
     const rootRect = maintenanceMobileLayoutRect(root);
-    const viewportWidth = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+    const viewportWidth = layoutViewportWidthFor(root);
     const viewportLimit = viewportWidth > 0 && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT_PX + 40
         ? viewportWidth
         : MOBILE_LAYOUT_BREAKPOINT_PX;
@@ -1716,7 +1717,7 @@ export function inspectMaintenanceViewportLayout(root) {
         overflowXCount: overflow.filter(item => item.clippedX).length,
         overflowYCount: overflow.filter(item => item.clippedY).length,
         pointerBlockedCount: overflow.filter(item => item.pointerBlocked).length,
-        viewportWidth: Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0)),
+        viewportWidth: layoutViewportWidthFor(root),
     };
 }
 function maintenanceViewportLayoutCss(scopeToken) {
@@ -1741,8 +1742,8 @@ function hclipElementPath(element) {
 function hclipCompactText(element) {
     return String(element?.textContent || '').replace(/\s+/g, '').length;
 }
-function hclipViewportWidth() {
-    return Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+function hclipViewportWidth(root) {
+    return layoutViewportWidthFor(root);
 }
 function hclipSafeStyle(element) {
     try {
@@ -1754,7 +1755,7 @@ function hclipSafeStyle(element) {
 }
 function hclipSafeRect(element) {
     try {
-        return element?.getBoundingClientRect?.() || null;
+        return phoneFrameRect(element);
     }
     catch {
         return null;
@@ -1901,7 +1902,7 @@ function inspectSemanticEnsembleFits(root) {
     const stats = { narrow: false, candidates: 0, plans: [] };
     if (!root?.querySelectorAll || !root?.isConnected)
         return stats;
-    const viewportWidth = hclipViewportWidth();
+    const viewportWidth = hclipViewportWidth(root);
     if (!viewportWidth || viewportWidth > HCLIP_BREAKPOINT_PX)
         return stats;
     stats.narrow = true;
@@ -1982,7 +1983,7 @@ function hclipCollectClippingContainers(root) {
 }
 function inspectHorizontalClip(root) {
     const stats = {
-        viewportWidth: hclipViewportWidth(),
+        viewportWidth: hclipViewportWidth(root),
         narrow: false,
         candidates: 0,
         repaired: 0,
@@ -2212,12 +2213,12 @@ export function installMaintenanceViewportLayoutRescue(root) {
     root.setAttribute(VIEWPORT_LAYOUT_COUNT_ATTR, String(total));
     return total;
 }
-function maintenanceMobileRescueAppliesNow() {
-    const width = Math.max(0, Number(globalThis.innerWidth || globalThis.document?.documentElement?.clientWidth || 0));
+function maintenanceMobileRescueAppliesNow(root) {
+    const width = layoutViewportWidthFor(root);
     return width > 0 && width <= MOBILE_LAYOUT_BREAKPOINT_PX;
 }
 export function shouldRunMaintenanceMobileLayoutRescue(root) {
-    if (!maintenanceMobileRescueAppliesNow())
+    if (!maintenanceMobileRescueAppliesNow(root))
         return false;
     try {
         return Number(inspectMaintenanceMobileLayout(root)?.candidateCount || 0) > 0;

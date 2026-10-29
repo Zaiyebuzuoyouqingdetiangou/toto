@@ -1,4 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.22";
+import { rmT as __rmT } from "../textTable.js?rmv=2.0.0";
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.0.0';
 const CHROME = 'summary, style, script, template, [hidden], [data-rabbit-mirror-tool-entry-host], [data-rm-mobile-controls], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-collapse-btn], [data-rm-draw-notes]';
 const MAX_NODES = 900;
 const MIN_PART = 196;
@@ -30,11 +31,11 @@ export function inspectFormAnchorTop(root) {
     const candidates = [...details.children].filter(node => !node.matches(CHROME) && !node.matches('input, label, button'));
     if (!candidates.length)
         return { status: 'none' };
-    const body = candidates.find(node => { const r = node.getBoundingClientRect(); return r.height >= 40 && r.width >= 40; });
+    const body = candidates.find(node => { const r = layoutRect(node); return r.height >= 40 && r.width >= 40; });
     if (!body)
         return { status: 'closed' };
     const view = body.ownerDocument?.defaultView || globalThis;
-    const box = body.getBoundingClientRect();
+    const box = layoutRect(body);
     const depth = Math.min(360, box.height / 2);
     const bottom = box.top + depth;
     let parts = 0, text = 0, frameArea = 0, seen = 0;
@@ -44,7 +45,7 @@ export function inspectFormAnchorTop(root) {
                 return;
             if (child.matches(CHROME))
                 continue;
-            const rect = child.getBoundingClientRect();
+            const rect = layoutRect(child);
             if (!rect.width || !rect.height) {
                 walk(child);
                 continue;
@@ -128,7 +129,7 @@ export function inspectValueLayers(root) {
             break;
         if (node.matches(CHROME) || node.closest('[data-rm-draw-frame]'))
             continue;
-        const rect = node.getBoundingClientRect();
+        const rect = layoutRect(node);
         const area = rect.width * rect.height;
         if (area < 3000)
             continue;
