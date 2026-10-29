@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.18";
-import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=1.99.18';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.99.18';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.19";
+import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=1.99.19';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.99.19';
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
 const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls], [data-rm-released]';
@@ -354,7 +354,8 @@ function unhideDeclaredGroups(root) {
 function mergeNestedToggles(root) {
     let merged = 0;
     const tokens = group => new Set(own(group, '[data-rm-show]').map(node => String(node.getAttribute('data-rm-show') || '').replace(/^!/, '').trim()).filter(Boolean));
-    for (const outer of root.querySelectorAll('[data-rm-ui="toggle"]')) {
+    const groups = [...(root.matches?.('[data-rm-ui="toggle"]') ? [root] : []), ...root.querySelectorAll('[data-rm-ui="toggle"]')];
+    for (const outer of groups) {
         if (outer.getAttribute('data-rm-ui') !== 'toggle')
             continue;
         const mine = tokens(outer);
@@ -363,11 +364,17 @@ function mergeNestedToggles(root) {
         for (const inner of outer.querySelectorAll('[data-rm-ui="toggle"]')) {
             if (inner.parentElement?.closest('[data-rm-ui]') !== outer)
                 continue;
+            const shownBy = inner.parentElement?.closest('[data-rm-show]');
+            if (shownBy && outer.contains(shownBy) && shownBy !== outer)
+                continue;
             const theirs = tokens(inner);
             if (!theirs.size || [...theirs].some(token => !mine.has(token)))
                 continue;
             inner.removeAttribute('data-rm-ui');
-            outer.setAttribute(RECOVERED, 'merged-toggle');
+            inner.removeAttribute('data-ui');
+            inner.removeAttribute('data-rm-on');
+            if (!outer.hasAttribute(RECOVERED))
+                outer.setAttribute(RECOVERED, 'merged-toggle');
             merged++;
         }
     }
@@ -376,7 +383,7 @@ function mergeNestedToggles(root) {
 export function repairBehaviorDeclarations(root) {
     if (!root?.querySelectorAll)
         return 0;
-    let repaired = repairScatteredPick(root) + repairAuthoredSet(root) + unhideDeclaredGroups(root) + mergeNestedToggles(root);
+    let repaired = repairScatteredPick(root) + repairAuthoredSet(root) + unhideDeclaredGroups(root);
     for (const node of root.querySelectorAll('[data-ui]:not([data-rm-ui])')) {
         if (node.closest(UI))
             continue;
@@ -428,6 +435,7 @@ export function repairBehaviorDeclarations(root) {
             repaired++;
         }
     }
+    repaired += mergeNestedToggles(root);
     repaired += adoptOrphans(root);
     return repaired;
 }

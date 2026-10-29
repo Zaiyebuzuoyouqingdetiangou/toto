@@ -1,5 +1,6 @@
-import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.99.18';
-import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=1.99.18';
+import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.99.19';
+import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=1.99.19';
+import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=1.99.19';
 const OUTPUTS = 'rabbit_mirror_independent_outputs_v1';
 const HISTORY = 'rabbit_mirror_independent_history_v1';
 const SWIPES = 'rabbit_mirror_face_swipes_v1';
@@ -12,14 +13,20 @@ const CHAT_RECIPES = 'rabbit_mirror_follow_recipes_v1';
 const CHAT_PARTIALS = 'rabbit_mirror_follow_partials_v1';
 const chatOfKey = key => /^chat:/.test(String(key || '')) ? stripJsonl(String(key).slice(5)) : '';
 const sameJson = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
-function recipeCovered(metadata, record) {
-    const saved = metadata?.[CHAT_RECIPES]?.[`${record.messageIndex}:${record.swipeId}`];
-    return !!saved && ['themeIds', 'formatIds', 'faces', 'presentationMode', 'textIds'].every(key => sameJson(saved[key], record[key]));
+const RECIPE_PLACE_KEYS = new Set(['key', 'chatKey', 'messageIndex', 'swipeId', 'source', 'messageFingerprint', 'ts', 'stamp', 'stampS']);
+const recipeBody = record => JSON.stringify(Object.fromEntries(Object.entries(record || {}).filter(([key]) => !RECIPE_PLACE_KEYS.has(key))));
+function recipeCovered(file, record) {
+    const saved = file.metadata?.[CHAT_RECIPES]?.[`${record.messageIndex}:${record.swipeId}`];
+    if (!saved)
+        return false;
+    const stamp = messageStampSeconds(file.messages?.[record.messageIndex], record.swipeId);
+    const savedStamp = Number.isInteger(saved.stampS) ? saved.stampS : stampSeconds(saved.stamp);
+    return !!stamp && savedStamp === stamp && recipeBody(saved) === recipeBody(record);
 }
 function partialCovered(metadata, record) {
     const saved = metadata?.[CHAT_PARTIALS]?.[`${record.messageIndex}:${record.swipeId}`];
-    return !!saved && saved.sourceHash === record.sourceHash && saved.html === record.html && sameJson(saved.failedFaces, record.failedFaces)
-        && sameJson(saved.textReplacementReceipts, record.textReplacementReceipts);
+    return !!saved && saved.chatKey === record.chatKey && saved.sourceHash === record.sourceHash && saved.html === record.html
+        && sameJson(saved.failedFaces, record.failedFaces) && sameJson(saved.textReplacementReceipts, record.textReplacementReceipts);
 }
 const store = () => { try {
     return globalThis.localStorage || null;
@@ -243,7 +250,7 @@ export async function scanAllChatsForCleanup(ctx, { onProgress = null, signal = 
                 ok = mine.length > 0 && mine.every(version => savedVersions.some(other => sameVersion(version, other)));
             }
             else if (item.kind === 'recipe')
-                ok = recipeCovered(file.metadata, item.record);
+                ok = recipeCovered(file, item.record);
             else if (item.kind === 'partial')
                 ok = partialCovered(file.metadata, item.record);
             else if (item.kind === 'image')

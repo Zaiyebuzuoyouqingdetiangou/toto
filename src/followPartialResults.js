@@ -1,7 +1,7 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.99.18';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.99.18';
-import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.99.18';
-import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.99.18';
+import { getCurrentChatKey } from './storage.js?rmv=1.99.19';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.99.19';
+import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.99.19';
+import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.99.19';
 const KEY = 'rabbit_mirror_follow_partial_results_v1';
 const MAX_CHARS = 768 * 1024;
 const MAX_RECORDS = 120;
@@ -110,6 +110,8 @@ function chatSlot(record) { return `${record.messageIndex}:${record.swipeId}`; }
 function writeChatRecord(record) {
     const metadata = chatMetadata();
     if (!metadata)
+        return false;
+    if (record.chatKey !== getCurrentChatKey())
         return false;
     try {
         const store = metadata[CHAT_KEY] && typeof metadata[CHAT_KEY] === 'object' ? { ...metadata[CHAT_KEY] } : {};

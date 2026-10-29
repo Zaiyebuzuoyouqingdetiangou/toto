@@ -1,9 +1,9 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.18";
-import { createRabbitMirrorPublicAPI } from './publicApiCore.js?rmv=1.99.18';
-import { getSettings, updateSettings } from './settings.js?rmv=1.99.18';
-import { buildScriptUserPrompt } from './publicApiPrompt.js?rmv=1.99.18';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.19";
+import { createRabbitMirrorPublicAPI } from './publicApiCore.js?rmv=1.99.19';
+import { getSettings, updateSettings } from './settings.js?rmv=1.99.19';
+import { buildScriptUserPrompt } from './publicApiPrompt.js?rmv=1.99.19';
 export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
-    const connection = () => import('./independentApi/connection.js?rmv=1.99.18');
+    const connection = () => import('./independentApi/connection.js?rmv=1.99.19');
     const captureContext = () => {
         const identity = ctx => String(ctx?.getCurrentChatId?.() ?? ctx?.chatId ?? ctx?.chatMetadata?.chat_id ?? '') + ':' + String(ctx?.characterId ?? '') + ':' + String(ctx?.groupId ?? '');
         const context = target.SillyTavern?.getContext?.();
@@ -21,18 +21,18 @@ export function installRabbitMirrorPublicAPI(isActive, target = globalThis) {
         async listProfiles() { return (await connection()).getIndependentConnectionProfiles().map(p => ({ id: String(p.id || ''), name: String(p.name || '') })); },
         async listModels() { return (await connection()).fetchIndependentModels(); },
         async listProviders() {
-            return (await import('./memoryScanner.js?rmv=1.99.18')).scanMemoryPlugins().map(p => ({ id: p.id, name: p.name, readable: p.readable === true, selectedAllowed: p.selectedAllowed === true }));
+            return (await import('./memoryScanner.js?rmv=1.99.19')).scanMemoryPlugins().map(p => ({ id: p.id, name: p.name, readable: p.readable === true, selectedAllowed: p.selectedAllowed === true }));
         },
-        async listWorldBooks() { return (await import('./memoryWorldBook.js?rmv=1.99.18')).listMemoryWorldBooks(); },
+        async listWorldBooks() { return (await import('./memoryWorldBook.js?rmv=1.99.19')).listMemoryWorldBooks(); },
         async readMemory(settings) {
             const assertContext = captureContext();
-            const module = await import('./memoryScanner.js?rmv=1.99.18');
+            const module = await import('./memoryScanner.js?rmv=1.99.19');
             const material = await module.prepareSelectedMemoryForPrompt(settings, { hasSharedMemoryTheme: true, generationType: 'script', maxChars: settings.memoryMaxChars });
             assertContext();
             return material;
         },
         async complete(settings, system, prompt, options) {
-            const runtime = await import('./independentApi/request.js?rmv=1.99.18');
+            const runtime = await import('./independentApi/request.js?rmv=1.99.19');
             options.assertAdvancedCurrent();
             if (__rmR("BL0VJZM57uOM8YWtfvRJXbdTfQS.s7NF83a48Nt5gJnAlKgOLe6gyhBJxs3lLXLvHL16LeHS5YZcWdW0uQg.JuwBf0otfbAjXHA", "").test(system + prompt) || __rmR(".TejTYTQCwe2s24lh2uWwM2WbCYG8xvX", "").test(system + prompt))
                 throw Object.assign(new Error(__rmT("jclAiDI3HzFDQcduHu29vbVjqfL.1xgmXRUbjiJ3LUwS4r4ELnpr7f")), { code: 'INVALID_ARGUMENT' });

@@ -1,12 +1,13 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
-import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.99.18';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.99.18';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.99.18';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.99.18';
-import { getSettings, updateSettings } from './settings.js?rmv=1.99.18';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.99.18';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.99.18';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.18';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.19";
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.99.19';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.99.19';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.99.19';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.99.19';
+import { getSettings, updateSettings } from './settings.js?rmv=1.99.19';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.99.19';
+import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=1.99.19';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.99.19';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.19';
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
 const RECIPE_STORAGE_KEY = 'rabbit_mirror_theater:selection_recipes:v1';
@@ -507,21 +508,19 @@ function liveChatMetadata() {
         return null;
     }
 }
-function messageStamp(message, swipe) {
-    const info = Array.isArray(message?.swipe_info) ? message.swipe_info[swipe] : null;
-    const value = info?.gen_finished || info?.gen_started || message?.gen_finished || message?.gen_started || message?.send_date || '';
-    return String(value || '');
-}
-function writeChatRecipe(index, swipe, message, compact) {
+function writeChatRecipe(index, swipe, message, compact, chatKey = '') {
     const metadata = liveChatMetadata();
     if (!metadata)
         return false;
     try {
         const store = metadata[CHAT_RECIPE_METADATA_KEY] && typeof metadata[CHAT_RECIPE_METADATA_KEY] === 'object' ? metadata[CHAT_RECIPE_METADATA_KEY] : {};
-        const stamp = messageStamp(message, swipe);
+        const current = String(getCurrentChatKey() || '');
+        if (chatKey && current && chatKey !== current)
+            return false;
+        const stamp = messageStampSeconds(message, swipe);
         if (!stamp)
             return false;
-        store[`${index}:${swipe}`] = { ...compact, stamp, ts: Date.now() };
+        store[`${index}:${swipe}`] = { ...compact, stampS: stamp, ts: Date.now() };
         const keys = Object.keys(store);
         if (keys.length > MAX_CHAT_RECIPES) {
             keys.sort((a, b) => Number(store[a]?.ts || 0) - Number(store[b]?.ts || 0)).slice(0, keys.length - MAX_CHAT_RECIPES).forEach(key => delete store[key]);
@@ -537,8 +536,9 @@ function readChatRecipe(index, swipe, message) {
     const record = liveChatMetadata()?.[CHAT_RECIPE_METADATA_KEY]?.[`${index}:${swipe}`];
     if (!record || typeof record !== 'object')
         return null;
-    const stamp = messageStamp(message, swipe);
-    if (!stamp || !record.stamp || record.stamp !== stamp)
+    const stamp = messageStampSeconds(message, swipe);
+    const saved = Number.isInteger(record.stampS) ? record.stampS : stampSeconds(record.stamp);
+    if (!stamp || !saved || saved !== stamp)
         return null;
     return record;
 }
@@ -576,7 +576,7 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
         && String(existing.source || '') === sourceText
         && String(existing.messageFingerprint || '') === messageFingerprint;
     const facesUnchanged = JSON.stringify(existing?.faces || null) === JSON.stringify(compact.faces || null);
-    const inChat = writeChatRecipe(index, resolvedSwipe, message, compact);
+    const inChat = writeChatRecipe(index, resolvedSwipe, message, compact, resolvedChatKey);
     if (unchanged && facesUnchanged)
         return true;
     const records = existingRecords.filter(item => item?.key !== key);

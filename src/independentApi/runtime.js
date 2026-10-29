@@ -1,4 +1,4 @@
-export const RUNTIME_VERSION = '1.99.18';
+export const RUNTIME_VERSION = '1.99.19';
 export const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 export const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
 export const INLINE_ANCHOR_ATTR = 'data-rabbit-mirror-independent-inline-anchor';

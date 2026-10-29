@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.18";
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.99.18';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.18';
-import { mountUserSkinControls } from './userSkin.js?rmv=1.99.18';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.18';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.19";
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=1.99.19';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.19';
+import { mountUserSkinControls } from './userSkin.js?rmv=1.99.19';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.19';
 const colorLabels = [__rmT("hVdPjf"), __rmT("JQSusEt1Keh"), __rmT("g6Q4jh"), __rmT("5p7qA.1sADp"), __rmT("3Foaif"), __rmT("oTx2hhmF"), __rmT("KeNzYT")];
 const mounts = new WeakMap();
 globalThis.__rabbitMirrorApplyAppearanceTheme = applyAppearanceTheme;
@@ -57,7 +57,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=1.99.18').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=1.99.19').then(mod => {
         if (versionRow.isConnected)
             mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn(__rmT("UnX0nRLVcQzumShYaRVSwKc82KFBM7GDygWrKZLNEXY6ii06tl6OBPDATF6KabUlMIrQGzxWLNE"), error));
@@ -481,7 +481,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
             applyTheme();
             paint();
             close.focus({ preventScroll: true });
-            void import('./mirrorUpdateMenu.js?rmv=1.99.18').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUb5oykH.tFb26g8apR3SqFnm2mRwdDT"), error));
+            void import('./mirrorUpdateMenu.js?rmv=1.99.19').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUb5oykH.tFb26g8apR3SqFnm2mRwdDT"), error));
         }
         else {
             closeTheaterFavoriteViewer();
