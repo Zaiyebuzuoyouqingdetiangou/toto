@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.15";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.16";
 export const NAME_MASK_MAX_RULES = 50;
 const USER_ALIAS = __rmT("f8eJ7k");
 const CHAR_ALIAS = __rmT("f8jIuf");
