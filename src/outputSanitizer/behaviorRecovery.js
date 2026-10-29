@@ -1,7 +1,7 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.13";
-import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.99.13';
-import { motionOutsideControls } from './behaviorDialect.js?rmv=1.99.13';
-import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.99.13';
+import { rmR as __rmR } from "../textTable.js?rmv=1.99.14";
+import { isBehaviorInteractionOwned } from './behaviorInteractions.js?rmv=1.99.14';
+import { motionOutsideControls } from './behaviorDialect.js?rmv=1.99.14';
+import { behaviorTypeFits } from './behaviorRepair.js?rmv=1.99.14';
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
 const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel]';

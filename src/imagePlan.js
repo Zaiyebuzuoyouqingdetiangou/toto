@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.13";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.14";
 function string(value) { return typeof value === 'string' ? value : ''; }
 function sourceJson(value) {
     return JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(__rmR("nSk", "g"), '\\u3010');

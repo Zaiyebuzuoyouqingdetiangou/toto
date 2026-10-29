@@ -1,10 +1,10 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.13";
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.99.13';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.99.13';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.99.13';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.99.13';
-import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.99.13';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.99.13';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.14";
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=1.99.14';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=1.99.14';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=1.99.14';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=1.99.14';
+import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=1.99.14';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=1.99.14';
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
 const MAX_CONTROLS = 40;
@@ -387,8 +387,10 @@ export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS, reco
     const opened = openGenericProbeSandbox(root);
     if (!opened)
         return null;
+    const openedMs = Date.now() - started;
     try {
         const controls = collectGenericProbeControls(opened);
+        const collectedMs = Date.now() - started - openedMs;
         const { outcomes, truncated: timedOut, feedbackOnly } = probeGenericControls(opened.details, controls, started, budget);
         const dead = [];
         const contentStill = [];
@@ -410,7 +412,8 @@ export function runMaintenanceGenericProbe(root, { budget = TIME_BUDGET_MS, reco
         }
         const controlLimitReached = !!opened.controlLimitReached;
         const result = { tested, dead, feedbackOnly: contentStill, skipped, uncertain,
-            truncated: timedOut || controlLimitReached, controlLimitReached, total: opened.controlCount };
+            truncated: timedOut || controlLimitReached, controlLimitReached, total: opened.controlCount,
+            ms: { open: openedMs, collect: collectedMs, total: Date.now() - started } };
         if (recordResult) {
             try {
                 root.setAttribute(GENERIC_PROBE_RESULT_ATTR, JSON.stringify(result));

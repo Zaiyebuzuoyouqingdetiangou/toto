@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.13";
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.99.13';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.99.13';
-import { listExternalLibraries } from './store.js?rmv=1.99.13';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.14";
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.99.14';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.99.14';
+import { listExternalLibraries } from './store.js?rmv=1.99.14';
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;
 const STATUS_KEY = 'rabbit_mirror_mother_library_server_backup:v1';

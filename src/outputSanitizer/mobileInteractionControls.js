@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.13";
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.99.13';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.14";
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=1.99.14';
 const bindings = new WeakMap();
 const controlOwners = new WeakMap();
 const GESTURE_TYPES = new Set(['pager', 'swipe', 'slide', 'drag', 'reorder', 'turn', 'draw', 'follow', 'reveal']);
