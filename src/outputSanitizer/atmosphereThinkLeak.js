@@ -1,4 +1,4 @@
-import { removeAtmosphereNoteNodes } from '../atmosphereMarkup.js?rmv=1.99.9';
+import { removeAtmosphereNoteNodes } from '../atmosphereMarkup.js?rmv=1.99.10';
 const THINK = /<rm-think(?:\s[^>]*)?>([\s\S]*?)<\/rm-think\s*>/gi;
 const TICKET = /<rm-ticket(?:\s[^>]*)?>\s*(\d+)\s*<\/rm-ticket\s*>/gi;
 const INLINE = /^(EM|STRONG|B|I|SPAN|Q|CODE|SMALL|U|MARK|FONT|RM-THINK|RM-TICKET)$/;

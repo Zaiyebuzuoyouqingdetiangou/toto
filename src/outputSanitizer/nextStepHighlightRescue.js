@@ -1,5 +1,5 @@
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.99.9';
-import { splitCssSelectorList } from './markup.js?rmv=1.99.9';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=1.99.10';
+import { splitCssSelectorList } from './markup.js?rmv=1.99.10';
 const RESCUE_ATTR = 'data-rabbit-mirror-next-step-highlight-rescue';
 const PAIR_RE = /(?:#([\w-]+)|\[\s*id\s*=\s*["']?([\w-]+)["']?\s*\])\s*:checked\s*~\s*([^{}]*?)label\[\s*for\s*=\s*["']?([\w-]+)["']?\s*\]\s*$/;
 function parsePair(selector) {
