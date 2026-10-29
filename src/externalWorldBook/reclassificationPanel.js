@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.10";
-import { listExternalLibraryEntryChoices, reclassifyExternalLibraryEntries } from './store.js?rmv=1.99.10';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.11";
+import { listExternalLibraryEntryChoices, reclassifyExternalLibraryEntries } from './store.js?rmv=1.99.11';
 const LABELS = { theme: __rmT("_GerrIjDHM_"), format: __rmT("1Q3is5nrSDY"), text: __rmT("Ybcc.ep_"), auxiliary: __rmT("5p7qAO1PlPp"), pending: __rmT("oKv_9RWT"), mixed: __rmT("zo6MOtBE"), ignore: __rmT("EBNOnh") };
 const PAGE_SIZE = 50;
 export function openExternalReclassificationPanel(container, library, { onSaved = () => { }, isCurrent = () => true } = {}) {
