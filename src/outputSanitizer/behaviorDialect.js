@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.21";
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.99.21';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.99.21';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.99.21';
-import { ownBehaviorNodes, behaviorOwnerGroup, TYPE_CONTROLS } from './behaviorOwner.js?rmv=1.99.21';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=1.99.22";
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=1.99.22';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=1.99.22';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=1.99.22';
+import { ownBehaviorNodes, behaviorOwnerGroup, TYPE_CONTROLS } from './behaviorOwner.js?rmv=1.99.22';
 export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'accumulate-count', label: __rmT("H10CigIqluDrTxgJYjSdYCYRZ8j6sS3Z"), note: __rmT("uHFhda0S5YqWbNYqjVk.mNS.N7UM79S7VaASNJIc2lJq4qOGVNbA35OvdCFWezkC") },
     { id: 'rhythm-charge', label: __rmT("hZrUI4sNz.6TmbxwKewsqfpA8vr0AHzwzuE"), note: __rmT("h9yDCUjUH1zhYDO0L0wOu5mDVXu.DFPJQbnehJK.URhERyVw5uqA35OveNfLYZkC") },
@@ -165,6 +165,7 @@ function remoteTogglesOf(group) {
 }
 const BEFORE_WORDS = new Set(['initial', 'init', 'before', 'idle', 'pending', 'original', 'unfired', 'unrevealed', 'hidden', 'covered',
     'locked', 'sealed', 'closed', 'waiting', 'unchanged']);
+const DONE_WORDS = ['complete', 'completed', 'finish', 'finished', 'filled', 'cleared', 'accomplished'];
 const MATCH_WORDS = ['answer', 'answered', 'correct', 'right', 'solved', 'unlocked', 'success', 'pass', 'passed', 'win'];
 const MISS_WORDS = ['wrong', 'incorrect', 'error', 'fail', 'failed', 'mistake', 'lose'];
 const tokensOf = group => new Set(ownBehaviorShows(group).flatMap(node => behaviorShowTokens(node)).map(token => token.replace(/^!/, '')).filter(Boolean));
@@ -222,6 +223,9 @@ export function addDialectStateKeys(state, keys) {
             keys.add(`${prefix}${state.stopIndex + (oneBased ? 1 : 0)}`);
         }
     }
+    if (keys.has('done'))
+        for (const word of DONE_WORDS)
+            keys.add(word);
     return keys;
 }
 const STATE_ATTR_NEEDLES = ['data-rm-index', 'data-rm-on', 'data-rm-picked', 'data-rm-active', 'data-rm-done', 'data-rm-match', 'data-rm-angle', 'data-rm-seq', '--rm-'];
@@ -415,7 +419,7 @@ export const STEP_RANGE_TYPES = new Set(['motion', 'adjust', 'reveal', 'view', '
 export const STEP_RANGE_PREFIXES = ['', 'p', 'step', 's', 'page', 'part', 'ch', 'chapter', 'seg', 'track'];
 export function reachableBehaviorKeys(group) {
     const type = group?.getAttribute?.('data-rm-ui');
-    const keys = new Set(COMMON_KEYS);
+    const keys = new Set([...COMMON_KEYS, ...DONE_WORDS]);
     if (group?.hasAttribute?.('data-rm-recall'))
         return null;
     switch (type) {
