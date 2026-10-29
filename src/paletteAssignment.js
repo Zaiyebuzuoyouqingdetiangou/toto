@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.9";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.10";
 const HUE_FAMILIES = Object.freeze(['orange', 'green', 'blue', 'purple', 'pink', 'red', 'cyan', 'yellow']);
 export const HUE_FAMILY_NAMES = Object.freeze({
     red: __rmT("jtakYPDo"), orange: __rmT("3_DCASHAfoApROLYMzBCrR_V0VPRcT"), yellow: __rmT("yOakYPDo"), green: __rmT("kbakYPDo"), cyan: __rmT("PIZkYPDo"),

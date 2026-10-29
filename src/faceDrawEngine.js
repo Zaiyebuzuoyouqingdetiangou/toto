@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.9";
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.99.9';
-import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.99.9';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.10";
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=1.99.10';
+import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=1.99.10';
 export function faceDrawFingerprint(value) {
     const text = JSON.stringify(value);
     let a = 2166136261, b = 2246822519, c = 3266489917, d = 668265263;
@@ -69,9 +69,13 @@ export function drawFaceRule({ rule, faceIndex = 0, chatKey, builtinThemes = [],
         const unavailable = lane.requiredIds.filter(id => !byId.has(id));
         if (unavailable.length)
             failure(faceIndex, kind, `${__rmT("hAv6stdrqwSbobgo7rVkjSVftKx.NOL3tw1kVYFP_4b0gQyNTTyfrniH4Wlv9k")}${unavailable.join(__rmT("jvk"))}${__rmT("gHSOascrujeRK3O0fE_Duijbd9brrk")}`, 'FACE_DRAW_REQUIRED_UNAVAILABLE');
-        const required = lane.requiredIds.map(id => byId.get(id));
-        if (required.length > 16)
-            failure(faceIndex, kind, __rmT("mbCLnL6uj2UWqY9jk6zxhEHrHlkHSRsDHp3OLpjIZN2jkNCga5QS1DLGij4t1z.ip4KOJpHAAasHCVGO0kAe9ChrL2kcxf"), 'FACE_DRAW_SELECTION_TOO_LARGE');
+        let required = lane.requiredIds.map(id => byId.get(id));
+        if (required.length > 16) {
+            const rest = [...required];
+            required = [];
+            while (required.length < 16)
+                required.push(...rest.splice(randomCount(0, rest.length - 1, randomUnit), 1));
+        }
         const requiredIds = new Set(lane.requiredIds);
         const categories = new Set(lane.categoryIds), items = new Set(lane.itemIds), seen = new Set();
         const pool = catalog.filter(item => lane.scope !== 'selected' || items.has(item.id) || categories.has(faceDrawCategoryId(item))).filter(item => {

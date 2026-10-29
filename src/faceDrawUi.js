@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.9";
-import { getSettings, updateSettings } from './settings.js?rmv=1.99.9';
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.99.9';
-import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.99.9';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.10";
+import { getSettings, updateSettings } from './settings.js?rmv=1.99.10';
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, normalizeFaceDrawRule, normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=1.99.10';
+import { loadFaceDrawCatalog, faceCategorySelection, toggleFaceCategory, toggleFaceItem } from './faceDrawCatalog.js?rmv=1.99.10';
 const owners = new WeakMap();
 const MODE_LABELS = { none: __rmT("ssAtjKAH"), random: __rmT("xUqCFXw6YBC") };
 const STYLE = `
@@ -407,7 +407,7 @@ function createController(owner, index, rule) {
                 }
             }
             if (lane.requiredIds.length + (lane.mode === 'none' ? 0 : lane.max) > 16)
-                warnings.append(el(doc, 'p', `${FACE_DRAW_LABELS[kind]}${__rmT("jnVoqONMTFGhMWsFG_pflgRIgolSCtLJKa9CmJvoJ4HSv.yXzl9KZ2twU9MsDfMDo11VMzEyK60kAzV9_MjbACFaygpxDyshUK3ApVuePwSg3ZAuqqZlnqKHYP645jsqAHKA7TpHSXfSkSk46.O1.pAzxmUiFAD0ntvULBn4gDEfKThd.DVsrT")}`, 'rh-fd-warning'));
+                warnings.append(el(doc, 'p', `${FACE_DRAW_LABELS[kind]}${__rmT("gyBAxXeaYAE1VA2G12hnJlrrFYwrrk")}${lane.requiredIds.length > 16 ? `${__rmT("0vEv1XULiBcBTh")}${lane.requiredIds.length}${__rmT("o6R2vdzyeAq5h21HI8oapcr41tIcoKyzx.DdKgCUe_at2Y.gvm8Utvkjx72MqDCF9yKY3h")}` : __rmT("gbCKvgA.622qdq51r1_z50o58R8HXKq27RbYFfV1gG8")}`, 'rh-fd-warning'));
         }
     }
     const actions = el(doc, 'div', null, 'rh-fd-actions');

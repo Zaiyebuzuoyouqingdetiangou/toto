@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.9";
-import { presentationModeFields } from './presentationMode.js?rmv=1.99.9';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.10";
+import { presentationModeFields } from './presentationMode.js?rmv=1.99.10';
 const TOKEN_METER_STORAGE_KEY = 'rabbit_mirror_theater:token_meter:v1';
 const TOKEN_METER_SOURCE_STORAGE_KEYS = Object.freeze({
     follow: 'rabbit_mirror_theater:token_meter:follow:v1',
