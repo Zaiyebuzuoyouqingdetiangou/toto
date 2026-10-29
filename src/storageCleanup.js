@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.16";
-import { clearLastCombo } from './storage.js?rmv=1.99.16';
-import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag, clearAllMirrorImagePrompts, measureAllMirrorImagePromptCleanup, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=1.99.16';
-import { compactFaceSwipeStoreForQuota, faceSwipeCleanupStats, prepareFaceSwipeArchiveCleanup } from './swipeVersions.js?rmv=1.99.16';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
+import { clearLastCombo } from './storage.js?rmv=1.99.17';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag, clearAllMirrorImagePrompts, measureAllMirrorImagePromptCleanup, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=1.99.17';
+import { compactFaceSwipeStoreForQuota, faceSwipeCleanupStats, prepareFaceSwipeArchiveCleanup } from './swipeVersions.js?rmv=1.99.17';
 const storage = () => { try {
     return globalThis.localStorage || null;
 }
@@ -193,13 +193,13 @@ export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
     },
     {
         id: 'recipes', safe: false, label: __rmT("2.XC.fD.xgn5z6qHRWinXk"),
-        note: __rmT("PlxfJNZj3l5k6Qj2dP36K_6cacth5I0UBCAVUspxRHeoqpPKqUYd17__zakodG1GhAWLrjM9gNFqzxIjfk0Py6KovalxbXVw5I_sDYrH11bc4pS.l3Em83ro_tuqRKgJB2.GKPpZ1FT"),
+        note: __rmT("qbIP9dEcUMtH3VBVSUW962YnTiKDkDox1RbBNBnypHtVo3xoIuqggHuBS41cmGsEYU4ffb2jZOuxUOaX2QtjlOoarba.gufEhMZEkH1lVaexFF65xVFWJK.iyhJrD2nUtySQu8NSrjohsrXWM2n674rgr9hQ.cVEAFwyL62QRosShqRw"),
         measure: () => sizeOf(exact('rabbit_mirror_theater:selection_recipes:v1')),
         run: () => removeWhere(exact('rabbit_mirror_theater:selection_recipes:v1')),
     },
     {
         id: 'follow-partial', safe: false, label: __rmT("svjuxGuM5W_cyT7m9lFkG4mfnMcBnT"),
-        note: __rmT("RRWnXx7NRXNNF0VA11urQOLBugvKQGfGLUM8.i3hzqlxmrwaA4mLleROPenCBEPXPvl3yZMEUg7L9dp8T1lpsoM132icucBheg.lpqzECy1XoaNqVeDb45xhezx0kxUE3kJOvT"),
+        note: __rmT("9lDTtcu4f5kvyqP.RO7KyPmKHZ7bgNLlGrxn70_9AZbh8QooBUvHwc7_1FDXtBe8QwrBc815ZhiKHknWJkLXJRQUw8EO_V3b969ODe_Owi0gHvzAtY.Wj5PwSIalO10djbl.O6UVHqTX8USVLgfMKn0q3Nm2LAs0"),
         measure: () => sizeOf(exact('rabbit_mirror_follow_partial_results_v1')),
         run: () => removeWhere(exact('rabbit_mirror_follow_partial_results_v1')),
     },
@@ -242,7 +242,7 @@ export async function prepareStorageCleanup(ids = []) {
     if (!Array.isArray(ids) || !ids.includes('covered'))
         return { checked: 0, available: true };
     try {
-        await import('./independentApi/persistence.js?rmv=1.99.16');
+        await import('./independentApi/persistence.js?rmv=1.99.17');
     }
     catch { }
     const slots = new Set();

@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.16";
-import { getHostRequestHeaders } from './capabilities.js?rmv=1.99.16';
-import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.99.16';
-import { listExternalLibraries } from './store.js?rmv=1.99.16';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.17";
+import { getHostRequestHeaders } from './capabilities.js?rmv=1.99.17';
+import { exportExternalLibraryBackup, importExternalLibraryBackup, parseExternalLibraryBackup, validateExternalLibraryBackup, EXTERNAL_BACKUP_FORMAT, EXTERNAL_BACKUP_VERSION, EXTERNAL_BACKUP_MAX_BYTES } from './backup.js?rmv=1.99.17';
+import { listExternalLibraries } from './store.js?rmv=1.99.17';
 export const MOTHER_LIBRARY_SERVER_BACKUP_NAME = 'rabbitmirror-mother-libraries.json';
 const SAVE_DELAY_MS = 2500;
 const STATUS_KEY = 'rabbit_mirror_mother_library_server_backup:v1';
@@ -179,7 +179,10 @@ export function scheduleMotherLibraryServerBackup({ deletedLibraryIds = [] } = {
                 }
             }
         };
-        saving = (saving || Promise.resolve()).then(run, run).finally(() => { saving = null; });
+        const next = (saving || Promise.resolve()).then(run, run);
+        saving = next;
+        next.finally(() => { if (saving === next)
+            saving = null; });
     }, SAVE_DELAY_MS);
 }
 export async function restoreMotherLibrariesFromServerBackup({ fetchImpl } = {}) {

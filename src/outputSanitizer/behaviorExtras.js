@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.16";
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.16';
+import { rmR as __rmR } from "../textTable.js?rmv=1.99.17";
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.17';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],

@@ -1,5 +1,5 @@
-import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.99.16';
-import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=1.99.16';
+import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=1.99.17';
+import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=1.99.17';
 const OUTPUTS = 'rabbit_mirror_independent_outputs_v1';
 const HISTORY = 'rabbit_mirror_independent_history_v1';
 const SWIPES = 'rabbit_mirror_face_swipes_v1';

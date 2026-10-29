@@ -1,7 +1,7 @@
-import { getCurrentChatKey } from './storage.js?rmv=1.99.16';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.99.16';
-import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.99.16';
-import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.99.16';
+import { getCurrentChatKey } from './storage.js?rmv=1.99.17';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=1.99.17';
+import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=1.99.17';
+import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=1.99.17';
 const KEY = 'rabbit_mirror_follow_partial_results_v1';
 const MAX_CHARS = 768 * 1024;
 const MAX_RECORDS = 120;
@@ -69,7 +69,10 @@ function valid(record) {
 }
 export function readFollowPartialResult(chat, index) {
     const expected = owner(chat, index);
-    const record = [...(records() || [])].reverse().find(item => sameOwner(item, expected));
+    const local = [...(records() || [])].reverse().find(item => sameOwner(item, expected));
+    const chatRecord = readChatRecord(expected);
+    const localOk = valid(local), chatOk = valid(chatRecord);
+    const record = localOk && chatOk ? (Number(chatRecord.ts || 0) > Number(local.ts || 0) ? chatRecord : local) : localOk ? local : chatRecord;
     return valid(record) ? { ...record, failedFaces: record.failedFaces.map(failure => ({ ...failure })),
         textReplacementReceipts: Array.isArray(record.textReplacementReceipts)
             ? record.textReplacementReceipts.map(receipt => receipt && typeof receipt === 'object' ? { ...receipt } : null) : [] } : null;
@@ -92,7 +95,53 @@ export function saveFollowPartialResult(chat, index, expectedOwner, html, failed
             : createRabbitMirrorTextReplacementReceipt(face.html, appliedRules, followPartialResultFaceOwnerKey(identity, face.index)));
     return persistRecord(record);
 }
+const CHAT_KEY = 'rabbit_mirror_follow_partials_v1';
+const CHAT_MAX_CHARS = 1536 * 1024;
+function chatMetadata() {
+    try {
+        const metadata = globalThis.SillyTavern?.getContext?.()?.chatMetadata || globalThis.chat_metadata;
+        return metadata && typeof metadata === 'object' ? metadata : null;
+    }
+    catch {
+        return null;
+    }
+}
+function chatSlot(record) { return `${record.messageIndex}:${record.swipeId}`; }
+function writeChatRecord(record) {
+    const metadata = chatMetadata();
+    if (!metadata)
+        return false;
+    try {
+        const store = metadata[CHAT_KEY] && typeof metadata[CHAT_KEY] === 'object' ? { ...metadata[CHAT_KEY] } : {};
+        store[chatSlot(record)] = record;
+        let size = JSON.stringify(store).length;
+        const order = () => Object.entries(store).filter(([, value]) => value !== record)
+            .sort(([, a], [, b]) => (a?.completedAfterRetry === true) - (b?.completedAfterRetry === true) || Number(a?.ts || 0) - Number(b?.ts || 0));
+        while (size > CHAT_MAX_CHARS) {
+            const victim = order()[0];
+            if (!victim)
+                break;
+            delete store[victim[0]];
+            size = JSON.stringify(store).length;
+        }
+        if (size > CHAT_MAX_CHARS)
+            return false;
+        metadata[CHAT_KEY] = store;
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function readChatRecord(expected) {
+    const value = chatMetadata()?.[CHAT_KEY]?.[`${expected?.messageIndex}:${expected?.swipeId}`];
+    return value && sameOwner(value, expected) ? value : null;
+}
 function persistRecord(record) {
+    const inChat = writeChatRecord(record);
+    return persistLocalRecord(record) || inChat;
+}
+function persistLocalRecord(record) {
     const identity = record;
     const previous = records();
     if (!previous)

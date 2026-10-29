@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.16";
-import { getSettings } from '../settings.js?rmv=1.99.16';
-import { WORLD_INFO_BOOKS_CHANGED_EVENT, fetchWorldInfoBooks, getObservedWorldInfoBooks } from '../independentApi.js?rmv=1.99.16';
-import { escapeHtml, isCurrentRuntime } from './runtime.js?rmv=1.99.16';
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.17";
+import { getSettings } from '../settings.js?rmv=1.99.17';
+import { WORLD_INFO_BOOKS_CHANGED_EVENT, fetchWorldInfoBooks, getObservedWorldInfoBooks } from '../independentApi.js?rmv=1.99.17';
+import { escapeHtml, isCurrentRuntime } from './runtime.js?rmv=1.99.17';
 let pulledWorldInfoBooks = [];
 let worldInfoBookRenderTimer = 0;
 let worldInfoBookVisibilityObserver = null;

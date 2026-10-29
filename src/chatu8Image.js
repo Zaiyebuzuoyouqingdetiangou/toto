@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.16";
-import { getContext } from './independentApi/runtime.js?rmv=1.99.16';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.99.16';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.17";
+import { getContext } from './independentApi/runtime.js?rmv=1.99.17';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=1.99.17';
 const SUPPORTED_MODES = new Set(['sd', 'novelai', 'comfyui', 'banana', 'runninghub']);
 function failure(code, message, extra = {}) {
     const error = new Error(message);
