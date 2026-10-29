@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=1.99.19";
-import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.19';
+import { rmR as __rmR } from "../textTable.js?rmv=1.99.22";
+import { normalizeShowToken } from './behaviorResults.js?rmv=1.99.22';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],
@@ -1011,7 +1011,8 @@ export function saveCarriedState(state) {
     else if (type === 'accumulate') {
         const steps = H?.own ? H.own(group, '[data-rm-step]') : [...group.querySelectorAll('[data-rm-step]')].filter(node => node.closest(GROUP) === group);
         record.done = steps.map((step, index) => step.getAttribute('data-rm-done') === 'true' ? index : -1).filter(index => index >= 0);
-        record.keys = record.done.length ? ['done'] : [];
+        const pressed = steps.filter(step => step.getAttribute('data-rm-done') === 'true').map(step => String(step.getAttribute('data-rm-step') || '').trim()).filter(Boolean);
+        record.keys = [...new Set([...pressed, ...(steps.length && record.done.length === steps.length ? ['done'] : [])])];
     }
     else if (type === 'swipe') {
         record.keys = [...(state.swiped || [])].map(([card, direction]) => `${String(card.getAttribute('data-rm-card') || '').trim()}:${direction}`);

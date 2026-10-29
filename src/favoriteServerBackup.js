@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.19";
-import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=1.99.19';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.22";
+import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=1.99.22';
 export const FAVORITE_BACKUP_INDEX_NAME = 'rabbitmirror-favorites.json';
 const FORMAT = 'rabbitmirror-favorites';
 const VERSION = 1;
@@ -155,8 +155,8 @@ async function removeServerFile(name, { fetchImpl = globalThis.fetch, headerProv
     }
 }
 async function localState() {
-    const favorites = await import('./theaterFavorites.js?rmv=1.99.19');
-    const atlases = await import('./favoriteAtlases.js?rmv=1.99.19');
+    const favorites = await import('./theaterFavorites.js?rmv=1.99.22');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.99.22');
     return { rows: await favorites.listTheaterFavorites(), atlases: await atlases.listFavoriteAtlases().catch(() => null) };
 }
 export function noteFavoriteBackupDeletes({ favorites = [], atlases = [] } = {}) {
@@ -190,10 +190,27 @@ export async function saveFavoriteServerBackup({ fetchImpl, headerProvider, loca
     const localIds = new Set(rows.map(row => row.id));
     let uploaded = 0;
     const items = [];
+    let serverSavedAt = Number(server?.savedAt || 0);
+    const rebase = async () => {
+        try {
+            const latest = await readFavoriteServerIndex({ fetchImpl });
+            if (!latest || Number(latest.savedAt) === serverSavedAt)
+                return;
+            server = latest;
+            serverSavedAt = Number(latest.savedAt);
+            serverItems.clear();
+            for (const item of latest.items)
+                serverItems.set(item.id, item);
+        }
+        catch { }
+    };
     const writeProgress = async () => {
+        await rebase();
         const done = new Set(items.map(item => item.id));
         const rest = [...serverItems.values()].filter(item => !done.has(item.id));
-        await upload(FAVORITE_BACKUP_INDEX_NAME, JSON.stringify({ format: FORMAT, version: VERSION, savedAt: Date.now(), items: [...items, ...rest], atlases: server?.atlases || [] }), { fetchImpl, headerProvider });
+        const savedAt = Date.now();
+        await upload(FAVORITE_BACKUP_INDEX_NAME, JSON.stringify({ format: FORMAT, version: VERSION, savedAt, items: [...items, ...rest], atlases: server?.atlases || [] }), { fetchImpl, headerProvider });
+        serverSavedAt = savedAt;
     };
     let sinceProgress = 0;
     for (const row of rows) {
@@ -211,6 +228,7 @@ export async function saveFavoriteServerBackup({ fetchImpl, headerProvider, loca
             sinceProgress = 0;
         }
     }
+    await rebase();
     const kept = [...serverItems.values()].filter(item => !localIds.has(item.id) && !goneFavorites.has(item.id));
     const removed = [...serverItems.values()].filter(item => !localIds.has(item.id) && goneFavorites.has(item.id));
     const localAtlases = Array.isArray(atlases) ? atlases : null;
@@ -281,13 +299,13 @@ export async function restoreFavoritesFromServerBackup({ fetchImpl } = {}) {
             failed += 1;
         }
     }
-    const favorites = await import('./theaterFavorites.js?rmv=1.99.19');
+    const favorites = await import('./theaterFavorites.js?rmv=1.99.22');
     const restored = records.length ? await favorites.importTheaterFavoriteRecords(records) : 0;
     let atlasCount = 0;
     if (!Array.isArray(atlases))
         return { restored, atlases: 0, failed, empty: false };
     const haveAtlases = new Set(atlases.map(atlas => String(atlas.id)));
-    const atlasModule = await import('./favoriteAtlases.js?rmv=1.99.19');
+    const atlasModule = await import('./favoriteAtlases.js?rmv=1.99.22');
     const usable = atlas => typeof atlas?.name === 'string' && Array.isArray(atlas.slots)
         && atlas.slots.every(slot => slot && typeof slot.id === 'string' && typeof slot.label === 'string' && Array.isArray(slot.keywords));
     for (const atlas of index.atlases) {
@@ -347,13 +365,22 @@ export async function checkFavoriteServerBackupOnStartup({ fetchImpl } = {}) {
         }
         if (!index?.items?.length && !index?.atlases?.length)
             return null;
+        const skip = readPendingDeletes();
+        const missingFavorites = index.items.filter(item => !skip.favorites.includes(item.id)).length;
+        const { atlases: localAtlases } = await localState();
+        const haveAtlases = new Set((Array.isArray(localAtlases) ? localAtlases : []).map(atlas => String(atlas.id)));
+        const missingAtlases = Array.isArray(localAtlases) ? index.atlases.filter(atlas => !haveAtlases.has(atlas.id) && !skip.atlases.includes(atlas.id)).length : 0;
+        if (!missingFavorites && !missingAtlases)
+            return null;
         if (canAutoRestore()) {
             const result = await restoreFavoritesFromServerBackup({ fetchImpl });
-            if (result.restored)
-                globalThis.toastr?.success?.(`${__rmT("K.zPdZYAnPNRXu2N2V0NFwHZu0.4Fg4yyeE.y14vW0ncqlnYt_RxyEU.01klzi8wM7IUrRpl9Z2StG8ebnk2Jh")}${result.restored}${__rmT("2RCF3f")}${result.atlases ? `${__rmT("ZtEhcSDgHKG")}${result.atlases}${__rmT("2RWGjk")}` : ''}${__rmT("jzk")}`, __rmT("oNm9IIg2DbRuF.Ki"), { timeOut: 10000 });
+            const parts = [result.restored ? `${result.restored}${__rmT("N_E05d4sZVs")}` : '', result.atlases ? `${__rmT("kRLrfUc6")}${result.atlases}${__rmT("2RWGjk")}` : ''].filter(Boolean);
+            if (parts.length)
+                globalThis.toastr?.success?.(`${__rmT("K.zPdZYAnPNRXu2N2V0NFwHZu0.4Fg4yyeE.y14vW0ncqlnYt_RxyEU.01klzi8wM7IUrRpl9Z2StG8ebnk2Jh")}${parts.join(__rmT("jvk"))}${__rmT("jzk")}`, __rmT("oNm9IIg2DbRuF.Ki"), { timeOut: 10000 });
             return { auto: true, result };
         }
-        globalThis.toastr?.info?.(`${__rmT("4uJfaIsbIQdtnizaInp8SsKOizmqK02q.Fy.PJm1yejSdMR0cYh")}${index.items.length}${__rmT("o6tb1rLydO2y21m8xvBJA.eSptQEPjbAG8RkPsLTDLeO4EzJ7_3baMHx5TrJTxpXci.Y3h")}`, __rmT("oNm9IIg2DbRuF.Ki"), { timeOut: 15000 });
+        const what = [missingFavorites ? `${missingFavorites}${__rmT("N_E05d4sZVs")}` : '', missingAtlases ? `${__rmT("kRLrfUc6")}${missingAtlases}${__rmT("2RWGjk")}` : ''].filter(Boolean).join(__rmT("jvk"));
+        globalThis.toastr?.info?.(`${__rmT("OpM4V1mv0YT6I4Fe8SyKI99mrT_60aF19RHSW2lB69.D.9VC7ApR_hfjJ6G")}${what}${__rmT("iZJnzQSXtgFlB72MLWr1QpHcUhqt2lOxr6fi3dQ12XoWqKSZ34KPIZe3a3G9uT")}`, __rmT("oNm9IIg2DbRuF.Ki"), { timeOut: 15000 });
         return { auto: false };
     }
     catch (error) {

@@ -1,17 +1,17 @@
-import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.99.19';
-import { rmT as __rmT } from "./src/textTable.js?rmv=1.99.19";
-import { unregisterRabbitMirrorOpenCommand, watchRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.99.19';
-import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.99.19';
-import { clearLastCombo } from './src/storage.js?rmv=1.99.19';
-import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.99.19';
-import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.99.19';
-import { getSettings, updateSettings } from './src/settings.js?rmv=1.99.19';
-import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.99.19';
-import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.99.19';
-import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.99.19';
+import { markRabbitMirrorBootstrapEvaluated, runRabbitMirrorStartupStep, reportRabbitMirrorStartupFailure, setRabbitMirrorStartupOpener, setRabbitMirrorOpenCommandAvailable, checkRabbitMirrorEntryVisibility, checkRabbitMirrorDuplicateInstall, disposeRabbitMirrorStartupGuard } from './src/startupGuard.js?rmv=1.99.22';
+import { rmT as __rmT } from "./src/textTable.js?rmv=1.99.22";
+import { unregisterRabbitMirrorOpenCommand, watchRabbitMirrorOpenCommand } from './src/openCommand.js?rmv=1.99.22';
+import { rabbitMirrorGenerateInterceptor, clearRabbitMirrorPrompt, destroyIndependentGenerationIntentBridge, initIndependentGenerationIntentBridge, prewarmRabbitMirrorGenerationRuntime } from './src/injector.js?rmv=1.99.22';
+import { clearLastCombo } from './src/storage.js?rmv=1.99.22';
+import { clearAllFeedbackCatState, destroyFeedbackCatPromptSync, initFeedbackCatPromptSync } from './src/feedbackCat.js?rmv=1.99.22';
+import { initPromptHistoryStrip, destroyPromptHistoryStrip } from './src/promptHistoryStrip.js?rmv=1.99.22';
+import { getSettings, updateSettings } from './src/settings.js?rmv=1.99.22';
+import { installRabbitMirrorPublicAPI } from './src/publicApi.js?rmv=1.99.22';
+import { initRabbitMirrorIndependentSecurityGuard, destroyRabbitMirrorIndependentSecurityGuard } from './src/independentSecurityGuard.js?rmv=1.99.22';
+import { initRabbitMirrorHostCompatibility, isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface, getRabbitMirrorEarlyBootstrap, getRabbitMirrorHostCompatibilityStatus } from './src/hostCompatibility.js?rmv=1.99.22';
 runRabbitMirrorStartupStep(__rmT("SQqb4wpegR0_8sKi"), () => initRabbitMirrorHostCompatibility());
-const GOLDEN_MERGE_VERSION = '1.99.19';
-const RABBIT_MIRROR_RUNTIME_VERSION = '1.99.19';
+const GOLDEN_MERGE_VERSION = '1.99.22';
+const RABBIT_MIRROR_RUNTIME_VERSION = '1.99.22';
 const earlyBootstrap = getRabbitMirrorEarlyBootstrap();
 let runtimeCancelled = earlyBootstrap?.cancelled === true || (!!globalThis.__rabbitMirrorTtBootstrap && !earlyBootstrap);
 let runtimeClaimed = !runtimeCancelled;
@@ -131,13 +131,13 @@ async function ensureDeferredCoreRuntime(reason = 'scheduled-idle') {
     if (deferredRuntimePromise)
         return deferredRuntimePromise;
     deferredRuntimePromise = Promise.all([
-        import('./src/outputSanitizer.js?rmv=1.99.19'),
-        import('./src/visualScanner.js?rmv=1.99.19'),
-        import('./src/independentApi.js?rmv=1.99.19'),
-        import('./src/touchTheater.js?rmv=1.99.19'),
-        import('./src/ui.js?rmv=1.99.19'),
-        import('./src/composerClearance.js?rmv=1.99.19'),
-        import('./src/chatAvatars.js?rmv=1.99.19'),
+        import('./src/outputSanitizer.js?rmv=1.99.22'),
+        import('./src/visualScanner.js?rmv=1.99.22'),
+        import('./src/independentApi.js?rmv=1.99.22'),
+        import('./src/touchTheater.js?rmv=1.99.22'),
+        import('./src/ui.js?rmv=1.99.22'),
+        import('./src/composerClearance.js?rmv=1.99.22'),
+        import('./src/chatAvatars.js?rmv=1.99.22'),
     ]).then(async ([output, visual, independent, touch, ui, clearance, avatars]) => {
         if (!runtimeIsActive())
             return null;
@@ -590,7 +590,7 @@ async function ensureExternalDiagnostics() {
     if (externalDiagnosticsPromise)
         return externalDiagnosticsPromise;
     const revision = ++externalDiagnosticsOperationRevision;
-    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.99.19').then(mod => {
+    const loadPromise = import('./src/externalDiagnostics.js?rmv=1.99.22').then(mod => {
         if (!runtimeIsActive() || !externalDiagnosticsDesiredEnabled || revision !== externalDiagnosticsOperationRevision)
             return null;
         externalDiagnosticsModule = mod;
@@ -615,7 +615,7 @@ function disableExternalDiagnostics() {
     externalDiagnosticsApi = null;
 }
 function clearDeferredGenerationSnapshots() {
-    void import('./src/generationGuard.js?rmv=1.99.19')
+    void import('./src/generationGuard.js?rmv=1.99.22')
         .then(mod => {
         if (earlyBootstrap ? globalThis.__rabbitMirrorTtBootstrap !== earlyBootstrap : !!globalThis.__rabbitMirrorTtBootstrap)
             return;

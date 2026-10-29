@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.19";
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.22";
 const DB_NAME = 'rabbit_mirror_favorite_atlases_v1';
 const STORE = 'atlases';
 const clean = value => String(value ?? '').trim();
@@ -179,7 +179,7 @@ export async function listFavoriteAtlases() {
     return (rows || []).sort((a, b) => a.createdAt - b.createdAt);
 }
 function backup(work) {
-    void import('./favoriteServerBackup.js?rmv=1.99.19').then(work).catch(() => { });
+    void import('./favoriteServerBackup.js?rmv=1.99.22').then(work).catch(() => { });
 }
 export async function saveFavoriteAtlas(atlas) {
     await transaction('readwrite', store => store.put(atlas));
