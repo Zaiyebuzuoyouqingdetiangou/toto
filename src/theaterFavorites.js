@@ -1,9 +1,9 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.12";
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.99.12';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.99.12';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.99.12';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.12';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.99.12';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=1.99.19";
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=1.99.19';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=1.99.19';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=1.99.19';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=1.99.19';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=1.99.19';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -22,6 +22,7 @@ function byteLength(value = '') {
 }
 function notifyChanged() {
     contentIndexPromise = null;
+    void import('./favoriteServerBackup.js?rmv=1.99.19').then(module => module.scheduleFavoriteServerBackup()).catch(() => { });
     void listTheaterFavorites().then(rows => {
         setContinuationCandidatesFromRows(rows);
         try {
@@ -205,6 +206,36 @@ function normalizeRecord(value) {
         ...(value.contentKey ? { contentKey: String(value.contentKey).slice(0, 80) } : {}),
         ...(value.images && typeof value.images === 'object' && !Array.isArray(value.images) ? { images: value.images } : {}),
     };
+}
+function noteReadded(ids) {
+    void import('./favoriteServerBackup.js?rmv=1.99.19').then(module => module.forgetFavoriteBackupDeletes(ids)).catch(() => { });
+}
+function noteDeleted(ids) {
+    void import('./favoriteServerBackup.js?rmv=1.99.19').then(module => module.noteFavoriteBackupDeletes({ favorites: ids })).catch(() => { });
+}
+export async function importTheaterFavoriteRecords(values) {
+    const records = (Array.isArray(values) ? values : []).map(normalizeRecord).filter(Boolean);
+    if (!records.length)
+        return 0;
+    let written = 0;
+    await runStore('readwrite', (store, done) => {
+        let pending = records.length;
+        for (const record of records) {
+            const probe = store.get(record.id);
+            probe.onsuccess = () => {
+                if (!probe.result) {
+                    store.put(record);
+                    written += 1;
+                }
+                pending -= 1;
+                if (!pending)
+                    done(written);
+            };
+        }
+    });
+    if (written)
+        notifyChanged();
+    return written;
 }
 export async function listTheaterFavorites() {
     const rows = await runStore('readonly', (store, done) => {
@@ -497,6 +528,7 @@ export async function saveTheaterFavorite(input) {
         throw new Error(__rmT("9Pzfjin52zwru6R4vwpAM7EI"));
     try {
         await runStore('readwrite', store => store.put(record));
+        noteReadded([record.id]);
     }
     catch (error) {
         if (error?.name === 'QuotaExceededError')
@@ -511,6 +543,7 @@ export async function deleteTheaterFavorite(id) {
     if (!key)
         return false;
     await runStore('readwrite', store => store.delete(key));
+    noteDeleted([key]);
     notifyChanged();
     return true;
 }
@@ -518,7 +551,7 @@ async function favoriteImagesFor(captured) {
     if (!Number.isInteger(captured?.mesid) || !Number.isInteger(captured?.swipe))
         return null;
     try {
-        return (await import('./imageStore.js?rmv=1.99.12')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || '');
+        return (await import('./imageStore.js?rmv=1.99.19')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || '');
     }
     catch {
         return null;
@@ -596,6 +629,10 @@ export async function toggleTheaterFavorite(input, intent = 'auto') {
             throw new Error(__rmT("W1o_pqCPzjleZiKwFVr2VFvqvAHfNrGLUAs4BRxMrO4AsPSCVJzu.XqQNNdYSqPefJpKzKOIj5W.I5.EHI3sKDi9KfITeugUeLtOUZR0.Aua4nYNU8BE1BOxZtGEZf"));
         throw error;
     }
+    if (removedIds.length)
+        noteDeleted(removedIds);
+    else if (favorited && !alreadyIds.length)
+        noteReadded([id]);
     if (removedIds.length || (favorited && !alreadyIds.length))
         notifyChanged();
     return { favorited, id: alreadyIds[0] || (favorited ? id : (removedIds[0] || id)), removed: removedIds.length, already: alreadyIds.length > 0 };
@@ -661,7 +698,7 @@ export async function removeDuplicateTheaterFavorites() {
     const remap = await findDuplicateTheaterFavorites();
     if (!remap.size)
         return 0;
-    const atlases = await import('./favoriteAtlases.js?rmv=1.99.12');
+    const atlases = await import('./favoriteAtlases.js?rmv=1.99.19');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};
@@ -676,6 +713,7 @@ export async function removeDuplicateTheaterFavorites() {
     }
     await runStore('readwrite', store => { for (const id of remap.keys())
         store.delete(id); });
+    noteDeleted([...remap.keys()]);
     notifyChanged();
     return remap.size;
 }
@@ -776,7 +814,9 @@ export function closeTheaterFavoriteViewer() {
 export function closeTheaterFavoriteLibrary() {
     if (!library)
         return;
-    const { overlay, keydown, onFavoritesChanged } = library;
+    const { overlay, keydown, onFavoritesChanged, onBackupSaved } = library;
+    if (onBackupSaved)
+        globalThis.removeEventListener?.('rabbitmirror:favorite-backup', onBackupSaved);
     document.removeEventListener('keydown', keydown, true);
     document.removeEventListener(THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
     thumbObserver?.disconnect?.();
@@ -1182,6 +1222,38 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     });
     if (rows.length > 1)
         refreshDedupe();
+    const backupBar = document.createElement('div');
+    backupBar.className = 'rm-fav-row';
+    backupBar.style.cssText = 'align-items:center;gap:8px;font-size:12px;opacity:.85;margin:2px 0 8px;flex-wrap:wrap;';
+    const backupText = document.createElement('span');
+    backupText.style.cssText = 'flex:1;min-width:0;';
+    const restoreButton = document.createElement('button');
+    restoreButton.type = 'button';
+    restoreButton.className = 'rm-fav-chip';
+    restoreButton.hidden = true;
+    backupBar.append(backupText, restoreButton);
+    let backupRefresh = 0;
+    const refreshBackup = () => {
+        const ticket = ++backupRefresh;
+        void import('./favoriteServerBackup.js?rmv=1.99.19').then(async (module) => {
+            const status = module.getFavoriteServerBackupStatus();
+            const when = Number(status?.savedAt) ? new Date(Number(status.savedAt)).toLocaleString('zh-CN', { hour12: false }) : '';
+            backupText.textContent = status?.ok ? `${__rmT("Font1II3TGcStf")}${status.count}${__rmT("qGltWWrp")}${when}${__rmT("N_iraKgwOoG")}` : status?.message ? `${__rmT("l18yZaw6OQhE1ySz0g6_Lk")}${status.message}` : __rmT("suodofgD_Q_vomk8yjeAJLMNRqoliwlcILTS3PVqKymUqyUB2HCWB.LfOU6QuvkC");
+            const missing = await module.countMissingFavoritesInServerBackup({ rows });
+            if (ticket !== backupRefresh || (library?.overlay && library.overlay !== overlay))
+                return;
+            restoreButton.hidden = !missing;
+            restoreButton.textContent = `${__rmT("PJ1NfXG6bGKTt.e7LJ2dHT")}${missing}${__rmT("2RCF3f")}`;
+        }).catch(() => { restoreButton.hidden = true; });
+    };
+    restoreButton.addEventListener('click', () => {
+        restoreButton.disabled = true;
+        void import('./favoriteServerBackup.js?rmv=1.99.19').then(module => module.restoreFavoritesFromServerBackup()).then(result => {
+            globalThis.toastr?.success?.(result.empty ? __rmT("nnQAcGxIbXQK.5KB5h7p2gHdIUqdBQrKoRvspf") : `${__rmT("iFN6zD0tHKG")}${result.restored}${__rmT("N_E05d4sZVs")}${result.atlases ? `${__rmT("jvk")}${result.atlases}${__rmT("N_wvFM0tsAh")}` : ''}${result.failed ? `${__rmT("7os")}${result.failed}${__rmT("wHQ2U5Zn2GuiaYs1FJHzZIExX3p")}` : ''}${__rmT("jzk")}`);
+        }).catch(error => globalThis.toastr?.warning?.(`${__rmT("VOUk8WJl8ueStf")}${String(error?.message || error || __rmT("cHhXcUwjS2T"))}${__rmT("gHOMRKKa5LfuIMU.03fEnK00RD1rrk")}`))
+            .finally(() => { restoreButton.disabled = false; refreshBackup(); });
+    });
+    refreshBackup();
     let query = '';
     let character = '';
     let view = 'grid';
@@ -1195,7 +1267,7 @@ export async function openTheaterFavoriteLibrary(hydrate) {
         const empty = document.createElement('div');
         empty.className = 'rm-fav-empty';
         empty.innerHTML = __rmT("nALKl5kOivVRGREOrJpzbnwnathP4JBnbWbKZuMTHn5r5VHi57nRxYnev.BFzafQirvehww.Tt12Q3l1QBZHSMqkHXrplpg7qKMqJg_bWNe5gpJfPq74zDUt");
-        shelf.append(empty);
+        shelf.append(backupBar, empty);
     }
     else {
         const tools = document.createElement('div');
@@ -1259,7 +1331,7 @@ export async function openTheaterFavoriteLibrary(hydrate) {
                 chips.append(chip(`${group.characterName} ${group.items.length}`, group.characterName));
             tools.append(chips);
         }
-        shelf.append(tools, dedupeBar, grid);
+        shelf.append(tools, backupBar, dedupeBar, grid);
     }
     const plateFor = item => {
         const wrap = document.createElement('div');
@@ -1423,20 +1495,30 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     };
     document.addEventListener('keydown', keydown, true);
     presentOverlay(overlay);
+    const startedEmpty = !rows.length;
     const onFavoritesChanged = () => {
         void listTheaterFavorites().then(next => {
             if (library?.overlay !== overlay)
                 return;
+            if (startedEmpty && next.length) {
+                closeTheaterFavoriteLibrary();
+                void openTheaterFavoriteLibrary(hydrate);
+                return;
+            }
             rows = next;
             count.textContent = rows.length ? `${rows.length}${__rmT("2RddPk")}` : '';
             paint();
             refreshDedupe();
+            refreshBackup();
             solarTerms.replaceChildren(renderSolarTermProgress(rows, hydrate));
             atlases.setFavorites(rows);
         }).catch(error => globalThis.toastr?.warning?.(String(error?.message || __rmT("YfS3dno5fhTUcAia4DD"))));
     };
     document.addEventListener(THEATER_FAVORITES_CHANGED_EVENT, onFavoritesChanged);
-    library = { overlay, keydown, onFavoritesChanged };
+    const onBackupSaved = () => { if (library?.overlay === overlay)
+        refreshBackup(); };
+    globalThis.addEventListener?.('rabbitmirror:favorite-backup', onBackupSaved);
+    library = { overlay, keydown, onFavoritesChanged, onBackupSaved };
     return rows;
 }
 setContinuationCharacterResolver(() => { try {

@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../textTable.js?rmv=1.99.12";
+import { rmT as __rmT } from "../textTable.js?rmv=1.99.19";
 const roots = new WeakMap();
 const TARGET_ATTR = 'data-rm-popover-fallback';
 const BUTTON_SELECTOR = 'button[popovertarget], input[type="button"][popovertarget], button[commandfor]';

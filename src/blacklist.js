@@ -1,12 +1,13 @@
-import { rmT as __rmT } from "./textTable.js?rmv=1.99.12";
-import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.99.12';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.99.12';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.99.12';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.99.12';
-import { getSettings, updateSettings } from './settings.js?rmv=1.99.12';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.99.12';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.99.12';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.12';
+import { rmT as __rmT } from "./textTable.js?rmv=1.99.19";
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=1.99.19';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=1.99.19';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=1.99.19';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=1.99.19';
+import { getSettings, updateSettings } from './settings.js?rmv=1.99.19';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=1.99.19';
+import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=1.99.19';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=1.99.19';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=1.99.19';
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
 const RECIPE_STORAGE_KEY = 'rabbit_mirror_theater:selection_recipes:v1';
@@ -496,6 +497,51 @@ function normalizeSwipeId(message, fallback = 0) {
     const value = Number(fallback);
     return Number.isInteger(value) && value >= 0 ? value : 0;
 }
+const CHAT_RECIPE_METADATA_KEY = 'rabbit_mirror_follow_recipes_v1';
+const MAX_CHAT_RECIPES = 400;
+function liveChatMetadata() {
+    try {
+        const metadata = globalThis.SillyTavern?.getContext?.()?.chatMetadata || globalThis.chat_metadata;
+        return metadata && typeof metadata === 'object' ? metadata : null;
+    }
+    catch {
+        return null;
+    }
+}
+function writeChatRecipe(index, swipe, message, compact, chatKey = '') {
+    const metadata = liveChatMetadata();
+    if (!metadata)
+        return false;
+    try {
+        const store = metadata[CHAT_RECIPE_METADATA_KEY] && typeof metadata[CHAT_RECIPE_METADATA_KEY] === 'object' ? metadata[CHAT_RECIPE_METADATA_KEY] : {};
+        const current = String(getCurrentChatKey() || '');
+        if (chatKey && current && chatKey !== current)
+            return false;
+        const stamp = messageStampSeconds(message, swipe);
+        if (!stamp)
+            return false;
+        store[`${index}:${swipe}`] = { ...compact, stampS: stamp, ts: Date.now() };
+        const keys = Object.keys(store);
+        if (keys.length > MAX_CHAT_RECIPES) {
+            keys.sort((a, b) => Number(store[a]?.ts || 0) - Number(store[b]?.ts || 0)).slice(0, keys.length - MAX_CHAT_RECIPES).forEach(key => delete store[key]);
+        }
+        metadata[CHAT_RECIPE_METADATA_KEY] = store;
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function readChatRecipe(index, swipe, message) {
+    const record = liveChatMetadata()?.[CHAT_RECIPE_METADATA_KEY]?.[`${index}:${swipe}`];
+    if (!record || typeof record !== 'object')
+        return null;
+    const stamp = messageStampSeconds(message, swipe);
+    const saved = Number.isInteger(record.stampS) ? record.stampS : stampSeconds(record.stamp);
+    if (!stamp || !saved || saved !== stamp)
+        return null;
+    return record;
+}
 export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageIndex = -1, swipeId = 0, message = null, metadata = null, source = '' } = {}) {
     const compact = compactSelectionMetadata(applyAtmosphereNotes(metadata, message?.mes || ''));
     const index = Number(messageIndex);
@@ -530,6 +576,7 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
         && String(existing.source || '') === sourceText
         && String(existing.messageFingerprint || '') === messageFingerprint;
     const facesUnchanged = JSON.stringify(existing?.faces || null) === JSON.stringify(compact.faces || null);
+    const inChat = writeChatRecipe(index, resolvedSwipe, message, compact, resolvedChatKey);
     if (unchanged && facesUnchanged)
         return true;
     const records = existingRecords.filter(item => item?.key !== key);
@@ -543,7 +590,7 @@ export function recordRabbitMirrorRecipe({ chat = null, chatKey = '', messageInd
         ...compact,
         ts: Date.now(),
     });
-    const written = writeRecipeRecords(records);
+    const written = writeRecipeRecords(records) || inChat;
     if (written) {
         try {
             globalThis.dispatchEvent?.(new CustomEvent(RECIPE_RECORDED_EVENT, { detail: { chatKey: resolvedChatKey, messageIndex: index, swipeId: resolvedSwipe } }));
@@ -578,12 +625,12 @@ export function getRabbitMirrorRecipe({ chatKey = '', messageIndex = -1, swipeId
     if (Number.isInteger(swipe) && swipe >= 0) {
         const exactKey = recipeRecordKey(resolvedChatKey, index, swipe);
         const exact = [...records].reverse().find(item => item?.key === exactKey);
-        if (!exact)
-            return null;
         const currentFingerprint = recipeMessageFingerprint(message, swipe);
-        if (exact.messageFingerprint && currentFingerprint && exact.messageFingerprint !== currentFingerprint)
-            return null;
-        return faceRecipe(exact);
+        const localOk = exact && !(exact.messageFingerprint && currentFingerprint && exact.messageFingerprint !== currentFingerprint);
+        const saved = readChatRecipe(index, swipe, message);
+        if (saved && (!localOk || Number(saved.ts || 0) > Number(exact.ts || 0)))
+            return recipeFromSelectionMetadata(saved, { faceIndex, includeExternalOnly });
+        return localOk ? faceRecipe(exact) : null;
     }
     const fallback = [...records].reverse().find(item => item?.chatKey === resolvedChatKey && Number(item?.messageIndex) === index);
     if (!fallback)
