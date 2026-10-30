@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.1.6";
-import { innerButtonIsFree } from './orphanStateWiring.js?rmv=2.1.6';
+import { rmR as __rmR } from "../textTable.js?rmv=2.1.7";
+import { innerButtonIsFree } from './orphanStateWiring.js?rmv=2.1.7';
 const GROUP_ATTR = 'data-rm-state-group';
 const PULSE_ATTR = 'data-rm-pulse-trigger';
 const SELECT_ATTR = 'data-rm-select-item';

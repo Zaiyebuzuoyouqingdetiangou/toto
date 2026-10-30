@@ -2250,3 +2250,7 @@ dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
 }
 @keyframes rm-seq-miss{0%,100%{translate:0 0}20%{translate:-3px 0}40%{translate:3px 0}60%{translate:-2px 0}80%{translate:2px 0}}
 @media (prefers-reduced-motion: reduce){ [data-rm-ui="sequence"] [data-rm-code][data-rm-miss-flash="true"]{ animation:none !important; } }
+
+[data-rabbit-mirror-generation-progress][data-rm-gp-dark="true"] .rm-gp-px-fur{fill:#3b3740 !important;}
+[data-rabbit-mirror-generation-progress][data-rm-gp-dark="true"] .rm-gp-px-fur-dk{fill:#2a272e !important;}
+[data-rabbit-mirror-generation-progress][data-rm-gp-dark="true"] .rm-gp-px-eye{fill:#f4eef0 !important;}

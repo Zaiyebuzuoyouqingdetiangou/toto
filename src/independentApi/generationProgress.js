@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.6";
-import { spritePaths } from '../pixelSprites.js?rmv=2.1.6';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.6';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.7";
+import { spritePaths } from '../pixelSprites.js?rmv=2.1.7';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.7';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -664,7 +664,7 @@ function applyCommon(node, view) {
 }
 const OWNER_ATTR = 'data-rm-gp-owner';
 const ownedByNewer = (node, owner) => Number(node?.getAttribute?.(OWNER_ATTR)) > Number(owner || 0);
-export function renderProgressCard(host, view, doc = host?.ownerDocument, owner = 0) {
+export function renderProgressCard(host, view, doc = host?.ownerDocument, owner = 0, dark = false) {
     const placeholder = host?.querySelector?.(PLACEHOLDER_SELECTOR);
     if (!placeholder || !doc)
         return null;
@@ -675,6 +675,10 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
         card = buildCard(doc);
     if (owner)
         card.setAttribute(OWNER_ATTR, String(owner));
+    if (dark)
+        card.setAttribute('data-rm-gp-dark', 'true');
+    else
+        card.removeAttribute('data-rm-gp-dark');
     if (card.previousElementSibling !== placeholder)
         placeholder.after(card);
     if (view.phase !== 'preparing') {
@@ -731,7 +735,7 @@ export function dropGenerationProgressUnlessLoading(host) {
 }
 let controllerSequence = 0;
 const IDLE_TICKS_BEFORE_DORMANT = 90;
-export function startGenerationProgress({ getHost, faceCount = 1, doc = globalThis.document, clock = () => Date.now() } = {}) {
+export function startGenerationProgress({ getHost, faceCount = 1, dark = false, doc = globalThis.document, clock = () => Date.now() } = {}) {
     const owner = ++controllerSequence;
     const state = createProgressState({ faceCount, expectedFaceChars: estimateFaceChars(doc), now: clock() });
     let timer = 0;
@@ -790,7 +794,7 @@ export function startGenerationProgress({ getHost, faceCount = 1, doc = globalTh
             const mini = host.querySelector(RESAY_STATUS_SELECTOR)?.querySelector(`:scope > [${GENERATION_PROGRESS_MINI_ATTR}]`);
             if (mini && !ownedByNewer(mini, owner))
                 mini.remove();
-            node = renderProgressCard(host, view, doc, owner);
+            node = renderProgressCard(host, view, doc, owner, dark);
         }
         else {
             const card = host.querySelector(`:scope > [${GENERATION_PROGRESS_ATTR}]`);
