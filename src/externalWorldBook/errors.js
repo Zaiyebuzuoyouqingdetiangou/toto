@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.0.2";
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.0";
 export const EXTERNAL_WORLD_BOOK_ERROR_CODES = Object.freeze({
     CAPABILITY_UNAVAILABLE: 'WORLD_BOOK_CAPABILITY_UNAVAILABLE',
     LIST_FAILED: 'WORLD_BOOK_LIST_FAILED',

@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.0.2";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.0";
 function text(value) { return typeof value === 'string' ? value.trim() : ''; }
 export function buildSingleImagePrompt(plan = {}) {
     const tagsOnly = plan?.promptFormat === 'nai45-tags';

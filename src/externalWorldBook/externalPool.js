@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.0.2";
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.0";
 const MIX_MODES = Object.freeze({
     BUILTIN_ONLY: 'builtin-only',
     BUILTIN_PREFERRED: 'builtin-preferred',

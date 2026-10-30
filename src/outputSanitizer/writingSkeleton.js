@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.2";
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.0";
 const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description', 'aria-roledescription', 'placeholder', 'srcset', 'poster', 'srcdoc']);
 const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
@@ -100,10 +100,20 @@ function collectQuotedCss(container) {
     }
     return found;
 }
+const ID_REF_ATTRS = new Set(['id', 'for', 'name', 'form', 'list', 'headers', 'aria-controls', 'aria-labelledby', 'aria-describedby', 'aria-owns', 'aria-activedescendant', 'popovertarget', 'commandfor']);
+function codedId(token, keys) {
+    if (!token || PLAIN_KEY.test(token))
+        return token;
+    return /[^\x20-\x7e]/.test(token) || quotedInFaceCss(keys, token) ? maskKeys(token, keys) : token;
+}
 function scrubAttribute(element, name, value, keys) {
     const lower = name.toLowerCase();
     if (lower === 'style')
         return scrubStyleAttribute(value);
+    if (lower === 'href' && /^#/.test(String(value || '').trim())) {
+        const target = String(value).trim().slice(1);
+        return `#${codedId(target, keys)}`;
+    }
     if (URL_ATTRS.has(lower))
         return scrubUrl(value);
     if (CONTENT_ATTRS.has(lower) || CONTENT_ATTR_RE.test(lower))
@@ -125,6 +135,8 @@ function scrubAttribute(element, name, value, keys) {
             return lower.startsWith('data-rabbit-mirror-') ? maskFaceText(value) : maskKeys(value, keys);
         if (value && !PLAIN_KEY.test(value) && (lower === 'data-rabbit-mirror-css-scope' || (lower.startsWith('data-rm-') && quotedInFaceCss(keys, value))))
             return maskKeys(value, keys);
+        if (value && ID_REF_ATTRS.has(lower))
+            return value.split(/(\s+)/).map(token => (/^\s+$/.test(token) ? token : codedId(token, keys))).join('');
         return value;
     }
     return PLAIN_KEY.test(value) ? value : maskFaceText(value);

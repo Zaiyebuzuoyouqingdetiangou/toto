@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.0.2";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.0";
 const ST_CUSTOM_GENERATE_ENDPOINT = '/api/backends/chat-completions/generate';
 const LEGACY_RABBIT_CONTEXT_HEADER = __rmT("K2iZlQdB94iL4SSYUSndkopZWFptmiJvRMjJXyxq");
 const RABBIT_CONTEXT_HEADER = __rmT("09gcOGQJJYSKAnPTO.PZPUw229s");
