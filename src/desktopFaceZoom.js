@@ -1,8 +1,8 @@
-import { getSettings } from './settings.js?rmv=2.1.2';
-import { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, zoomInlineOriginals, restoreZoomInlineStyle, faceZoomEvents, evaluateMediaForVirtualPhone } from './faceZoomMetrics.js?rmv=2.1.2';
+import { getSettings } from './settings.js?rmv=2.1.3';
+import { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, zoomInlineOriginals, restoreZoomInlineStyle, faceZoomEvents, evaluateMediaForVirtualPhone } from './faceZoomMetrics.js?rmv=2.1.3';
 export { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, evaluateMediaForVirtualPhone };
 export const FACE_DESIGN_WIDTH = 400;
-export const FACE_MAX_VISUAL_WIDTH = 640;
+export const FACE_MAX_VISUAL_WIDTH = 520;
 export const FACE_NARROW_FALLBACK_WIDTH = 460;
 const WIDE_QUERY = '(min-width: 900px)';
 const MODE_ATTR = 'data-rm-face-zoom';

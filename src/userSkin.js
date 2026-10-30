@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.2";
-import { getSettings, updateSettings } from './settings.js?rmv=2.1.2';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.3";
+import { getSettings, updateSettings } from './settings.js?rmv=2.1.3';
 export const USER_SKIN_STORAGE_KEY = 'rabbit_mirror_user_skin_v1';
 export const USER_SKIN_FILE_NAME = 'rabbitmirror-user-skin.json';
 const USER_SKIN_FILE_FORMAT = 'rabbitmirror-user-skin';
