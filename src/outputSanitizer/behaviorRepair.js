@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.0.1";
-import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=2.0.1';
-import { ownBehaviorNodes } from './behaviorOwner.js?rmv=2.0.1';
+import { rmT as __rmT } from "../textTable.js?rmv=2.0.2";
+import { splitShowTokens, normalizeShowToken } from './behaviorResults.js?rmv=2.0.2';
+import { ownBehaviorNodes } from './behaviorOwner.js?rmv=2.0.2';
 const GROUP = '[data-rm-ui]';
 const RECOVERED = 'data-rm-behavior-recovered';
 const UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls], [data-rm-released]';

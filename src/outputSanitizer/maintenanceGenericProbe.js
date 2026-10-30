@@ -1,10 +1,10 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.1";
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=2.0.1';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=2.0.1';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.0.1';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=2.0.1';
-import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=2.0.1';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=2.0.1';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.2";
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=2.0.2';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=2.0.2';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.0.2';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=2.0.2';
+import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=2.0.2';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=2.0.2';
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
 const MAX_CONTROLS = 40;
@@ -233,6 +233,8 @@ function activate(details, control) {
     if (!element.matches?.('[data-rm-ui] *') && ![...element.attributes || []].some(attribute => attribute.name.startsWith('data-rm-') && !/^data-rm-(?:polish|press|mobile|texture|feedback)/.test(attribute.name))
         && DECORATION_TEXT.test(String(element.textContent || '').trim()))
         return 'skip';
+    if (element.matches?.('[data-rm-ui="rhythm"] [data-rm-charge], [data-rm-charge][data-rm-ui="rhythm"]'))
+        return 'skip';
     if (element.matches?.('[data-rm-hold]')) {
         fire(element, 'pointerdown', { button: 0, isPrimary: true, pointerId: 1 });
         return 'hold';
@@ -331,6 +333,7 @@ export function collectGenericProbeControls(opened) {
         catch { }
     }
 }
+const MULTI_STEP_PART = '[data-rm-ui="connect"] [data-rm-end], [data-rm-ui="sequence"] [data-rm-code], [data-rm-ui="rhythm"] [data-rm-tap]';
 export function probeGenericControls(details, controls, started = Date.now(), budget = TIME_BUDGET_MS) {
     const outcomes = new Map();
     const feedbackOnly = new Set();
@@ -376,6 +379,9 @@ export function probeGenericControls(details, controls, started = Date.now(), bu
         const mutedMotion = control.kind === 'range' && !!control.element.closest?.('[data-rm-ui="motion"]');
         outcomes.set(control, control.kind === 'pointer' || mutedMotion ? 'uncertain' : 'dead');
     }
+    for (const control of [...feedbackOnly])
+        if (control.element.matches?.(MULTI_STEP_PART))
+            feedbackOnly.delete(control);
     for (const control of [...feedbackOnly])
         if (contentChanged.get(probeGroupOf(details, control.element)))
             feedbackOnly.delete(control);

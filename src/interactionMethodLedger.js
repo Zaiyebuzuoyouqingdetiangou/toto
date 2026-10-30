@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.0.1";
+import { rmR as __rmR } from "./textTable.js?rmv=2.0.2";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
