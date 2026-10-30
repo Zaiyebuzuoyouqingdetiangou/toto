@@ -2230,3 +2230,12 @@ dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
 #chat [data-rm-snapshot-flash="true"]{animation:rm-snapshot-flash 1.4s ease;outline-offset:4px}
 
 #chat rm-think, #chat rm-ticket { display: none !important; }
+
+[data-rm-ui="sequence"] [data-rm-code][data-rm-miss-flash="true"]{
+  animation:rm-seq-miss .45s steps(6,end) 1 !important;
+  outline:2px solid rgba(200,60,60,.75) !important;
+  outline-offset:1px !important;
+  opacity:.72 !important;
+}
+@keyframes rm-seq-miss{0%,100%{translate:0 0}20%{translate:-3px 0}40%{translate:3px 0}60%{translate:-2px 0}80%{translate:2px 0}}
+@media (prefers-reduced-motion: reduce){ [data-rm-ui="sequence"] [data-rm-code][data-rm-miss-flash="true"]{ animation:none !important; } }

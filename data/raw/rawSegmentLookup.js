@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../../src/textTable.js?rmv=2.1.1";
-import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=2.1.1';
-import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=2.1.1';
+import { rmT as __rmT, rmR as __rmR } from "../../src/textTable.js?rmv=2.1.2";
+import { RAW_THEMATIC_CATEGORIES } from './rawThematicCategories.js?rmv=2.1.2';
+import { RAW_PRESENTATION_FORMATS } from './rawPresentationFormats.js?rmv=2.1.2';
 function escapeRegExp(text) {
     return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

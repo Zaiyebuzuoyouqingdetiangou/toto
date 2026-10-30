@@ -1,15 +1,15 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.1.1";
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=2.1.1';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=2.1.1';
-import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=2.1.1';
-import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=2.1.1';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=2.1.1';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass, holdAncestorActiveHolders } from './behaviorStateMirror.js?rmv=2.1.1';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=2.1.1';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=2.1.1';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=2.1.1';
-import { STEP_RANGE_TYPES, STEP_RANGE_PREFIXES, addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, remotePagerGroup, pagerOutsideControls, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=2.1.1';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=2.1.1';
+import { rmR as __rmR } from "../textTable.js?rmv=2.1.2";
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=2.1.2';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=2.1.2';
+import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=2.1.2';
+import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=2.1.2';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=2.1.2';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass, holdAncestorActiveHolders } from './behaviorStateMirror.js?rmv=2.1.2';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=2.1.2';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=2.1.2';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=2.1.2';
+import { STEP_RANGE_TYPES, STEP_RANGE_PREFIXES, addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, remotePagerGroup, pagerOutsideControls, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=2.1.2';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=2.1.2';
 export { behaviorToggleKey, motionOutsideControls };
 const roots = new WeakMap();
 const owners = new WeakMap();
@@ -2209,6 +2209,22 @@ function statefulAction(state, control) {
             state.entered = [];
             state.pressed = new Set();
             group.setAttribute('data-rm-miss', 'true');
+            const prior = control.style.getPropertyValue('opacity'), priorPriority = control.style.getPropertyPriority('opacity');
+            const hadStyle = control.__rmMissFlash ? control.__rmMissHadStyle : control.hasAttribute('style');
+            control.__rmMissHadStyle = hadStyle;
+            control.setAttribute('data-rm-miss-flash', 'true');
+            control.style.setProperty('opacity', '0.72', 'important');
+            clearTimeout(control.__rmMissFlash);
+            control.__rmMissFlash = setTimeout(() => {
+                control.removeAttribute('data-rm-miss-flash');
+                if (prior && prior !== '0.72')
+                    control.style.setProperty('opacity', prior, priorPriority);
+                else
+                    control.style.removeProperty('opacity');
+                if (!hadStyle && !control.getAttribute('style'))
+                    control.removeAttribute('style');
+                control.__rmMissFlash = 0;
+            }, 700);
         }
         return true;
     }
@@ -3009,7 +3025,7 @@ function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected)
             return;
-        void import('./behaviorRelay.js?rmv=2.1.1').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => { });
+        void import('./behaviorRelay.js?rmv=2.1.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => { });
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function')
@@ -3176,4 +3192,4 @@ export function installBehaviorInteractions(root) {
 configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, refreshResults, finite, clamp, words, cssIndexBase });
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=2.1.1').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => { });
+import('../storage.js?rmv=2.1.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => { });

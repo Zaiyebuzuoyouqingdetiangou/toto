@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.1.1";
-import { spritePaths } from '../pixelSprites.js?rmv=2.1.1';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.1';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.2";
+import { spritePaths } from '../pixelSprites.js?rmv=2.1.2';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.2';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -677,6 +677,11 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
         card.setAttribute(OWNER_ATTR, String(owner));
     if (card.previousElementSibling !== placeholder)
         placeholder.after(card);
+    if (view.phase !== 'preparing') {
+        const label = placeholder.querySelector(':scope > summary [data-rabbit-mirror-external-summary-label]');
+        if (label && __rmR("QE8LkZGcCoIaabxw9ewLHixP8YHL.qwAbtC", "").test(label.textContent || ''))
+            label.textContent = __rmT("eue9I6TmvSx5Y8Kdmfvk91ULPamqs.rtbNE");
+    }
     const theme = placeholder.dataset.rmPlaceholderTheme || 'host';
     if (card.dataset.rmPlaceholderTheme !== theme)
         card.dataset.rmPlaceholderTheme = theme;
