@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.8";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.9";
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     const match = new URL(moduleUrl).pathname.match(/\/third-party\/([^/]+)\/src\/extensionUpdater\.js$/);

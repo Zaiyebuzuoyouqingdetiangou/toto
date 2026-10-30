@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.8";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.9";
 const footersByFace = new WeakMap();
 const facesByFooter = new WeakMap();
 const FOOTER = '[data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]';
@@ -118,5 +118,83 @@ export function refreshFacePagerPositions(scope, position) {
     cleanupFacePagers(scope);
     for (const host of scope?.querySelectorAll?.('summary > [data-rabbit-mirror-tool-entry-host]') || []) {
         placeFacePager(host.parentElement?.parentElement, host, position);
+    }
+}
+const COLLAPSE = '[data-rm-face-swipe-host][data-rm-face-swipe-position="collapse"]';
+const collapseByFace = new WeakMap();
+function syncCollapse(details, button) {
+    const hidden = !details.open || !details.isConnected;
+    if (button.hidden !== hidden)
+        button.hidden = hidden;
+    let summary = null;
+    try {
+        summary = details.querySelector(':scope > summary');
+    }
+    catch {
+        summary = null;
+    }
+    if (summary && details.ownerDocument?.defaultView) {
+        const style = details.ownerDocument.defaultView.getComputedStyle(summary);
+        const color = style.color || '';
+        if (color && button.style.getPropertyValue('--rm-collapse-color') !== color)
+            button.style.setProperty('--rm-collapse-color', color);
+    }
+}
+export function placeBottomCollapse(details) {
+    if (details?.tagName !== 'DETAILS' || !details.parentElement)
+        return;
+    const doc = details.ownerDocument;
+    let button = collapseByFace.get(details);
+    if (!button || !button.isConnected) {
+        button = doc.createElement('button');
+        button.type = 'button';
+        button.className = 'rabbit-mirror-bottom-collapse';
+        button.setAttribute('data-rm-face-swipe-host', 'true');
+        button.setAttribute('data-rm-face-swipe-position', 'collapse');
+        button.setAttribute('aria-label', __rmT("h7kXzlMgt8ANef"));
+        const arrow = doc.createElement('span');
+        arrow.className = 'rabbit-mirror-bottom-collapse-arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        button.append(arrow, doc.createTextNode(__rmT("oPv5.h")));
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const face = collapseByFace.get(button) || null;
+            if (!face)
+                return;
+            face.open = false;
+            const summary = face.querySelector(':scope > summary');
+            try {
+                (summary || face).scrollIntoView({ block: 'nearest' });
+            }
+            catch { }
+        });
+        details.addEventListener('toggle', () => { const own = collapseByFace.get(details); if (own)
+            syncCollapse(details, own); });
+        collapseByFace.set(details, button);
+        collapseByFace.set(button, details);
+    }
+    let anchor = details;
+    const next = details.nextElementSibling;
+    if (next && next !== button && next.matches?.(FOOTER))
+        anchor = next;
+    if (anchor.nextElementSibling !== button)
+        anchor.after(button);
+    details.parentElement.querySelectorAll(`:scope > ${COLLAPSE}`).forEach(node => { if (node !== button && collapseByFace.get(node) === details)
+        node.remove(); });
+    syncCollapse(details, button);
+}
+export function removeBottomCollapse(details) {
+    const button = details && collapseByFace.get(details);
+    if (button) {
+        button.remove();
+        collapseByFace.delete(details);
+    }
+}
+export function cleanupBottomCollapses(scope) {
+    for (const node of scope?.querySelectorAll?.(COLLAPSE) || []) {
+        const face = collapseByFace.get(node);
+        if (!face || !face.isConnected || face.parentElement !== node.parentElement)
+            node.remove();
     }
 }

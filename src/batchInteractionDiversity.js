@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.8";
-import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=2.1.8';
-import { recentDiversityRecords } from './compositionFingerprint.js?rmv=2.1.8';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.9";
+import { INTERACTION_FAMILY_LABELS as FAMILY_LABELS, recentInteractionCooldowns } from './interactionCooldown.js?rmv=2.1.9';
+import { recentDiversityRecords } from './compositionFingerprint.js?rmv=2.1.9';
 function recentRepeatedFamilies(recentFamilies) {
     const rounds = new Map();
     recentDiversityRecords(recentFamilies, 5).forEach((item, index) => {
