@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.1";
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.0.2";
 const BOUND_ATTR = 'data-rm-dial-lock';
 const WHEEL_ATTR = 'data-rm-dial-wheel';
 const OPEN_ATTR = 'data-rm-dial-open';

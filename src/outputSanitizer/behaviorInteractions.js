@@ -1,15 +1,15 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.0.1";
-import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=2.0.1';
-import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=2.0.1';
-import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=2.0.1';
-import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=2.0.1';
-import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=2.0.1';
-import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass, holdAncestorActiveHolders } from './behaviorStateMirror.js?rmv=2.0.1';
-import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=2.0.1';
-import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=2.0.1';
-import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=2.0.1';
-import { STEP_RANGE_TYPES, STEP_RANGE_PREFIXES, addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, remotePagerGroup, pagerOutsideControls, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=2.0.1';
-import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=2.0.1';
+import { rmR as __rmR } from "../textTable.js?rmv=2.0.2";
+import { behaviorShowTokens, clearForcedActive, ownBehaviorShows, setBehaviorNodeVisible, updateBehaviorResults, updateBehaviorShows } from './behaviorResults.js?rmv=2.0.2';
+import { hasMobileInteractionControl, usesMobileInteractionButtons } from './mobileInteractionControls.js?rmv=2.0.2';
+import { installSiblingStateBridge } from './behaviorSiblingBridge.js?rmv=2.0.2';
+import { TYPE_CONTROLS, behaviorOwnerGroup, ownBehaviorNodes } from './behaviorOwner.js?rmv=2.0.2';
+import { behaviorTypeFits, repairBehaviorDeclarations } from './behaviorRepair.js?rmv=2.0.2';
+import { behaviorCssMentions, behaviorStyleText, hasBehaviorStateClasses, isBehaviorStateClass, mirrorBehaviorState, holdAncestorStateClass, holdAncestorActiveHolders } from './behaviorStateMirror.js?rmv=2.0.2';
+import { syncStateCarriers, releaseStateCarriers, unwindStaleBridges } from './behaviorStateBridge.js?rmv=2.0.2';
+import { findUnwrittenWordStates, wordStateHost, setWordState } from './wordStateAttr.js?rmv=2.0.2';
+import { applyRememberedBehaviorRelay, applyRememberedReversePatches } from './behaviorRelayMemory.js?rmv=2.0.2';
+import { STEP_RANGE_TYPES, STEP_RANGE_PREFIXES, addDialectStateKeys, syncAuthorStatusAttrs, authorManagedShows, motionEqualizerAnimations, behaviorToggleKey, motionOutsideControls, remoteMotionGroup, remoteToggleGroup, remotePagerGroup, pagerOutsideControls, toggleCssBridges, setBridgedCssWord } from './behaviorDialect.js?rmv=2.0.2';
+import { EXTRA_TYPES, EXTRA_CONTROLS, EXTRA_CONTROL_ATTRS, configureBehaviorExtras, configureCarryChatKey, extraTypeFits, prepareExtra, destroyExtra, extraAction, extraSync, extraKeys, extraReset, extraPointerDown, extraPointerMove, extraPointerUp, extraHoldStart, extraHoldEnd, applyCarriedState, saveCarriedState, recalledKeys, carryMemoryName } from './behaviorExtras.js?rmv=2.0.2';
 export { behaviorToggleKey, motionOutsideControls };
 const roots = new WeakMap();
 const owners = new WeakMap();
@@ -3009,7 +3009,7 @@ function relayGroupLater(root, group, control = null) {
     const run = () => {
         if (!group.isConnected || !root.isConnected)
             return;
-        void import('./behaviorRelay.js?rmv=2.0.1').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => { });
+        void import('./behaviorRelay.js?rmv=2.0.2').then(module => module.relayBehaviorGroupOnDemand(root, group, control)).catch(() => { });
     };
     const idle = globalThis.requestIdleCallback;
     if (typeof idle === 'function')
@@ -3074,6 +3074,14 @@ export function installBehaviorInteractions(root) {
                 event.preventDefault();
             action(state, button);
             return;
+        }
+        if (button && !button.hasAttribute('popovertarget') && !button.hasAttribute('commandfor') && !button.closest('a[href]')) {
+            const outer = genericControl(root, button);
+            if (outer && outer.control !== button && outer.control.contains(button)) {
+                event.preventDefault();
+                action(outer.state, outer.control);
+                return;
+            }
         }
         if (button) {
             scheduleOnDemandRelay(root, button);
@@ -3168,4 +3176,4 @@ export function installBehaviorInteractions(root) {
 configureBehaviorExtras({ own, first, style, unstyle, setFlag, enableControl, refreshResults, finite, clamp, words, cssIndexBase });
 let carryChatKeyReader = null;
 configureCarryChatKey(() => carryChatKeyReader?.() || '');
-import('../storage.js?rmv=2.0.1').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => { });
+import('../storage.js?rmv=2.0.2').then(module => { carryChatKeyReader = () => module.getCurrentChatKey?.() || ''; }).catch(() => { });
