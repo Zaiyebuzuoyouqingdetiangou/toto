@@ -1,6 +1,6 @@
-export { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, getLastIndependentApiRequestDiagnostic, getIndependentConnectionProfiles, importCurrentSillyTavernConnection, getIndependentSavedModels, getObservedWorldInfoBooks, fetchWorldInfoBooks, scanCurrentChatIndependentContextTags, getLastIndependentModelListDiagnostic, fetchIndependentModels, testIndependentConnection, } from './independentApi/connection.js?rmv=2.1.3';
-export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=2.1.3';
-export { hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken } from './independentApi/mount.js?rmv=2.1.3';
-export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=2.1.3';
-export { buildRabbitMirrorArchiveInventory } from './independentApi/archiveInventory.js?rmv=2.1.3';
-export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=2.1.3';
+export { API_REQUEST_DIAGNOSTIC_EVENT, WORLD_INFO_BOOKS_CHANGED_EVENT, getLastIndependentApiRequestDiagnostic, getIndependentConnectionProfiles, importCurrentSillyTavernConnection, getIndependentSavedModels, getObservedWorldInfoBooks, fetchWorldInfoBooks, scanCurrentChatIndependentContextTags, getLastIndependentModelListDiagnostic, fetchIndependentModels, testIndependentConnection, } from './independentApi/connection.js?rmv=2.1.4';
+export { remeasureRabbitMirrorFaceGeometry, undoRabbitMirrorFaceAutoWidth, repairRabbitMirrorFaceAutoWidth } from './independentApi/geometry.js?rmv=2.1.4';
+export { hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken } from './independentApi/mount.js?rmv=2.1.4';
+export { listMissingIndependentRetryFloors, resyncMissingIndependentRetryShells } from './independentApi/earlyBody.js?rmv=2.1.4';
+export { buildRabbitMirrorArchiveInventory } from './independentApi/archiveInventory.js?rmv=2.1.4';
+export { refreshRabbitMirrorGenerationMode, initIndependentRabbitMirror, destroyIndependentRabbitMirror } from './independentApi/lifecycle.js?rmv=2.1.4';

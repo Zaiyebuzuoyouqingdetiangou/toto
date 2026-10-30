@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.1.3";
-import { layoutRect } from '../faceZoomMetrics.js?rmv=2.1.3';
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.4";
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.1.4';
 const CHROME = 'summary, style, script, template, [hidden], [data-rabbit-mirror-tool-entry-host], [data-rm-mobile-controls], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-collapse-btn], [data-rm-draw-notes]';
 const MAX_NODES = 900;
 const MIN_PART = 196;

@@ -1,7 +1,7 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.1.3";
-import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=2.1.3';
-import { FORMAT_USAGES, FORMAT_CORE_USAGES } from '../data/raw/formatUsages.js?rmv=2.1.3';
-import { driversForUsage, REVEAL_DRIVERS, OFFER_LIMITS_187 } from './interactionMethods.js?rmv=2.1.3';
+import { rmR as __rmR } from "./textTable.js?rmv=2.1.4";
+import { CORE_USAGES, USAGE_CATEGORIES, USAGE_FORMAT_OVERRIDES, USAGE_GROUP_FALLBACK } from '../data/raw/interactionUsages.js?rmv=2.1.4';
+import { FORMAT_USAGES, FORMAT_CORE_USAGES } from '../data/raw/formatUsages.js?rmv=2.1.4';
+import { driversForUsage, REVEAL_DRIVERS, OFFER_LIMITS_187 } from './interactionMethods.js?rmv=2.1.4';
 const OFFER_SIZE = 3;
 const RECENT_KEY = 'rabbitMirrorUsageRecent';
 const RECENT_LIMIT = 45;

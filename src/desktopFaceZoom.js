@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=2.1.3';
-import { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, zoomInlineOriginals, restoreZoomInlineStyle, faceZoomEvents, evaluateMediaForVirtualPhone } from './faceZoomMetrics.js?rmv=2.1.3';
+import { getSettings } from './settings.js?rmv=2.1.4';
+import { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, zoomInlineOriginals, restoreZoomInlineStyle, faceZoomEvents, evaluateMediaForVirtualPhone } from './faceZoomMetrics.js?rmv=2.1.4';
 export { DESKTOP_ZOOM_FACE_SELECTOR, VIRTUAL_PHONE_WIDTH, VIRTUAL_PHONE_HEIGHT, evaluateMediaForVirtualPhone };
 export const FACE_DESIGN_WIDTH = 400;
 export const FACE_MAX_VISUAL_WIDTH = 520;
@@ -103,8 +103,12 @@ function laneWidth(doc) {
     }
     return narrowest;
 }
-export function desktopFaceZoomFactor(lane) {
-    const width = Math.min(Number(lane) || 0, FACE_MAX_VISUAL_WIDTH);
+export function desktopFaceZoomMaxWidth(settings = getSettings()) {
+    const value = Math.round(Number(settings?.desktopFaceZoomWidth));
+    return Number.isFinite(value) && value >= 400 && value <= 900 ? value : FACE_MAX_VISUAL_WIDTH;
+}
+export function desktopFaceZoomFactor(lane, maxWidth = desktopFaceZoomMaxWidth()) {
+    const width = Math.min(Number(lane) || 0, maxWidth);
     const factor = width / FACE_DESIGN_WIDTH;
     if (!Number.isFinite(factor) || factor < 1.05)
         return 1;
@@ -282,6 +286,7 @@ function writeViewportVars(doc, factor) {
     if (root.style.getPropertyValue(VH_VAR) !== vh)
         root.style.setProperty(VH_VAR, vh);
 }
+let lastMaxWidth = 0;
 export function syncDesktopFaceZoom(doc = installed?.doc || globalThis.document) {
     const root = doc?.documentElement;
     if (!root)
@@ -294,11 +299,13 @@ export function syncDesktopFaceZoom(doc = installed?.doc || globalThis.document)
             root.setAttribute(MODE_ATTR, 'zoom');
         const lane = laneWidth(doc);
         const current = root.style.getPropertyValue(ZOOM_VAR);
-        if (lane > 0 && (!current || Math.abs(lane - lastLane) >= LANE_HYSTERESIS_PX)) {
-            const value = String(desktopFaceZoomFactor(lane));
+        const maxWidth = desktopFaceZoomMaxWidth();
+        if (lane > 0 && (!current || maxWidth !== lastMaxWidth || Math.abs(lane - lastLane) >= LANE_HYSTERESIS_PX)) {
+            const value = String(desktopFaceZoomFactor(lane, maxWidth));
             if (current !== value)
                 root.style.setProperty(ZOOM_VAR, value);
             lastLane = lane;
+            lastMaxWidth = maxWidth;
         }
         writeViewportVars(doc, Number(root.style.getPropertyValue(ZOOM_VAR)) || 1);
         for (const face of doc.querySelectorAll(DESKTOP_ZOOM_FACE_SELECTOR))
