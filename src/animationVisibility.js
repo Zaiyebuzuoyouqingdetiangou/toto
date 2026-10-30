@@ -1,5 +1,5 @@
-import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=2.1.0';
-import { getSettings } from './settings.js?rmv=2.1.0';
+import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=2.1.1';
+import { getSettings } from './settings.js?rmv=2.1.1';
 export const ANIMATION_AWAKE_EVENT = 'rabbitmirror:animation-awake';
 export const IDLE_MS = 25000;
 const roots = new Map();

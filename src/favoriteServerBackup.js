@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.0";
-import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=2.1.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.1";
+import { getHostRequestHeaders } from './externalWorldBook/capabilities.js?rmv=2.1.1';
 export const FAVORITE_BACKUP_INDEX_NAME = 'rabbitmirror-favorites.json';
 const FORMAT = 'rabbitmirror-favorites';
 const VERSION = 1;
@@ -155,8 +155,8 @@ async function removeServerFile(name, { fetchImpl = globalThis.fetch, headerProv
     }
 }
 async function localState() {
-    const favorites = await import('./theaterFavorites.js?rmv=2.1.0');
-    const atlases = await import('./favoriteAtlases.js?rmv=2.1.0');
+    const favorites = await import('./theaterFavorites.js?rmv=2.1.1');
+    const atlases = await import('./favoriteAtlases.js?rmv=2.1.1');
     return { rows: await favorites.listTheaterFavorites(), atlases: await atlases.listFavoriteAtlases().catch(() => null) };
 }
 export function noteFavoriteBackupDeletes({ favorites = [], atlases = [] } = {}) {
@@ -299,13 +299,13 @@ export async function restoreFavoritesFromServerBackup({ fetchImpl } = {}) {
             failed += 1;
         }
     }
-    const favorites = await import('./theaterFavorites.js?rmv=2.1.0');
+    const favorites = await import('./theaterFavorites.js?rmv=2.1.1');
     const restored = records.length ? await favorites.importTheaterFavoriteRecords(records) : 0;
     let atlasCount = 0;
     if (!Array.isArray(atlases))
         return { restored, atlases: 0, failed, empty: false };
     const haveAtlases = new Set(atlases.map(atlas => String(atlas.id)));
-    const atlasModule = await import('./favoriteAtlases.js?rmv=2.1.0');
+    const atlasModule = await import('./favoriteAtlases.js?rmv=2.1.1');
     const usable = atlas => typeof atlas?.name === 'string' && Array.isArray(atlas.slots)
         && atlas.slots.every(slot => slot && typeof slot.id === 'string' && typeof slot.label === 'string' && Array.isArray(slot.keywords));
     for (const atlas of index.atlases) {

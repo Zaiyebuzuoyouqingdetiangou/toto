@@ -1,6 +1,6 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.1.0";
-import { normalizeShowToken } from './behaviorResults.js?rmv=2.1.0';
-import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.1.0';
+import { rmR as __rmR } from "../textTable.js?rmv=2.1.1";
+import { normalizeShowToken } from './behaviorResults.js?rmv=2.1.1';
+import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.1.1';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],

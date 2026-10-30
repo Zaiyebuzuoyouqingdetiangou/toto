@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.1";
 const GAMEPLAY_RULES = Object.freeze({
     '6.2.2': __rmT("XwE3oMOLTTsQzVI1bAA6e34PwUuXJ04cy6xaMxEPrwd75lR6dXt3UaD8mg9_wDPtwxACtVDr3nh71rK5VNSstf_jTnC6OK5ssfWVJGO.brm8qs8_d8s0if"),
     '6.2.5': __rmT("Wx37L7z4yxLFAD0QSwEwcn7w3aJ3x3vyJMm7qiQobcovv2qsPOIiJKBjWR.iYoJ2YOKa7YzjJ33aW86tSFuUMm5iXOetfg06ANA"),

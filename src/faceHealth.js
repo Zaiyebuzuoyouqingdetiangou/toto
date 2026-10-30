@@ -1,7 +1,7 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.0";
-import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.1.0';
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.1.0';
-import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.1.0';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.1";
+import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.1.1';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.1.1';
+import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.1.1';
 export const HUE_NAMES = Object.freeze({ red: __rmT("mr8"), orange: __rmT("IqG"), yellow: __rmT("dG8"), green: __rmT("GL8"), cyan: __rmT("4D_"), blue: __rmT("hFf"), purple: __rmT("3LA"), pink: __rmT("caT"), neutral: __rmT("Pgv.uk") });
 export const BRIGHTNESS_NAMES = Object.freeze({ light: __rmT("z2Zaif"), mid: __rmT("AsAr7j6q"), dark: __rmT("w2Zaif") });
 export const RISK_NAMES = Object.freeze({

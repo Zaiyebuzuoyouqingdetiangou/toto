@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.1";
 const MAX_ENTRIES = 1200;
 const AUTO_STOP_MS = 20000;
 const MAX_TEXT = 48;
