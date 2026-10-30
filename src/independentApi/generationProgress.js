@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.7";
-import { spritePaths } from '../pixelSprites.js?rmv=2.1.7';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.7';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.8";
+import { spritePaths } from '../pixelSprites.js?rmv=2.1.8';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.8';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -698,7 +698,7 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
     updateLog(doc, card.querySelector('.rm-gp-log'), view.lines);
     return card;
 }
-export function renderProgressMini(status, view, doc = status?.ownerDocument, owner = 0) {
+export function renderProgressMini(status, view, doc = status?.ownerDocument, owner = 0, dark = false) {
     if (!status || !doc)
         return null;
     let mini = status.querySelector(`:scope > [${GENERATION_PROGRESS_MINI_ATTR}]`);
@@ -710,6 +710,10 @@ export function renderProgressMini(status, view, doc = status?.ownerDocument, ow
     }
     if (owner)
         mini.setAttribute(OWNER_ATTR, String(owner));
+    if (dark)
+        mini.setAttribute('data-rm-gp-dark', 'true');
+    else
+        mini.removeAttribute('data-rm-gp-dark');
     applyCommon(mini, view);
     const bar = mini.querySelector('.rm-gp-mini-bar');
     if (bar && bar.getAttribute('aria-valuenow') !== String(view.percent))
@@ -802,7 +806,7 @@ export function startGenerationProgress({ getHost, faceCount = 1, dark = false, 
                 card.remove();
             const status = host.querySelector(RESAY_STATUS_SELECTOR);
             if (status)
-                node = renderProgressMini(status, view, doc, owner);
+                node = renderProgressMini(status, view, doc, owner, dark);
         }
         watchVisibility(node);
         return !!node;
