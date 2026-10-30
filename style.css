@@ -1847,7 +1847,18 @@ details + [data-rm-face-swipe-position="bottom"][data-rm-pager-tone="dark"] .rab
   html[data-rm-face-zoom="zoom"] #chat toto[data-rabbit-mirror="true"] > details > summary{
     zoom:calc(1 / var(--rm-face-zoom, 1)) !important;
   }
-  html[data-rm-face-zoom="zoom"] #chat details + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]{
+
+  html[data-rm-face-zoom="zoom"] #chat :is(.rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > summary[data-rm-title-chrome="true"]{
+    flex-wrap:nowrap !important;
+  }
+  html[data-rm-face-zoom="zoom"] #chat :is(.rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > summary[data-rm-title-chrome="true"] > *{
+    flex-shrink:0 !important;
+  }
+  html[data-rm-face-zoom="zoom"] #chat :is(.rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details[data-rabbit-mirror-external-details="true"],toto[data-rabbit-mirror="true"] > details) > summary[data-rm-title-chrome="true"] > span[data-rm-title-label]{
+    flex:1 1 auto !important;
+    min-width:6em !important;
+  }
+  html[data-rm-face-zoom="zoom"] #chat details +[data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]{
     max-width:min(100%, calc(400px * var(--rm-face-zoom, 1))) !important;
   }
 

@@ -1,5 +1,5 @@
-import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=2.1.4';
-import { restoreZoomInlineStyle } from './faceZoomMetrics.js?rmv=2.1.4';
+import { restoreRabbitMirrorAvatarClone } from './chatAvatars.js?rmv=2.1.5';
+import { restoreZoomInlineStyle } from './faceZoomMetrics.js?rmv=2.1.5';
 const authoredAnimationStyles = new WeakMap();
 export const ANIMATION_SUSPENDED_ATTR = 'data-rm-animation-suspended';
 export function rememberRuntimeAnimationStyle(element, property = 'animation-play-state') {

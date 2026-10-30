@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.4";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.5";
 const COUNT_KEY = 'rabbitMirrorGeneratedCount';
 const FIRST_KEY = 'rabbitMirrorFirstGeneratedAt';
 const SHOWN_KEY = 'rabbitMirrorMilestonesShown';
@@ -70,7 +70,7 @@ function showMilestoneCard(count, firstAt) {
     };
     row.append(button(__rmT("FI3QaSVOspuIdT"), () => {
         card.remove();
-        void Promise.all([import('./theaterFavorites.js?rmv=2.1.4'), import('./independentApi.js?rmv=2.1.4')])
+        void Promise.all([import('./theaterFavorites.js?rmv=2.1.5'), import('./independentApi.js?rmv=2.1.5')])
             .then(([favorites, api]) => favorites.openTheaterFavoriteLibrary((container, record) => api.hydrateIndependentFavoriteHtml(container, record)))
             .catch(() => globalThis.toastr?.warning?.(__rmT("XPdo2gxj47x04eyygJ8312mpSKCpQRwuPfsCsldeFeEyA.hDiTYr7f")));
     }), button(__rmT("oP5t3f"), () => card.remove()));

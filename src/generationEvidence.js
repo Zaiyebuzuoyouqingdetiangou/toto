@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.4";
-import { generationEvidenceTiming } from './generationTiming.js?rmv=2.1.4';
-import { roleColorEvidence } from './roleColorVariants.js?rmv=2.1.4';
-import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=2.1.4';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.5";
+import { generationEvidenceTiming } from './generationTiming.js?rmv=2.1.5';
+import { roleColorEvidence } from './roleColorVariants.js?rmv=2.1.5';
+import { interactionMethodsFromRecord } from './interactionMethodLedger.js?rmv=2.1.5';
 const RECENT_LIMIT = 3;
 let armed = false;
 let current = null;

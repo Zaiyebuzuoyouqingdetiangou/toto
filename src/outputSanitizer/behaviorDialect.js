@@ -1,9 +1,9 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.4";
-import { layoutRect } from '../faceZoomMetrics.js?rmv=2.1.4';
-import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=2.1.4';
-import { behaviorStyleText } from './behaviorStateMirror.js?rmv=2.1.4';
-import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=2.1.4';
-import { ownBehaviorNodes, behaviorOwnerGroup, TYPE_CONTROLS } from './behaviorOwner.js?rmv=2.1.4';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.5";
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.1.5';
+import { behaviorShowTokens, ownBehaviorShows } from './behaviorResults.js?rmv=2.1.5';
+import { behaviorStyleText } from './behaviorStateMirror.js?rmv=2.1.5';
+import { collectStateCarriers, setBridgedState } from './behaviorStateBridge.js?rmv=2.1.5';
+import { ownBehaviorNodes, behaviorOwnerGroup, TYPE_CONTROLS } from './behaviorOwner.js?rmv=2.1.5';
 export const BEHAVIOR_DIALECTS = Object.freeze([
     { id: 'accumulate-count', label: __rmT("H10CigIqluDrTxgJYjSdYCYRZ8j6sS3Z"), note: __rmT("uHFhda0S5YqWbNYqjVk.mNS.N7UM79S7VaASNJIc2lJq4qOGVNbA35OvdCFWezkC") },
     { id: 'rhythm-charge', label: __rmT("hZrUI4sNz.6TmbxwKewsqfpA8vr0AHzwzuE"), note: __rmT("h9yDCUjUH1zhYDO0L0wOu5mDVXu.DFPJQbnehJK.URhERyVw5uqA35OveNfLYZkC") },

@@ -1,18 +1,18 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.4";
-import { presentationModeFields } from './presentationMode.js?rmv=2.1.4';
-import { getSettings } from './settings.js?rmv=2.1.4';
-import { getCurrentChatKey } from './storage.js?rmv=2.1.4';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.1.4';
-import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=2.1.4';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=2.1.4';
-import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=2.1.4';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=2.1.4';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=2.1.4';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=2.1.4';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=2.1.4';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.1.4';
-import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=2.1.4';
-import { markFreshDrawSlot } from './freshDrawSlots.js?rmv=2.1.4';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.5";
+import { presentationModeFields } from './presentationMode.js?rmv=2.1.5';
+import { getSettings } from './settings.js?rmv=2.1.5';
+import { getCurrentChatKey } from './storage.js?rmv=2.1.5';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.1.5';
+import { readFollowPartialResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=2.1.5';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=2.1.5';
+import { parseMultifaceOutput, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=2.1.5';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=2.1.5';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=2.1.5';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=2.1.5';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=2.1.5';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.1.5';
+import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=2.1.5';
+import { markFreshDrawSlot } from './freshDrawSlots.js?rmv=2.1.5';
 const active = new WeakSet();
 const FOLLOW_FACE_RETRY_MAX_WAIT_MS = 10 * 60 * 1000;
 const fail = message => { const error = new Error(message); error.rabbitMirrorFollowRetry = true; throw error; };
@@ -101,7 +101,7 @@ export async function retryFollowFace(root, suppliedOwner, deps) {
                 assertCurrent();
             }
             if (plan.appearanceReference.enabled) {
-                const appearance = await import('./appearanceReference.js?rmv=2.1.4');
+                const appearance = await import('./appearanceReference.js?rmv=2.1.5');
                 assertCurrent();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
                 assertCurrent();
