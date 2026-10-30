@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.3";
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.1.3';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.5";
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.1.5';
 export function themeMirrorToolPanel(panel) {
     if (!panel?.style)
         return;

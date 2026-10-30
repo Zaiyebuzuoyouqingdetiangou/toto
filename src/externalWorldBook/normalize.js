@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.1.3";
-import { EXTERNAL_WORLD_BOOK_MAX_ENTRIES, EXTERNAL_WORLD_BOOK_PREVIEW_CHARS, EXTERNAL_WORLD_BOOK_SCHEMA_VERSION, EXTERNAL_WORLD_BOOK_SEARCH_CONTENT_CHARS, normalizeWorldBookEntry, normalizeWorldBookString, resolveEntriesContainer, } from './schema.js?rmv=2.1.3';
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=2.1.3';
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.5";
+import { EXTERNAL_WORLD_BOOK_MAX_ENTRIES, EXTERNAL_WORLD_BOOK_PREVIEW_CHARS, EXTERNAL_WORLD_BOOK_SCHEMA_VERSION, EXTERNAL_WORLD_BOOK_SEARCH_CONTENT_CHARS, normalizeWorldBookEntry, normalizeWorldBookString, resolveEntriesContainer, } from './schema.js?rmv=2.1.5';
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=2.1.5';
 function hashText(text = '') {
     let h = 2166136261;
     for (const ch of String(text)) {

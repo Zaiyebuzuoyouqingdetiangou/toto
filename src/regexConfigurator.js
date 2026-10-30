@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.3";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.5";
 export const RABBIT_MIRROR_NO_SEND_REGEX_ID = '4f9ec4e0-1b75-4af4-9c9a-5c5a1e7d1701';
 export const RABBIT_MIRROR_NO_SEND_REGEX_NAME = __rmT("_mjgwA.M975bV6wflCwem2ro0r4JusQiQmaHOj6NxBixCTFahZD");
 export const RABBIT_MIRROR_NO_SEND_REGEX_PATTERN = '/<toto\\b[^>]*>[\\s\\S]*?<\\/toto>\\s*/gi';

@@ -1,46 +1,46 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.3";
-import { paletteRecipeFor } from '../paletteRecipes.js?rmv=2.1.3';
-import { tidyLooseMarkdown } from './looseMarkdown.js?rmv=2.1.3';
-import { wireStateGroups } from './stateGroupWiring.js?rmv=2.1.3';
-import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=2.1.3';
-import { armVsImplementationCheck, getVsImplementationCheck, describeVsImplementationProblem } from './vsImplementationCheck.js?rmv=2.1.3';
-import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=2.1.3';
-import { interactionRecipesFor } from '../interactionRecipes.js?rmv=2.1.3';
-import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=2.1.3';
-import { installPressFeedback } from './pressFeedback.js?rmv=2.1.3';
-import { installRevealMotion } from './revealMotion.js?rmv=2.1.3';
-import { installWebFonts, WEB_FONTS } from '../webFonts.js?rmv=2.1.3';
-import { installReadabilityPolish } from './readabilityPolish.js?rmv=2.1.3';
-import { noteDesktopZoomFace } from '../desktopFaceZoom.js?rmv=2.1.3';
-import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=2.1.3';
-import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=2.1.3';
-import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=2.1.3';
-import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=2.1.3';
-import { isTextPresentation } from '../presentationMode.js?rmv=2.1.3';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=2.1.3';
-import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=2.1.3';
-import { getCurrentChatKey } from '../storage.js?rmv=2.1.3';
-import { getContext } from '../independentApi/runtime.js?rmv=2.1.3';
-import { isNameMaskActive, toggleNameMask, nameMaskRulesFor } from '../nameMask.js?rmv=2.1.3';
-import { nameMaskCardKey } from '../nameMaskCandidates.js?rmv=2.1.3';
-import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=2.1.3';
-import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=2.1.3';
-import { captureTheaterFavoriteFromRoot, openTheaterFavoriteLibrary, toggleTheaterFavorite, isTheaterFavoriteHtml, } from '../theaterFavorites.js?rmv=2.1.3';
-import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=2.1.3';
-import { FEEDBACK_CAT_TYPES, clearActiveFeedbackForCurrentChat, feedbackCatReceiptText, feedbackCatStatusText, getActiveFeedbackForCurrentChat, getFeedbackCatLastReceiptForCurrentChat, setActiveFeedbackForCurrentChat, } from '../feedbackCat.js?rmv=2.1.3';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=2.1.3';
-import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, recipeFromSelectionMetadata, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem, } from '../blacklist.js?rmv=2.1.3';
-import { EXTERNAL_REFERENCE_NOTE_ATTR, FEEDBACK_CAT_ATTR, MAINTENANCE_RABBIT_ATTR, MIRROR_TITLE_DISPLAY_ATTR, MIRROR_TITLE_LABEL_ATTR, MIRROR_TITLE_PART_ATTR, MIRROR_TITLE_PREFIX_ATTR, MIRROR_TITLE_SOURCE_ATTR, TITLE_CHROME_ATTR, MIRROR_TOTO_SELECTOR, RECIPE_BUTTON_ATTR, RUNTIME_VERSION, RUNTIME_VERSION_ATTR, TOOL_ENTRY_HOST_ATTR, ensureFeedbackCatRuntimeStyle, getChatRoot, getRenderedRabbitMirrorInteractionRoots, isCurrentRuntime, isFeedbackCatEnabled, isInsideChatMessage, isMaintenanceRabbitEnabled, isRabbitMirrorDetails, } from './runtime.js?rmv=2.1.3';
-import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=2.1.3';
-import { wireAttributeCycleButtons } from './attributeCycleWiring.js?rmv=2.1.3';
-import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring, innerButtonIsFree } from './orphanStateWiring.js?rmv=2.1.3';
-import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=2.1.3';
-import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=2.1.3';
-import { FEEDBACK_CAT_MENU_ATTR, FEEDBACK_HISTORY_EVENT, FEEDBACK_RESAY_EVENT, MAINTENANCE_MENU_ATTR, MAINTENANCE_MIRROR_IDENTITY_ATTR, MAINTENANCE_REASON_ATTR, MAINTENANCE_STATES, MAINTENANCE_STATE_ATTR, MAINTENANCE_STATE_STAMP_ATTR, RECIPE_MENU_ATTR, RESAY_ATTR, bindRevealedInteractionMemory, clearLegacyRabbitMirrorAutoFrameArtifacts, copyRabbitMirrorCurrentFaceHtml, downloadRabbitMirrorCurrentFaceHtml, failMaintenanceRabbit, getRabbitMirrorMaintenanceRecommendation, maintenanceMenuProblemText, mergeMaintenanceProblemAndRecommendation, rabbitMirrorLanguageBalance, scheduleCurrentHighConfidenceTextRepair, setMaintenanceRabbitState, } from './diagnostics.js?rmv=2.1.3';
-import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=2.1.3';
-import { MAINTENANCE_FINDING_STAGE_LABELS, beginMaintenanceRepairRun, finishMaintenanceRepairRun, hasRabbitMirrorInteractionResetSnapshot, hasMaintenancePreRepairSnapshot, restoreMaintenancePreRepairSnapshotAndForget, maintenanceFindingReason, maintenanceRepairModesForFindings, maintenanceRepairPlanLabel, patrolMaintenanceRabbit, rejectOversizedMaintenanceRepair, removeRabbitMirrorInteractionHomeControls, replayFollowMaintenanceRepair, restoreRabbitMirrorInteractionResetSnapshot, runMaintenanceNarrowFaceRepair, runMaintenanceRevealClipRepair, runMaintenanceUserRepair, triggerDiagnosticForMaintenanceRoot, getRenderedMessageElement, } from './maintenanceInspect.js?rmv=2.1.3';
-import { getRabbitMirrorFacePosition, installMaintenanceHorizontalClipOpenRescue, repairLegacyMaintenanceMobileStateRows, } from './layoutRescue.js?rmv=2.1.3';
-import { getMessageIndexFromMirrorNode, installMaintenanceAutoSafeOpenPatrol, installManagedRabbitMirrorTools, pruneMaintenanceAutoSafeOpenBindings, scheduleMaintenanceAutoSafeForRoot, } from './lifecycle.js?rmv=2.1.3';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.5";
+import { paletteRecipeFor } from '../paletteRecipes.js?rmv=2.1.5';
+import { tidyLooseMarkdown } from './looseMarkdown.js?rmv=2.1.5';
+import { wireStateGroups } from './stateGroupWiring.js?rmv=2.1.5';
+import { recordInteractionMethods } from '../interactionMethodLedger.js?rmv=2.1.5';
+import { armVsImplementationCheck, getVsImplementationCheck, describeVsImplementationProblem } from './vsImplementationCheck.js?rmv=2.1.5';
+import { roleColorFaces, setRoleColorVariant, inspectRoleColorReadability } from '../roleColorVariants.js?rmv=2.1.5';
+import { interactionRecipesFor } from '../interactionRecipes.js?rmv=2.1.5';
+import { trackMirrorAnimations, pruneMirrorAnimationVisibility } from '../animationVisibility.js?rmv=2.1.5';
+import { installPressFeedback } from './pressFeedback.js?rmv=2.1.5';
+import { installRevealMotion } from './revealMotion.js?rmv=2.1.5';
+import { installWebFonts, WEB_FONTS } from '../webFonts.js?rmv=2.1.5';
+import { installReadabilityPolish } from './readabilityPolish.js?rmv=2.1.5';
+import { noteDesktopZoomFace } from '../desktopFaceZoom.js?rmv=2.1.5';
+import { hideLeakedAtmosphereThink } from './atmosphereThinkLeak.js?rmv=2.1.5';
+import { installMirrorToolMenu, fitMirrorToolPanel } from '../mirrorToolMenu.js?rmv=2.1.5';
+import { installMirrorUpdateMenuHook } from '../mirrorUpdateMenu.js?rmv=2.1.5';
+import { placeFacePager, facePagerDetails, removeFacePager, cleanupFacePagers } from '../facePagerPlacement.js?rmv=2.1.5';
+import { isTextPresentation } from '../presentationMode.js?rmv=2.1.5';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=2.1.5';
+import { getSettings, syncExternalReferenceVisibility } from '../settings.js?rmv=2.1.5';
+import { getCurrentChatKey } from '../storage.js?rmv=2.1.5';
+import { getContext } from '../independentApi/runtime.js?rmv=2.1.5';
+import { isNameMaskActive, toggleNameMask, nameMaskRulesFor } from '../nameMask.js?rmv=2.1.5';
+import { nameMaskCardKey } from '../nameMaskCandidates.js?rmv=2.1.5';
+import { getSanitizedRabbitMirrorFaceProof } from '../multifaceProof.js?rmv=2.1.5';
+import { bindRabbitMirrorAvatarRoot } from '../chatAvatars.js?rmv=2.1.5';
+import { captureTheaterFavoriteFromRoot, openTheaterFavoriteLibrary, toggleTheaterFavorite, isTheaterFavoriteHtml, } from '../theaterFavorites.js?rmv=2.1.5';
+import { FACE_SWIPE_FULL_MESSAGE, faceSwipeBarIntent, fallbackFaceSwipeView, multifaceFacePagerView } from '../swipeVersions.js?rmv=2.1.5';
+import { FEEDBACK_CAT_TYPES, clearActiveFeedbackForCurrentChat, feedbackCatReceiptText, feedbackCatStatusText, getActiveFeedbackForCurrentChat, getFeedbackCatLastReceiptForCurrentChat, setActiveFeedbackForCurrentChat, } from '../feedbackCat.js?rmv=2.1.5';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=2.1.5';
+import { FAVORITE_MULTIPLIER_MAX, FAVORITE_MULTIPLIER_MIN, blacklistEntries, clearBlacklist, clearFavorites, favoriteEntries, getBlacklistState, getFavoriteMultiplier, getFavoritesState, getRabbitMirrorRecipe, recipeFromSelectionMetadata, isBlacklisted, isFavorited, removeBlacklistItem, removeFavoriteItem, selectionCatalogEntries, setBlacklistEnabled, setFavoriteMultiplier, toggleBlacklistItem, toggleFavoriteItem, } from '../blacklist.js?rmv=2.1.5';
+import { EXTERNAL_REFERENCE_NOTE_ATTR, FEEDBACK_CAT_ATTR, MAINTENANCE_RABBIT_ATTR, MIRROR_TITLE_DISPLAY_ATTR, MIRROR_TITLE_LABEL_ATTR, MIRROR_TITLE_PART_ATTR, MIRROR_TITLE_PREFIX_ATTR, MIRROR_TITLE_SOURCE_ATTR, TITLE_CHROME_ATTR, MIRROR_TOTO_SELECTOR, RECIPE_BUTTON_ATTR, RUNTIME_VERSION, RUNTIME_VERSION_ATTR, TOOL_ENTRY_HOST_ATTR, ensureFeedbackCatRuntimeStyle, getChatRoot, getRenderedRabbitMirrorInteractionRoots, isCurrentRuntime, isFeedbackCatEnabled, isInsideChatMessage, isMaintenanceRabbitEnabled, isRabbitMirrorDetails, } from './runtime.js?rmv=2.1.5';
+import { getAvailableHostChat, getRawAssistantMessageForRenderedRoot } from './scriptedInteractionRescue.js?rmv=2.1.5';
+import { wireAttributeCycleButtons } from './attributeCycleWiring.js?rmv=2.1.5';
+import { ORPHAN_STATE_ATTR, attachOrphanStateToggle, isOrphanStateWired, rearmOrphanStateWiring, innerButtonIsFree } from './orphanStateWiring.js?rmv=2.1.5';
+import { armNestedDetailsReplacementContainment, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=2.1.5';
+import { armRabbitMirrorFirstUseInteraction, repairRabbitMirrorScopedClassAliasesInScope } from './idsAndRearm.js?rmv=2.1.5';
+import { FEEDBACK_CAT_MENU_ATTR, FEEDBACK_HISTORY_EVENT, FEEDBACK_RESAY_EVENT, MAINTENANCE_MENU_ATTR, MAINTENANCE_MIRROR_IDENTITY_ATTR, MAINTENANCE_REASON_ATTR, MAINTENANCE_STATES, MAINTENANCE_STATE_ATTR, MAINTENANCE_STATE_STAMP_ATTR, RECIPE_MENU_ATTR, RESAY_ATTR, bindRevealedInteractionMemory, clearLegacyRabbitMirrorAutoFrameArtifacts, copyRabbitMirrorCurrentFaceHtml, downloadRabbitMirrorCurrentFaceHtml, failMaintenanceRabbit, getRabbitMirrorMaintenanceRecommendation, maintenanceMenuProblemText, mergeMaintenanceProblemAndRecommendation, rabbitMirrorLanguageBalance, scheduleCurrentHighConfidenceTextRepair, setMaintenanceRabbitState, } from './diagnostics.js?rmv=2.1.5';
+import { clearOrphanedStructuredStaticDisclosureArtifacts } from './choiceRescue.js?rmv=2.1.5';
+import { MAINTENANCE_FINDING_STAGE_LABELS, beginMaintenanceRepairRun, finishMaintenanceRepairRun, hasRabbitMirrorInteractionResetSnapshot, hasMaintenancePreRepairSnapshot, restoreMaintenancePreRepairSnapshotAndForget, maintenanceFindingReason, maintenanceRepairModesForFindings, maintenanceRepairPlanLabel, patrolMaintenanceRabbit, rejectOversizedMaintenanceRepair, removeRabbitMirrorInteractionHomeControls, replayFollowMaintenanceRepair, restoreRabbitMirrorInteractionResetSnapshot, runMaintenanceNarrowFaceRepair, runMaintenanceRevealClipRepair, runMaintenanceUserRepair, triggerDiagnosticForMaintenanceRoot, getRenderedMessageElement, } from './maintenanceInspect.js?rmv=2.1.5';
+import { getRabbitMirrorFacePosition, installMaintenanceHorizontalClipOpenRescue, repairLegacyMaintenanceMobileStateRows, } from './layoutRescue.js?rmv=2.1.5';
+import { getMessageIndexFromMirrorNode, installMaintenanceAutoSafeOpenPatrol, installManagedRabbitMirrorTools, pruneMaintenanceAutoSafeOpenBindings, scheduleMaintenanceAutoSafeForRoot, } from './lifecycle.js?rmv=2.1.5';
 installMirrorUpdateMenuHook();
 let recipeOutsideCloseCleanup = null;
 let maintenanceOutsideCloseCleanup = null;
@@ -600,7 +600,7 @@ function rabbitMirrorExternalGenerationNotice(root, kind = 'maintenance') {
 }
 const RESAY_CHOOSER_ATTR = 'data-rm-resay-chooser';
 const RESAY_PICK_MAX = Object.freeze({ theme: 3, format: 2 });
-const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=2.1.3';
+const EXTERNAL_STORE_MODULE = '../externalWorldBook/store.js?rmv=2.1.5';
 function createResayTopicPicker(doc, kind, onChange) {
     const tree = buildSelectionCatalog(kind);
     const max = RESAY_PICK_MAX[kind] || 1;
@@ -2557,7 +2557,7 @@ function beginHostWorkTiming(name) {
 }
 function loadMirrorImageModule() {
     if (!mirrorImageModule)
-        mirrorImageModule = import('../imageUi.js?rmv=2.1.3').catch(error => { mirrorImageModule = null; throw error; });
+        mirrorImageModule = import('../imageUi.js?rmv=2.1.5').catch(error => { mirrorImageModule = null; throw error; });
     return mirrorImageModule;
 }
 function canRestoreIndependentSwipeInitial(root) {
@@ -2897,21 +2897,21 @@ function installUnifiedMirrorTools(root) {
         return;
     if (isTheaterFavoriteSurface(root)) {
         stripTheaterFavoriteTitleChrome(root);
-        void import('../materialTexture.js?rmv=2.1.3').then(module => { if (root.isConnected)
+        void import('../materialTexture.js?rmv=2.1.5').then(module => { if (root.isConnected)
             module.applyMaterialTextures(root); }).catch(() => { });
-        void import('../pixelSprites.js?rmv=2.1.3').then(module => { if (root.isConnected)
+        void import('../pixelSprites.js?rmv=2.1.5').then(module => { if (root.isConnected)
             module.applyPixelSprites(root); }).catch(() => { });
         void loadMirrorImageModule().then(module => { if (root.isConnected)
             return module.mountMirrorImage(root); }).catch(() => { });
         if (root.querySelector?.('[data-rm-draw-frame]')) {
-            void import('../builtinImage.js?rmv=2.1.3').then(module => { if (root.isConnected)
+            void import('../builtinImage.js?rmv=2.1.5').then(module => { if (root.isConnected)
                 module.restoreSavedBuiltinImages(root); }).catch(() => { });
         }
         return;
     }
-    void import('../materialTexture.js?rmv=2.1.3').then(module => { if (root.isConnected)
+    void import('../materialTexture.js?rmv=2.1.5').then(module => { if (root.isConnected)
         module.applyMaterialTextures(root); }).catch(() => { });
-    void import('../pixelSprites.js?rmv=2.1.3').then(module => { if (root.isConnected)
+    void import('../pixelSprites.js?rmv=2.1.5').then(module => { if (root.isConnected)
         module.applyPixelSprites(root); }).catch(() => { });
     const host = ensureRabbitMirrorToolHost(summary);
     const actions = [];
@@ -2930,7 +2930,7 @@ function installUnifiedMirrorTools(root) {
     actions.push({ id: 'resay', label: __rmT("S9cRL4_psUJlZf"), run: (_event, opener) => openRabbitMirrorResayChooser(root, opener) });
     if (mirrorFaceCanContinue(root)) {
         actions.push({ id: 'continue', label: __rmT("iUQro5_pAPqOCT"), run: () => {
-                void import('../independentApi/mount.js?rmv=2.1.3').then(module => module.continueIndependentLongText(root))
+                void import('../independentApi/mount.js?rmv=2.1.5').then(module => module.continueIndependentLongText(root))
                     .catch(() => globalThis.toastr?.error?.(__rmT("zteBtWLdMKTdI0QJKVfNyflfVNd4xCaS7AWCamKq")));
             } });
     }
@@ -2957,11 +2957,11 @@ function installUnifiedMirrorTools(root) {
                 .catch(() => globalThis.toastr?.warning?.(__rmT("K9_LV87HBRK8aT5PZ2ApY1YuYGFcXtUi8Z2Z2paf.o_.QzQX")));
         } });
     actions.push({ id: 'theater-snapshot', label: __rmT("S9aXLn_pcQvcGk"), run: () => {
-            void import('../theaterSnapshot.js?rmv=2.1.3').then(module => module.openTheaterSnapshot())
+            void import('../theaterSnapshot.js?rmv=2.1.5').then(module => module.openTheaterSnapshot())
                 .catch(error => globalThis.toastr?.warning?.(String(error?.message || __rmT("04JbbSyTQTe16rFC4DD"))));
         } });
     actions.push({ id: 'theater-favorite-library', label: __rmT("pzuEhaFyDbRuF.Ki"), run: () => {
-            void import('../independentApi.js?rmv=2.1.3').then(module => openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
+            void import('../independentApi.js?rmv=2.1.5').then(module => openTheaterFavoriteLibrary((container, record) => module.hydrateIndependentFavoriteHtml(container, record)))
                 .catch(error => globalThis.toastr?.warning?.(String(error?.message || __rmT("hGH3w0mkoBd6VjK_wMWpUT"))));
         } });
     actions.push({ id: 'name-mask', get label() { return isNameMaskActive() ? __rmT("GfAjIYrSkvyi2KxOriGmAIOQ") : __rmT("LPYNTiteZz_ua0cu4sG"); }, run: () => {
@@ -2988,7 +2988,7 @@ function installUnifiedMirrorTools(root) {
         .catch(() => { });
     if (root.querySelector?.('[data-rm-draw-frame]')) {
         const drawNew = getSettings().builtinImageEnabled === true;
-        void import('../builtinImage.js?rmv=2.1.3').then(module => {
+        void import('../builtinImage.js?rmv=2.1.5').then(module => {
             if (!root.isConnected)
                 return;
             if (drawNew)

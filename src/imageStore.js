@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.3";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.5";
 const PREFIX = 'rabbitMirror:image:v1:';
 export const MIRROR_IMAGE_PROMPTS_CLEARED_EVENT = 'rabbitmirror:image-prompts-cleared';
 let promptCleanupRevision = 0;
@@ -212,7 +212,7 @@ function requestChatSave(mes) {
         saveRequest = null;
         if (!liveChatSaveContext(request))
             return;
-        import('./independentApi/persistence.js?rmv=2.1.3')
+        import('./independentApi/persistence.js?rmv=2.1.5')
             .then(module => {
             const live = liveChatSaveContext(request);
             if (live)
