@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.0.2";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.2";
 export const CSS_METHODS = Object.freeze([__rmT("cgECNk"), __rmT("tNMgqU1gF2C"), __rmT(".MNdPk"), __rmT(".Fa_qt1MEBh"), __rmT("4OXCYEyJX0ANTguG2yA"), __rmT("sqVjDushwsnu4SMX"), __rmT("02jLcgYfOCs"), __rmT("nFWxFesQ2Ph")]);
 export const OFFER_LIMITS_187 = false;
 export const DRIVER_METHODS = Object.freeze({
@@ -24,7 +24,7 @@ export const DRIVER_METHODS = Object.freeze({
     hold: { names: [__rmT("bBYGF3DIncl")], how: __rmT("4YeOOs_go5hgR7BV4kap66rLy8e2FnoLKBtSbCZ4Pu8FK5ErtWCf3t7pOi4WkncvTAY8MOHhXvqcEpVadGD.2xagIIHzYZsWssCgUkJdCkPANUnW0DPMPb1mlsm5CrnqNWkLJsU3LADEZdEXTXMqHlatxKIylB3FFRQ7XkqWi1HRk8ipBr3m.KGgXFaJGxYuKcoLlzrOTPx.N170m5PsXPIGx0Wu6yYwJMfBN4zEI3CCO6gZFKuMymqj2eEGcBjSrhMhqigRBac4oTD7YsJY75KSkMUXad0ha4pxyoAFXpHTn3tBPt0oUf") },
     follow: { names: [__rmT("UCu7VHwJ4Al")], how: __rmT("1PN1KIRW9.XmMXpWQuBs0L6uLhvB02LKRBIDvzxtxKYTZU9AquALEo1UNkpVUT7DeyswtzAH4hTEBER78MCyEWkunpeCg0QKU9mombppmNfeiqiRWU8jC_N.AlUgRn9YTQ8ltfPGqp854rY5cvUiDKuEaIyAu2fcBOm75nfHOIMkih0elwAYMV52sVp") },
     reorder: { names: [__rmT("8uWb8QEDV2C")], how: __rmT("i_kEM17AD7GKfrshf5CF7ZczWDARAyW9mZVKu2_syZnHRKaGk6JqFjI58AFZNsaao.5WIKHBb_HRLYXaqoZAgTS1au2Cv654715xJ6O1D73zeKl5vKw4GWbch0iISmk4yQtOGOeBerULZF4fLS7NWSEz.C4cj2PyjLgh0IBm9IkdJhsFVtKYOYh1.NLl2oaV7Y1a6Fgi7rQaePd2AoUiIRo6AEMef1Yppvtyk6pimcEM.YzXyQOdlf") },
-    accumulate: { names: [__rmT("uPBxXLmsj8C")], how: __rmT("cMjd.aMz468lPbQ8GpbfAVzzXY1nAy35i11fBBxl.4i5.0neyAJuYNhjam7KhANy8K1bKRVFg5HWOrXuqKI6PfR5baUCHA0cZsdbXCpdhI497cSSgcgrckIh6iaSQu_Vh9aVZzyftXBP11sOjsHLEvpC0EvVsxrMmLBXCSXOkCuvwFtZjdD8Frlv5PlIuVNEeuFD.lvDAU42SQFqsttf8CcQSR1CxUuLht88V4JqIiTLIrI5loyOvYGnJNexDw6wD7i_SfimAY.qKvnUZlA") },
+    accumulate: { names: [__rmT("uPBxXLmsj8C")], how: __rmT("AibhAGN61jDelhOGSlX984QG.81NqsAjQxucQWytYwITTESMl2pXeUNZjmmKy2fGOAA09UA.upifFQW7jqPJCcQCopxYWOpltnXt7_bRlzj4nSP1GZ1mXA_AOFWoD2ymDe_SNVwZHUqBrwK_KaDpoU2TWRp7U1B8ULhdlB0eEdaPmZX82QRP7T9lSk3R5i17OBFIzpe7v5oJniBNXF2Yh_sFM5DgOkUjZ8o0aBKbqkMrx4Wlqm5iwaor4iLVmo1jNXJpJnNRf1dn_CxkmgyWjxEnGUqAe.KrH6KXzZoJp8wtiMnHsSx4z5gmUajriuGXzezl_z4Ajp_COIezKK933vXhm76TzuncPoygPTIta2YK1xvq.vrD06dSbSmle0mTV_vq.g27wcLJe2IciRVHA9cEnTFFOXMw.rKzSNq.edB8Uu_qIIdqtu8kFYmOREE4") },
     slide: { names: [__rmT("BMpt6OWAncl"), __rmT("CMeaAw6MjVY")], how: __rmT("cMSKTwSzMN7u_4EoJzoCFAsmGhfFW6R0_2YR7Ym_9nq.buLD2fq9URDk84kATpgxXm1MvHRhHtKjqC.L6YlLgJ7eEAHXkeO..NwApEJS5iJiluWtIgQZmGIclOVqHRFIblgIYu7HCycztNlm6NohPfGgDmNCfV8JwrHbnKAvKCXvrpaPdhTPnQCQsAuLhQo81N5AO_NAG6OD30zdd4MJhO6NFJ5MeC6DUJcWP0oZPx6Q9wsrsoCWYZyOLhn6iMNWNXvdkYlrXZFcgqFUL68IUic7hWff.VXY.HctxK1J45mFTRYqWIbyKoM2_yKpVHka1CVT.Ck4LVymEERhW06rOd6bC0s4fSfohbfYqjVMTTwcM5urbHAXMxqLMBtTXaje8XGRmV2uMpHVcg4_MRSHImltQ2AJqiaIYoep0S9F4oh74zNyOFgfhBpoG6DgFhk_OIz_RjUIjgWePWqrdIkxU6Xs3XRGjlFPvWnsuLicpvuGxCLj9wXPTfyODU90QIAzWCJSWV0T0ErlPu6Y") },
     timer: { names: [__rmT("6RRnL8Eo"), __rmT("wFYGFL0mRMC"), __rmT("INQIuk")], how: __rmT("XSJUXFlw.LXNakSyRBUmjkcQK.UlUW__e01rJTXZJKQwAFe.tJrl9FOZR6lBaPPu_MSHgiDoS2PGj1UiwPPZtsYaFzpTOB94qqWGpMMjSHy7I7k6E77OM7iU7.Z6eg.MopdMnR5j1SPLeM9b2Puw7KYDKjqkTLHi3tobGcFfHJBkydLqPKylP28E57HYjE6W9.TESjemXfLl.qQP.eMoRtKZS02fZI4NouAsMYzaZABKMEumX1w.fEQoksylJVOzvUq3Rd8tYARGZhmLCaHbq8huGKw0cwM21oHh1o64k7Ou6I2ZHlOEih3cEhAaqPr4oqA8JpIdW7HjUJXUh.ImZHhYD4zwOj7FLnkjBiyR3fDP3PjKcAxM4utx_6cL5X_Jh7Hh3Oyys7lTfnlNTnlGfytSaRTmxqdu4usGItMVnmtjbzXltGWlnFrQ3tBZJjv6zP2Ns0bvLcUEzfDbniXd8Qe4JY9BDCokDFyBT8wboci197acbHHcabCB_AsLEpMapULbcC_hsg39q3qUjWaJZ0xsl9IegeV87_4yAQApRGgNfS.mwgs") },
     swipe: { names: [__rmT("PFB.Ac2jP9s"), __rmT("LFdi43m62Ph")], how: __rmT("d0HIyw.MBSp6HDiOvB51uQub7jA2q8GIUgme7pAv54krAScaCjs_T_DXpTLAs8sBKgJEc5jiPQmHimmE7i2zHEwbJTldskfv1I4zz_qb2z9RIFIMCU4w8al0u7M_huAmzpfPFBsYgRTjJNqAMt30qMmTmwsXjrlKQ65HsiUnE.ohwZD6L1fNNunFQ.FgVBSdrAL.3Pg_KHOabBKqKVJLYoAXWPhhWRPh_7cTCNGuAChsfwSAfQ.l1EuTdcyEduAIjooFiwgIKJGJENeZvtOGF6Oio9MDL35ljAtM6ko7l7z9ULzR2uJIwIkqtDCA1dntsObRc7Qat82fPFe7G7DEp0wFdN7lG1ySdLm0EiTsREzE0xieD7epQu_dACYIguOmJTYlRRcb4vNj2UdOQP7Gwz.EqZaj3o36njfuX1nX.tnwtngIjiVrDHEF98LlYQo0hg9CNvHlYFWu0UAWUiCE5K8yo5fVHQgd5KWhHda.VNSIR_iZo3teA.z4bTeG0N_dPTCMSg5dC4Oh8vpFaAIDPl5cfph6KJVE6WApZ1X4sKjmEK3umi5CYHl60e0MY8k1FJ0WIjyB9oAbqvDjozSuTmpmgSOCeoINjZ6PEtdAYFOzY.pXmfnk6eIkeSdWeX7u.lYJbN1BYPt4_PA2cb0xhf") },
@@ -222,7 +222,7 @@ export function interactionMethodNames(offer) {
     const keys = normalizeDriverOffer(offer) || [];
     return shuffled([...new Set([...CSS_METHODS, ...keys.flatMap(key => DRIVER_METHODS[key].names)])]);
 }
-const SHOW_DRIVERS = new Set(['toggle', 'pick', 'roll', 'hold', 'pager', 'connect', 'turn', 'sequence', 'slide', 'timer', 'swipe', 'peek', 'spoiler', 'sense', 'carry']);
+const SHOW_DRIVERS = new Set(['accumulate', 'toggle', 'pick', 'roll', 'hold', 'pager', 'connect', 'turn', 'sequence', 'slide', 'timer', 'swipe', 'peek', 'spoiler', 'sense', 'carry']);
 export function driverContractLines(offer, usages = []) {
     const keys = normalizeDriverOffer(offer) || [];
     const pairs = new Map(matchDriversToUsages(usages, keys));
@@ -232,6 +232,6 @@ export function driverContractLines(offer, usages = []) {
     });
     if (keys.some(key => SHOW_DRIVERS.has(key)))
         lines.push(OFFER_LIMITS_187
-            ? __rmT("RwyHRkgmCkhfigM8rSzWlxW1R7w6xLUcKwaApdblUKOVvhfGya4fXA2LtkIgCEJ.5LbqHaGYjkYe6.fkbp1YoZDZX7Wrfnx3CHBc2_H9pBDFGBFXYmDFYJXGPxqHel6GQyMZlUnWZCS0UyGjNnmKnEOb7OnG3o4TUzlSGnj17i3JKoRihwUfrtF7W.ooO06J8QGz4nkMXDQLrHa4InzXCcu5TJzjsrEfXIFHUsMACo2jHQzc") : __rmT("bFvV0qsuWWp6Wc5agH4hj.xgQiSNVi_fpZZ2p91FnNAAv9aq3kgAGcoXsAsaHanAULR9godw6ueOBwmqZ7MvLC5sCppQTWasnbYqrCv.y2v8lN6D1aI5rGeJOvYGqRDr"));
+            ? __rmT("S9v06Rrld8.WzqPHIGiuj8bSPDja6XcMqnsBcz5SvmDMP1Dug8OsP6XSQ8djzOi7Mr3RqMxqZEBKbpbLh3keXzklu7QRfSYzbZkqh.YTjIeyG5ePhTjgZaH8up4AwS15VgzCWzEaWJQgmRtQlNR0AOS0kjxY941XdMkl3VUl8znNV4CmlIqmuWn1lelr3WAg3.BOUndhDsvSTumyoUJAwqgn2RdXe8T6olfNcjwge3OtRp_gy6iH.h1Qr02oFZCEw2IvSdF4FKTIJ_F3FZHMAnoduPpHYYP3eQ1XOf") : __rmT("7LsV7Q2G1OeUKHGCF7PKM6ObwuItKs1u8bafPmPSo0GXvESXLs9EAeSuty1uoO4hL2w.HUiB_bM_4UZhOPc0gQOgwNbycYEhHYMF8H16WNZrpSgWIvLLrt3Mo9y1BqiK6r0n7hhA4nIx5Q5byBZZ32643kU3tEE2eS7TJNt4iPaGMsC_.VFsrT"));
     return lines;
 }

@@ -1,16 +1,16 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.0.2";
-import { presentationModeFields } from '../presentationMode.js?rmv=2.0.2';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.0.2';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.0.2';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.0.2';
-import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, } from '../swipeVersions.js?rmv=2.0.2';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.0.2';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.0.2';
-import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.0.2';
-import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, } from './connection.js?rmv=2.0.2';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.0.2';
-import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.0.2';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.0.2';
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.2";
+import { presentationModeFields } from '../presentationMode.js?rmv=2.1.2';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.1.2';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.1.2';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.1.2';
+import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, } from '../swipeVersions.js?rmv=2.1.2';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.1.2';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.1.2';
+import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.1.2';
+import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, } from './connection.js?rmv=2.1.2';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.1.2';
+import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.1.2';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.1.2';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 export const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 export const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -985,16 +985,16 @@ export function dropMovedOwner(ctx, hash) {
     saveChatOutputMetadata(ctx);
     return true;
 }
-export function chatPersistedOwnerEntries(ctx) {
+export function chatPersistedOwnerKeys(ctx) {
     const keys = new Set([
         ...Object.keys(chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners || {}),
         ...Object.keys(sessionOwners(ctx) || {}),
     ]);
+    return [...keys].map(parseChatOwnerKey).filter(Boolean);
+}
+export function chatPersistedOwnerEntries(ctx) {
     const entries = [];
-    for (const key of keys) {
-        const parsed = parseChatOwnerKey(key);
-        if (!parsed)
-            continue;
+    for (const parsed of chatPersistedOwnerKeys(ctx)) {
         const record = persistedOwnerForMessage(ctx, parsed.index, { swipe_id: parsed.swipe });
         if (record && !record.deleted && record.html)
             entries.push({ ...parsed, record });

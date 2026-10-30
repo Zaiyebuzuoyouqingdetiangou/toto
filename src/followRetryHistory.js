@@ -1,8 +1,8 @@
-import { getCurrentChatKey, commitRetriedFaceHistory } from './storage.js?rmv=2.0.2';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=2.0.2';
-import { recipeFromSelectionMetadata } from './blacklist.js?rmv=2.0.2';
-import { readFollowPartialResult } from './followPartialResults.js?rmv=2.0.2';
-import { rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=2.0.2';
+import { getCurrentChatKey, commitRetriedFaceHistory } from './storage.js?rmv=2.1.2';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=2.1.2';
+import { recipeFromSelectionMetadata } from './blacklist.js?rmv=2.1.2';
+import { readFollowPartialResult } from './followPartialResults.js?rmv=2.1.2';
+import { rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=2.1.2';
 export function followRetryCombo(metadata, localIndex, fallback = null) {
     try {
         const recipe = recipeFromSelectionMetadata(metadata, { faceIndex: localIndex });
@@ -23,7 +23,7 @@ export async function recordFollowRetriedFaces({ chat, index, message, html, com
         let scan = typeof scanHtml === 'function' ? scanHtml : null;
         if (!scan) {
             try {
-                scan = (await import('./visualScanner.js?rmv=2.0.2')).scanRabbitMirrorHtml;
+                scan = (await import('./visualScanner.js?rmv=2.1.2')).scanRabbitMirrorHtml;
             }
             catch {
                 scan = null;

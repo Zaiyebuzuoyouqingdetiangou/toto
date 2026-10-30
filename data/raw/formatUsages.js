@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.0.2";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.1.2";
 export const FORMAT_USAGES = Object.freeze({
     '10.2': [__rmT("UD8YpY8kfl1C82Vh"), __rmT("EfmMnwS1e4_bX2uGryp"), __rmT("nHds8M0t4QY"), __rmT("RgubOklc9O_YUuxX1tIEmpFd"), __rmT("wOBrvOx5nMupCh")],
     '10.2.1': [__rmT("6fmGY99WQkwtkfXqjSf"), __rmT("MDaSiRW_JBrJrl7LbMwVJT"), __rmT(".GqmjFgAspJWpF9jv6XGak"), __rmT("cJj3gdGkRwq2gDOD"), __rmT("NPOvha5VT9Xsm4ZwOP6EMf")],
