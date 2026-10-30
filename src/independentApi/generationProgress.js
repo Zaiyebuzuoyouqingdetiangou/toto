@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.5";
-import { spritePaths } from '../pixelSprites.js?rmv=2.1.5';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.5';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.6";
+import { spritePaths } from '../pixelSprites.js?rmv=2.1.6';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.6';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';

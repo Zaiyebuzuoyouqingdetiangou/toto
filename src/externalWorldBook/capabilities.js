@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.1.5";
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=2.1.5';
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.6";
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=2.1.6';
 export function getWorldInfoNamesFromContext(context = globalThis.SillyTavern?.getContext?.()) {
     try {
         if (typeof context?.getWorldInfoNames !== 'function')

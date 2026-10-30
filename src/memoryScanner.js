@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.5";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.6";
 import { extension_settings } from '../../../../extensions.js';
 const MEMORY_TRACE_RE = __rmR("3Ybgzq42g9JQDlCZQI2IEQGVrKna4EbwdhP7dd09MRhghv2qgxbXuwoM5DAwrfInylfMD8fI_9_WQEYKdECEjIopHupee.9W6EY62su0nqGWx4UMLhYBhh8QRQgo9Dtr__Nsn7mqZtlW.FzOSJ92qGcOiftV8TfKClXdNVBdk3YuH1WYBz9RunH0pK7CA42YBhmGGaJFmphsBdYZwMTH1tAvlTWMInqmcMZ3XUTlHeXY8PiDJWCkNSJmP34QRJXs1pzT8sj6LwnWPFCW9S3PKT", "i");
 const EXCLUDED_GLOBAL_KEYS = new Set([
@@ -503,7 +503,7 @@ export async function prepareSelectedMemoryForPrompt(settings, options = {}) {
     let worldBookError = '';
     if (settings.memoryWorldBookEnabled === true && typeof settings.memoryWorldBookId === 'string' && settings.memoryWorldBookId.trim()) {
         try {
-            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=2.1.5');
+            const { readBoundMemoryWorldBook } = await import('./memoryWorldBook.js?rmv=2.1.6');
             const result = await readBoundMemoryWorldBook(settings, maxChars, { ...(options.worldBookOptions || {}), filterText: options.filterText });
             if (result)
                 additional.push(result);
