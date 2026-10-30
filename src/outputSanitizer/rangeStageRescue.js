@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.1.6";
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.1.6';
+import { rmR as __rmR } from "../textTable.js?rmv=2.1.7";
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.1.7';
 const RESCUE_ATTR = 'data-rabbit-mirror-range-stage-rescue';
 const STAGE_ATTR = 'data-rm-range-stage';
 const states = new WeakMap();
