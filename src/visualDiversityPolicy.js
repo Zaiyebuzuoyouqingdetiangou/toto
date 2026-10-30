@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.8";
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.1.8';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.9";
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.1.9';
 const HUE_FAMILY_LABELS = Object.freeze({
     red: __rmT("jtakYPDo"), orange: __rmT("HXdkYPDo"), yellow: __rmT("yOakYPDo"), green: __rmT("kbakYPDo"), cyan: __rmT("PIZkYPDo"),
     blue: __rmT("DTokYPDo"), purple: __rmT("cbMkYPDo"), pink: __rmT("3mXkYPDo"), neutral: __rmT("5lAm4FonOW_WW23aDA3BjiFF6JtRcT"),
