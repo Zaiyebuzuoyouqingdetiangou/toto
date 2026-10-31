@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.2.0";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.2.0';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.2.0';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.2.0';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.3.0";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.3.0';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.3.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.3.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.2.0';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.2.0';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.2.0';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.2.0';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.3.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.3.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.3.0';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -223,6 +223,9 @@ export const defaultSettings = Object.freeze({
     desktopFaceZoomWidth: 520,
     faceHealthInMenu: false,
     repairSampleUpload: false,
+    updateGuideEnabled: true,
+    selfInventMode: false,
+    updateGuideSeenVersion: '',
     writingStyle: '',
     independentReadCharacterWorldBook: false,
     richFormatBias: false,
@@ -286,6 +289,7 @@ export const defaultSettings = Object.freeze({
     debug: false,
 });
 const VERSION_SWITCH_BACKUP_KEY = 'rabbit_mirror_settings_before_version_switch:v1';
+const VERSION_SWITCH_BACKUP_KEY_V2 = 'rabbit_mirror_settings_before_version_switch:v2';
 const SECRET_SETTING = /(?:ApiKey|LlmKey|Secret|Token|Password)$|SecretMemo$/;
 let versionSwitchBackupChecked = false;
 export function backupSettingsBeforeVersionSwitch() {
@@ -294,23 +298,32 @@ export function backupSettingsBeforeVersionSwitch() {
     for (const [key, value] of Object.entries(settings))
         if (!SECRET_SETTING.test(key))
             copy[key] = value;
-    globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY, JSON.stringify({ at: Date.now(), settings: copy }));
+    const payload = JSON.stringify({ at: Date.now(), settings: copy });
+    globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY, payload);
+    try {
+        const kept = JSON.parse(globalThis.localStorage?.getItem(VERSION_SWITCH_BACKUP_KEY_V2) || 'null')?.settings || {};
+        globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY_V2, JSON.stringify({ at: Date.now(), settings: { ...kept, ...copy } }));
+    }
+    catch { }
 }
 function restoreSettingsDroppedByOtherVersion(settings) {
     if (versionSwitchBackupChecked)
         return;
     versionSwitchBackupChecked = true;
-    let backup = null;
-    try {
-        backup = JSON.parse(globalThis.localStorage?.getItem(VERSION_SWITCH_BACKUP_KEY) || 'null');
+    const readBackup = key => { try {
+        const value = JSON.parse(globalThis.localStorage?.getItem(key) || 'null');
+        return value?.settings && typeof value.settings === 'object' ? value : null;
     }
     catch {
-        backup = null;
-    }
-    if (!backup || typeof backup !== 'object' || !backup.settings || typeof backup.settings !== 'object')
+        return null;
+    } };
+    const first = readBackup(VERSION_SWITCH_BACKUP_KEY_V2), second = readBackup(VERSION_SWITCH_BACKUP_KEY);
+    if (!first && !second)
         return;
+    const backup = { at: Math.max(Number(first?.at || 0), Number(second?.at || 0)), settings: Number(second?.at || 0) > Number(first?.at || 0) ? { ...(first?.settings || {}), ...(second?.settings || {}) } : { ...(second?.settings || {}), ...(first?.settings || {}) } };
     const drop = () => { try {
         globalThis.localStorage?.removeItem(VERSION_SWITCH_BACKUP_KEY);
+        globalThis.localStorage?.removeItem(VERSION_SWITCH_BACKUP_KEY_V2);
     }
     catch { } };
     if (!(Date.now() - Number(backup.at || 0) < 90 * 86400000)) {
@@ -339,6 +352,8 @@ export function getSettings() {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
         if (!newInstallation)
             extension_settings[MODULE_NAME].behaviorRuleMode = 'always';
+        if (newInstallation)
+            extension_settings[MODULE_NAME].updateGuideSeenVersion = 'fresh';
     }
     const settings = extension_settings[MODULE_NAME];
     if (!newInstallation)
@@ -490,6 +505,9 @@ export function getSettings() {
     }
     settings.faceHealthInMenu = settings.faceHealthInMenu === true;
     settings.repairSampleUpload = settings.repairSampleUpload === true;
+    settings.updateGuideEnabled = settings.updateGuideEnabled !== false;
+    settings.selfInventMode = settings.selfInventMode === true;
+    settings.updateGuideSeenVersion = /^(?:fresh|\d{1,3}\.\d{1,4}\.\d{1,4})$/.test(String(settings.updateGuideSeenVersion || '')) ? String(settings.updateGuideSeenVersion) : '';
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
     for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel'])
@@ -711,6 +729,12 @@ export function updateSettings(patch) {
         safePatch.faceHealthInMenu = safePatch.faceHealthInMenu === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'repairSampleUpload'))
         safePatch.repairSampleUpload = safePatch.repairSampleUpload === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'updateGuideEnabled'))
+        safePatch.updateGuideEnabled = safePatch.updateGuideEnabled !== false;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'selfInventMode'))
+        safePatch.selfInventMode = safePatch.selfInventMode === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'updateGuideSeenVersion'))
+        safePatch.updateGuideSeenVersion = /^(?:fresh|\d{1,3}\.\d{1,4}\.\d{1,4})$/.test(String(safePatch.updateGuideSeenVersion || '')) ? String(safePatch.updateGuideSeenVersion) : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'collectionTasteEnabled'))
         safePatch.collectionTasteEnabled = safePatch.collectionTasteEnabled !== false;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource'))

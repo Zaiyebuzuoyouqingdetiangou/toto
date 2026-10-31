@@ -2270,3 +2270,7 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) ~ .rabbit-mirror-b
   border-color:transparent transparent currentColor transparent !important; display:inline-block !important;
 }
 @media (hover:hover) and (pointer:fine){ .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"]:hover{opacity:1 !important;} }
+
+[data-rm-guide-highlight="true"]{outline:2px solid var(--SmartThemeQuoteColor,#e0a050) !important;outline-offset:3px !important;border-radius:8px;animation:rm-guide-pulse 1.1s ease-in-out 3;}
+@keyframes rm-guide-pulse{0%,100%{outline-color:var(--SmartThemeQuoteColor,#e0a050);}50%{outline-color:transparent;}}
+@media (prefers-reduced-motion: reduce){[data-rm-guide-highlight="true"]{animation:none;}}

@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.2.0";
+import { rmR as __rmR } from "./textTable.js?rmv=2.3.0";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -98,4 +98,60 @@ export function rememberFollowPicks(picks = []) {
 export function recentFollowPicks(faces = 2) {
     const now = Date.now();
     return readFollowPicks().filter(item => now - Number(item.at) <= FRESH_MS).slice(-faces).map(item => item.pick);
+}
+const SELF_FORM_KEY = 'rabbitMirrorSelfFormLedger';
+const SELF_FORM_FRESH_MS = 3 * 24 * 60 * 60 * 1000;
+function readSelfForms() {
+    try {
+        const parsed = JSON.parse(globalThis.localStorage?.getItem(SELF_FORM_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(item => item && typeof item.form === 'string' && typeof item.key === 'string') : [];
+    }
+    catch {
+        return [];
+    }
+}
+const cleanSelfText = (value, max) => String(value || '').replace(/[\u0000-\u001f\u007f<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+export function parseSelfInvented(raw) {
+    const text = cleanSelfText(raw, 240);
+    if (!text)
+        return null;
+    const form = text.match(__rmR("t_y9Aklu5j1AAfa80nZvzpqNLiSRV9TfnZnYp9bFkJcTv9SqykJOGayXW6kTHAGgUmuJ1uZweiy8l5LEZAdVLV5f5ZrlHxPoJQljW1FZ7P5Ul3.3QHKGrSksRWBVDmCa", ""))?.[1] || (!__rmR("nU5FOnaSHWklk0Aw4YVLECfx", "").test(text.split(__rmR("pEwVbaaua.G", ""))[0]) ? text.split(__rmR("pEwVbaaua.G", ""))[0] : '');
+    const angle = text.match(__rmR("1Ujq.KCym19mNVwEyxsWfi86yD9ZN0XjBVDDGYEL9mbFfcM1Kef.3f", ""))?.[1] || '';
+    const result = { form: cleanSelfText(form, 30), angle: cleanSelfText(angle, 60) };
+    return result.form ? result : null;
+}
+export function selfInventedOf(details) {
+    if (!details?.getAttribute)
+        return null;
+    const raw = details.getAttribute('data-rm-self') || details.querySelector?.(':scope > :not(summary)[data-rm-self]')?.getAttribute('data-rm-self');
+    return raw ? parseSelfInvented(raw) : null;
+}
+export function recordSelfInventedForm(details) {
+    const self = selfInventedOf(details);
+    if (!self)
+        return;
+    const key = `${details.getAttribute('data-rabbit-mirror-owner-key') || ''}#${self.form}#${self.angle}`;
+    let at = Date.now();
+    try {
+        const stamp = JSON.parse(details.getAttribute('data-rm-generated') || 'null');
+        if (Number.isFinite(Number(stamp?.t)))
+            at = Number(stamp.t);
+    }
+    catch { }
+    if (Date.now() - at > SELF_FORM_FRESH_MS)
+        return;
+    const list = readSelfForms();
+    if (list.some(item => item.key === key))
+        return;
+    list.push({ key, form: self.form, at });
+    list.sort((a, b) => Number(a.at) - Number(b.at));
+    try {
+        globalThis.localStorage?.setItem(SELF_FORM_KEY, JSON.stringify(list.slice(-LEDGER_LIMIT)));
+    }
+    catch { }
+}
+export function recentSelfInventedForms(faces = 6) {
+    const now = Date.now();
+    const recent = readSelfForms().filter(item => Number.isFinite(Number(item.at)) && now - Number(item.at) <= SELF_FORM_FRESH_MS).slice(-faces);
+    return [...new Set(recent.map(item => item.form).filter(Boolean))];
 }

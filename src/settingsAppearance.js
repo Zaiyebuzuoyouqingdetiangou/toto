@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.2.0";
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=2.2.0';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.2.0';
-import { mountUserSkinControls } from './userSkin.js?rmv=2.2.0';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.2.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.0";
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=2.3.0';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.3.0';
+import { mountUserSkinControls } from './userSkin.js?rmv=2.3.0';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.3.0';
 const colorLabels = [__rmT("hVdPjf"), __rmT("JQSusEt1Keh"), __rmT("g6Q4jh"), __rmT("5p7qA.1sADp"), __rmT("3Foaif"), __rmT("oTx2hhmF"), __rmT("KeNzYT")];
 const mounts = new WeakMap();
 globalThis.__rabbitMirrorApplyAppearanceTheme = applyAppearanceTheme;
@@ -57,7 +57,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=2.2.0').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=2.3.0').then(mod => {
         if (versionRow.isConnected)
             mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn(__rmT("UnX0nRLVcQzumShYaRVSwKc82KFBM7GDygWrKZLNEXY6ii06tl6OBPDATF6KabUlMIrQGzxWLNE"), error));
@@ -110,6 +110,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
         visualRules: ['play', __rmT("RaMZJG01qOKZMwKU"), __rmT("ky5JrlJG4tZrlw3wa_I3VVkUFpKJsCMxLAmeqwKq")],
         replacement: ['play', __rmT("FOZbUsa23fx4cuV32Rp"), __rmT("vMNiFSsyWAqdnQRVCIOK3pn69niHdrAODW_6dyYQ6YJr93UDq8_")],
         mirror: ['tools', __rmT("_LwBvgfbXflyXaIF"), __rmT("pXDdzaGVGUdge85mnazG6uxQJdhiofPuIBsuCsLTnEgxphaxGXHoJko2q094sFPFjyxY3h")],
+        health: ['tools', __rmT("guUPAJ8b3f1Vgzub"), __rmT("YjvHt9WAfXBcLNRkNMWTUOtkLwQ3oDh_WDRKzxfQ1wPA.jZUlKzRA2bJtwFiWABr3YeUgjZkIO.hw66w4pQehGJ.WAT")],
         usage: ['tools', __rmT("UMQYPgh.KIi2BVuKCbzEmVVm"), __rmT("r1caqYQbBbB0sfzNa9KS5_V8P3FgaADGqzAALyVKwwpN82RQtPGnoQMLjKtybvaNoAGaJ_nQus1xDUaFqAk")],
         regex: ['tools', __rmT("Y5h2kfQAVB3RKN.FDo1Ao508w2UtbT"), __rmT("p2QXa.bilbj2mhkYmRVdwF78k9EMS8R.7CN5hRTe2kCaPw2IBKdIo9pqK8cH8yQMVohVUH3bY3Y")],
         diagnosis: ['tools', __rmT("jgaMwR6F608GngShE.azQ8rH"), __rmT("y8FoW9uHrJfyCkjTcU7siFhRDjNtTIs2")],
@@ -185,7 +186,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
         ['library', __rmT("WPn.hatX1GZqQMNjvGLhMf"), null, 'book'], ['theaterFavorites', __rmT("wgd4HeP1.UlQIiZDc9iNlh")], ['favorites', __rmT("vafYOA6QmNIFVGS1bJVack")], ['blacklist', __rmT("2MV6E.1kZB7WQzijkMVmmk")]
     ])
         row('play', key, title, desc, glyph);
-    for (const key of ['help', 'mirror', 'usage', 'diagnosis', 'regex', 'cleanup'])
+    for (const key of ['help', 'mirror', 'health', 'usage', 'diagnosis', 'regex', 'cleanup'])
         row('tools', key);
     const choice = (input, title, description, extra = '') => {
         const old = input.closest('label');
@@ -282,6 +283,8 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
     move(get('rh_theater_favorite_section')?.querySelector('.rabbit-mirror-section-content'), 'theaterFavorites');
     move('rh_missing_shell_panel', 'mirror');
     move('rh_advanced_page_repair', 'mirror');
+    move('rh_face_health_block', 'health');
+    move('rh_update_guide_block', 'help');
     note('mirror', __rmT("9h71AXJF2C6_g7f_LvCRQ2LPBkkSCySPiuH_cyy6zfHUPvG6RM54i2wR16zAD3oKk1mRUUt6HiGvglLyDJ7gKJNhlQtcDbgQhR3qFj3gMmLtu8DsFYcnbT8sL2X4xLVv5Mft7TTduoC5LAayiyhnFkSZq8LVcAhVP_95YmqZp2TrMjCqlN3srT"));
     move('rh_generation_evidence', 'diagnosis');
     move('rh_manual_entry_diag', 'diagnosis');
@@ -481,7 +484,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
             applyTheme();
             paint();
             close.focus({ preventScroll: true });
-            void import('./mirrorUpdateMenu.js?rmv=2.2.0').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUb5oykH.tFb26g8apR3SqFnm2mRwdDT"), error));
+            void import('./mirrorUpdateMenu.js?rmv=2.3.0').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUb5oykH.tFb26g8apR3SqFnm2mRwdDT"), error));
         }
         else {
             closeTheaterFavoriteViewer();

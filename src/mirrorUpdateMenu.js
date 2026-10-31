@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.2.0";
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.2.0';
-import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.2.0';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.0";
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.0';
+import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.3.0';
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
 let applying = false;
@@ -75,6 +75,21 @@ function fillReadme(body, result, { full = false } = {}) {
         fail.textContent = result?.message || __rmT("JdWafuSzWN_wGgJjdztql1VGv7ZkUIs2");
         body.append(fail);
         return;
+    }
+    if (full) {
+        const guide = document.createElement('button');
+        guide.type = 'button';
+        guide.setAttribute('data-rm-update-sheet-guide', 'true');
+        guide.textContent = __rmT("IDKaYyeadQabImST9lMMoOTr.Dfibk");
+        guide.style.cssText = `${buttonStyle}margin:0 0 12px;`;
+        guide.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            sheet?.remove();
+            sheet = null;
+            void import('./updateGuide.js?rmv=2.3.0').then(module => module.showAllUpdateTips()).catch(() => { });
+        });
+        body.append(guide);
     }
     const current = runningRabbitMirrorVersion();
     const newer = result.sections.filter(section => section.version && isNewerRabbitMirrorVersion(section.version, current));
@@ -250,7 +265,7 @@ async function showRollbackPanel(overlay, { lead = '' } = {}) {
     let module = null;
     let info = null;
     try {
-        module = await import('./versionRollback.js?rmv=2.2.0');
+        module = await import('./versionRollback.js?rmv=2.3.0');
         info = await module.listRollbackVersions();
     }
     catch (error) {
