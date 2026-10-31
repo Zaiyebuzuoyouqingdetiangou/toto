@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.6.2";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.6.3";
 const LEGACY_INTERACTION_CLASSES = Object.freeze({
     "hinged-open": "open-reveal",
     "sliding-open": "open-reveal",

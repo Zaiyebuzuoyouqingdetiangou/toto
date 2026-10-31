@@ -1,4 +1,4 @@
-import { layoutRect } from '../faceZoomMetrics.js?rmv=2.6.2';
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.6.3';
 const KIND_ATTR = 'data-rm-press';
 const PRESSING_ATTR = 'data-rm-pressing';
 const RELEASING_ATTR = 'data-rm-press-release';
