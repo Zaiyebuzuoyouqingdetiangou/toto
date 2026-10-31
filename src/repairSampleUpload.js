@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=2.4.0';
-import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.4.0';
+import { getSettings } from './settings.js?rmv=2.5.0';
+import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.5.0';
 const runningVersion = () => RUNTIME_VERSION;
 export const SAMPLE_RELAY_URL = 'https://samples.zaiyebuzuoyouqingdetiangou.com/';
 const SENT_KEY = 'rabbit_mirror_repair_samples_sent:v1';
@@ -94,7 +94,7 @@ export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImp
     if (!force && getSettings()?.repairSampleUpload !== true)
         return Promise.resolve({ sent: 0, pending: 0, skipped: 'off' });
     running = (async () => {
-        const box = listSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.4.0');
+        const box = listSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.5.0');
         const list = listSamples ? await listSamples() : box.listRepairSamples();
         const delivered = [];
         const dropDelivered = () => { try {

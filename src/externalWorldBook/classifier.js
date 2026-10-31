@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.4.0";
-import { entryIdentity } from './selectionState.js?rmv=2.4.0';
-import { buildExternalEntrySummary } from './summary.js?rmv=2.4.0';
+import { rmT as __rmT } from "../textTable.js?rmv=2.5.0";
+import { entryIdentity } from './selectionState.js?rmv=2.5.0';
+import { buildExternalEntrySummary } from './summary.js?rmv=2.5.0';
 export const EXTERNAL_WORLD_BOOK_CLASSIFICATION = Object.freeze({
     THEME: 'theme',
     FORMAT: 'format',

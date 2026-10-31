@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.4.0";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.4.0';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.4.0';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.4.0';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.5.0";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.5.0';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.5.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.5.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.4.0';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.4.0';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.4.0';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.4.0';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.5.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.5.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.5.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.5.0';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -221,6 +221,10 @@ export const defaultSettings = Object.freeze({
     animationIdlePause: 'auto',
     desktopFaceZoom: true,
     desktopFaceZoomWidth: 520,
+    readyNoticeEnabled: true,
+    readyNoticeChip: true,
+    readyNoticeTitle: true,
+    readyNoticeVibrate: false,
     faceHealthInMenu: false,
     repairSampleUpload: false,
     updateGuideEnabled: true,
@@ -499,6 +503,9 @@ export function getSettings() {
     settings.facePagerPosition = settings.facePagerPosition === 'bottom' ? 'bottom' : 'top';
     settings.animationIdlePause = ['auto', 'on', 'off'].includes(settings.animationIdlePause) ? settings.animationIdlePause : 'auto';
     settings.desktopFaceZoom = settings.desktopFaceZoom !== false;
+    for (const key of ['readyNoticeEnabled', 'readyNoticeChip', 'readyNoticeTitle'])
+        settings[key] = settings[key] !== false;
+    settings.readyNoticeVibrate = settings.readyNoticeVibrate === true;
     {
         const width = Math.round(Number(settings.desktopFaceZoomWidth));
         settings.desktopFaceZoomWidth = Number.isFinite(width) ? Math.min(900, Math.max(400, width)) : 520;
@@ -721,6 +728,11 @@ export function updateSettings(patch) {
         safePatch.webFontsEnabled = safePatch.webFontsEnabled !== false;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'desktopFaceZoom'))
         safePatch.desktopFaceZoom = safePatch.desktopFaceZoom !== false;
+    for (const key of ['readyNoticeEnabled', 'readyNoticeChip', 'readyNoticeTitle'])
+        if (Object.prototype.hasOwnProperty.call(safePatch, key))
+            safePatch[key] = safePatch[key] !== false;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'readyNoticeVibrate'))
+        safePatch.readyNoticeVibrate = safePatch.readyNoticeVibrate === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'desktopFaceZoomWidth')) {
         const width = Math.round(Number(safePatch.desktopFaceZoomWidth));
         safePatch.desktopFaceZoomWidth = Number.isFinite(width) ? Math.min(900, Math.max(400, width)) : 520;
