@@ -1,4 +1,4 @@
-import { getContext } from './independentApi/runtime.js?rmv=2.1.9';
+import { getContext } from './independentApi/runtime.js?rmv=2.1.10';
 const KEY = '__rabbitMirrorFreshDrawSlots';
 const LIMIT = 500;
 function slots() {

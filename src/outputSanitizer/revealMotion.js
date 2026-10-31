@@ -1,4 +1,4 @@
-import { layoutRect } from '../faceZoomMetrics.js?rmv=2.1.9';
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.1.10';
 export const REVEAL_MOTION_ID = 'rm-motion';
 const BOUND = new WeakSet();
 const CHROME = ['summary', '[data-rabbit-mirror-maintenance-rabbit]', '[data-rabbit-mirror-feedback-cat]', '[data-rabbit-mirror-recipe]',

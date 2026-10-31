@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.9";
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.10";
 export const INDEPENDENT_ADVANCED_ERROR_CODE = 'RABBIT_MIRROR_ADVANCED_OPTIONS_REJECTED';
 export const INDEPENDENT_ADVANCED_MAX_CHARS = 8192;
 export const INDEPENDENT_REASONING_EFFORTS = Object.freeze(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
