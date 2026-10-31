@@ -1,7 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
-import { spritePaths } from '../pixelSprites.js?rmv=2.5.4';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.5.4';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.5.4';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.2";
+import { spritePaths } from '../pixelSprites.js?rmv=2.6.2';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.6.2';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.6.2';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX } from './mirrorScene.js?rmv=2.6.2';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -113,6 +114,10 @@ export function createProgressState({ faceCount = 1, expectedFaceChars = 0, now 
         retry: 0,
         drawText: '',
         faceMenuLabels: [],
+        facePicks: [],
+        sceneFoundAt: 0,
+        sceneChosen: -1,
+        sceneDone: false,
         serial: null,
         accepted: new Map(),
         request: newRequest(),
@@ -132,6 +137,7 @@ export function noteProgressSelection(state, diagnostic) {
     state.faceMenuLabels = (faces.length ? faces : [diagnostic]).map(face => (Array.isArray(face?.atmosphereMenu) && face.atmosphereMenu.length > 1
         ? face.atmosphereMenu.map(ticket => labelTitle((Array.isArray(ticket?.formatLines) ? ticket.formatLines : [])[0]))
         : []));
+    state.facePicks = (faces.length ? faces : [diagnostic]).map(face => Number(face?.designCandidatePick ?? (faces.length ? 0 : diagnostic.designCandidatePick)) || 0);
     if (faces.length > 1) {
         state.drawText = `${__rmT("X39tSec6")}${faces.length}${__rmT("N_isVKgwXNp")}`;
         return;
@@ -307,34 +313,58 @@ function funcRgb(name, args) {
 }
 const toHex = rgb => `#${rgb.map(value => value.toString(16).padStart(2, '0')).join('')}`;
 function hsl([r, g, b]) {
-    const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
+    const R = r / 255, G = g / 255, B = b / 255;
+    const max = Math.max(R, G, B), min = Math.min(R, G, B);
     const l = (max + min) / 2;
-    const s = max === min ? 0 : (l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min));
-    return { s, l };
+    const d = max - min;
+    const s = d === 0 ? 0 : (l > 0.5 ? d / (2 - max - min) : d / (max + min));
+    let h = 0;
+    if (d)
+        h = max === R ? 60 * (((G - B) / d) % 6) : max === G ? 60 * ((B - R) / d + 2) : 60 * ((R - G) / d + 4);
+    return { h: (h + 360) % 360, s, l };
+}
+function rgbFromHsl(h, s, l) {
+    const a = s * Math.min(l, 1 - l);
+    const f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    return [f(0), f(8), f(4)].map(value => Math.max(0, Math.min(255, Math.round(value * 255))));
 }
 export function paletteFromSource(source) {
-    const colors = [];
+    const weighted = [];
     const re = /#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z_-])|\b(rgba?|hsla?)\(\s*([^()]{3,80})\)/gi;
     let match;
     let scanned = 0;
     while ((match = re.exec(String(source || ''))) && scanned < 400) {
         scanned += 1;
         const rgb = match[1] ? hexRgb(match[1]) : funcRgb(match[2], match[3]);
-        if (!rgb || colors.some(other => Math.hypot(other[0] - rgb[0], other[1] - rgb[1], other[2] - rgb[2]) < 26))
+        if (!rgb)
             continue;
-        colors.push(rgb);
+        const near = weighted.find(item => Math.hypot(item.rgb[0] - rgb[0], item.rgb[1] - rgb[1], item.rgb[2] - rgb[2]) < 26);
+        if (near)
+            near.weight += 1;
+        else
+            weighted.push({ rgb, weight: 1 });
     }
+    const colors = weighted.map(item => item.rgb);
     let thread = null;
-    let best = -1;
-    for (const rgb of colors) {
-        const { s, l } = hsl(rgb);
-        if (l < 0.18 || l > 0.82 || s < 0.22)
+    const bins = new Map();
+    for (const item of weighted) {
+        const { h, s, l } = hsl(item.rgb);
+        if (s < 0.15 || l < 0.08 || l > 0.92)
             continue;
-        const score = s * (1 - Math.abs(l - 0.45) * 2);
-        if (score > best) {
-            best = score;
-            thread = rgb;
-        }
+        const bin = Math.round(h / 30) % 12;
+        const entry = bins.get(bin) || { weight: 0, best: null };
+        entry.weight += item.weight;
+        if (!entry.best || item.weight + s > entry.best.weight + entry.best.s)
+            entry.best = { ...item, h, s, l };
+        bins.set(bin, entry);
+    }
+    let top = null;
+    for (const entry of bins.values())
+        if (!top || entry.weight > top.weight || (entry.weight === top.weight && entry.best.s > top.best.s))
+            top = entry;
+    if (top) {
+        const { h, s, l } = top.best;
+        thread = rgbFromHsl(h, Math.min(0.85, Math.max(0.35, s)), Math.min(0.62, Math.max(0.42, l)));
     }
     if (!thread) {
         let distance = Infinity;
@@ -476,6 +506,36 @@ function requestFraction(request, now, expectedChars, closedRatio) {
     const shaped = ratio <= 0.85 ? ratio : 0.85 + 0.15 * ease((ratio - 0.85) / 0.3);
     return request.textBase + (0.97 - request.textBase) * Math.min(1, shaped);
 }
+const FALL_MS = 3600;
+const HOP_MS = 1000;
+const FOUND_WAIT_MS = 3000;
+const FOUND_MS = 2100;
+function mirrorSceneOf(state, request, parse, thread, now) {
+    if (state.sceneDone)
+        return null;
+    const menu = state.faceMenuLabels?.[0] || [];
+    const menuFace = menu.length > 1;
+    const mirrors = clampMirrorCount(menuFace ? menu.length : 3);
+    const searching = () => ({ stage: 'search', mirrors, at: Math.max(0, Math.floor((now - state.startedAt - FALL_MS) / HOP_MS)) % mirrors });
+    const writing = state.firstTextAt || request.firstTextAt || request.completeAt || state.finishingAt || state.accepted.size;
+    if (!writing)
+        return now - state.startedAt < FALL_MS ? { stage: 'fall' } : searching();
+    if (!state.sceneFoundAt) {
+        const ticket = menuFace ? Math.round(Number(parse.faces[0]?.ticket)) || 0 : 0;
+        const waited = now - (state.firstTextAt || request.firstTextAt || now);
+        const known = (!menuFace || ticket > 0) && !!thread;
+        if (!known && waited < FOUND_WAIT_MS && !request.completeAt && !state.finishingAt)
+            return searching();
+        const pick = Math.round(Number(state.facePicks?.[0])) || 0;
+        const chosen = ticket > 0 ? ticket - 1 : !menuFace && pick > 0 ? pick - 1 : Math.floor((mirrors - 1) / 2);
+        state.sceneChosen = Math.max(0, Math.min(mirrors - 1, chosen));
+        state.sceneFoundAt = now;
+    }
+    if (now - state.sceneFoundAt < FOUND_MS)
+        return { stage: 'found', mirrors, chosen: state.sceneChosen };
+    state.sceneDone = true;
+    return null;
+}
 const doneLine = (key, text, extra = {}) => ({ key, state: 'done', text, ...extra });
 const activeLine = (key, text) => ({ key, state: 'active', text });
 export function progressView(state, now = Date.now()) {
@@ -581,6 +641,7 @@ export function progressView(state, now = Date.now()) {
         thread,
         lines: [...pinned, ...rolling.slice(-(MAX_LINES - pinned.length))],
         picks: progressPicks(current, state, serial ? serial.index : faceNo - 1),
+        scene: mirrorSceneOf(state, request, parse, thread, now),
     };
 }
 const recentFaceChars = [];
@@ -713,6 +774,38 @@ function updateLog(doc, list, lines) {
     for (const li of existing.values())
         li.remove();
 }
+function syncMirrorScene(doc, card, scene) {
+    const stage = card.querySelector('.rm-gp-stage');
+    if (!stage)
+        return;
+    let svg = stage.querySelector(':scope > svg.rm-gp-scene');
+    const key = sceneKey(scene);
+    if (!key) {
+        svg?.remove();
+        if (card.hasAttribute('data-rm-gp-scene'))
+            card.removeAttribute('data-rm-gp-scene');
+        return;
+    }
+    if (!svg || svg.getAttribute('data-rm-gp-scene-key') !== key) {
+        const next = buildMirrorScene(doc, scene);
+        if (!next)
+            return;
+        next.setAttribute('data-rm-gp-scene-key', key);
+        if (svg)
+            svg.replaceWith(next);
+        else
+            stage.append(next);
+        svg = next;
+    }
+    if (scene.stage === 'search') {
+        const seeker = svg.querySelector(':scope > .rm-gp-seeker');
+        const transform = `translate(${seekerX(scene.mirrors, scene.at)} 0)`;
+        if (seeker && seeker.getAttribute('transform') !== transform)
+            seeker.setAttribute('transform', transform);
+    }
+    if (card.dataset.rmGpScene !== scene.stage)
+        card.dataset.rmGpScene = scene.stage;
+}
 function applyCommon(node, view) {
     const value = view.fraction.toFixed(3);
     if (node.style.getPropertyValue('--rm-gp-p') !== value)
@@ -759,6 +852,7 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
     const stage = card.querySelector('.rm-gp-stage');
     if (stage && stage.getAttribute('aria-valuenow') !== String(view.percent))
         stage.setAttribute('aria-valuenow', String(view.percent));
+    syncMirrorScene(doc, card, view.scene);
     updateLog(doc, card.querySelector('.rm-gp-log'), view.lines);
     return card;
 }

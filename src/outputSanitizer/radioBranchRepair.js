@@ -1,6 +1,6 @@
-import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=2.5.4';
-import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=2.5.4';
-import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.5.4';
+import { clearUncheckedRadioCheckedInlineArtifacts, parseCheckedRulesFromText, resolveTargetsForCheckedRule, restoreInteractionInlineOverrides } from './checkedStateRescue.js?rmv=2.6.2';
+import { applyCheckedVisualFallback, inputHasAssociatedLabel } from './fallbackRescue.js?rmv=2.6.2';
+import { getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.6.2';
 export const RADIO_BRANCH_COUNT_ATTR = 'data-rabbit-mirror-radio-branch-count';
 export const RADIO_BRANCH_CONTROL_ATTR = 'data-rm-radio-branch-control';
 const states = new WeakMap();

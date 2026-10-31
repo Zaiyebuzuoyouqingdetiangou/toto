@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.4";
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.2";
 const DEFAULT_SECONDS = 60;
 const SAVE_RE = /\/api\/chats\/(?:group\/)?save\b/i;
 const ownSaves = [];
@@ -34,6 +34,47 @@ export function lagOwnerOf(url, origin = globalThis.location?.origin || '') {
         return { key: `builtin:${builtIn[1]}`, label: `${__rmT("Rb5YOZUYc43K64.WVpA")}${builtIn[1]}` };
     return { key: 'host', label: __rmT("rcHBrjPXcQY") };
 }
+function invokerKind(script) {
+    const type = String(script?.invokerType || '');
+    const invoker = String(script?.invoker || '');
+    if (type === 'event-listener') {
+        const event = (invoker.match(/\.on([a-z]+)$/i)?.[1] || invoker.split('.').pop() || '').toLowerCase();
+        if (event === 'scroll' || event === 'wheel')
+            return __rmT("QycNhGEo");
+        if (/^(pointer|mouse|touch|click)/.test(event))
+            return __rmT("7mt6E8Eo");
+        if (/^(key|input|focus)/.test(event))
+            return __rmT("lBqbSLR3TJuLmvRL8MpTTh");
+        return event ? `${event}${__rmT("2RCvjh")}` : __rmT("xF_v3f");
+    }
+    if (/Mutation/i.test(invoker))
+        return __rmT("TiAPpEKjJuzyHT");
+    if (/Intersection/i.test(invoker))
+        return __rmT("27iZzEc9xuJyHT");
+    if (/Resize/i.test(invoker))
+        return __rmT("0ZdxqEKjJuzyHT");
+    if (/setTimeout|setInterval|TimerHandler/i.test(invoker))
+        return __rmT("uRhp.7Y.");
+    if (/FrameRequest|requestAnimationFrame/i.test(invoker))
+        return __rmT("O94FqG6WEBh");
+    if (/idle/i.test(invoker))
+        return __rmT("OtCk7BEo");
+    if (/promise/i.test(type))
+        return __rmT("pOBQsOcJt8A39f");
+    if (/script/i.test(type))
+        return __rmT("j.rtj8Eo");
+    return invoker.slice(0, 40) || type || '';
+}
+function ownFileOf(url, folder) {
+    let path = String(url || '');
+    try {
+        path = decodeURIComponent(new URL(path, globalThis.location?.origin || undefined).pathname);
+    }
+    catch { }
+    const marker = `/third-party/${folder}/`;
+    const at = path.indexOf(marker);
+    return at >= 0 ? path.slice(at + marker.length) : path.split('/').pop();
+}
 export function lagCheckSupport() {
     const types = globalThis.PerformanceObserver?.supportedEntryTypes || [];
     return { perPlugin: types.includes('long-animation-frame'), total: types.includes('long-animation-frame') || types.includes('longtask') };
@@ -47,6 +88,7 @@ export function startLagCheck({ seconds = DEFAULT_SECONDS, onTick, ownFolder = '
     const started = Date.now();
     const startedPerf = globalThis.performance?.now?.() || 0;
     const owners = new Map();
+    const ownSpots = new Map();
     const result = { seconds, perPlugin: support.perPlugin, supported: support.total, longFrames: 0, blockingMs: 0, longMs: 0, owners: [], saves: { count: 0, ms: 0, fromRabbitMirror: 0, reasons: [] }, ownFolder };
     const observers = [];
     const watch = (type, handle) => {
@@ -72,6 +114,17 @@ export function startLagCheck({ seconds = DEFAULT_SECONDS, onTick, ownFolder = '
                 row.ms += Number(script.duration) || 0;
                 row.count += 1;
                 owners.set(owner.key, row);
+                if (ownFolder && owner.plugin === ownFolder) {
+                    const file = ownFileOf(script.sourceURL, ownFolder);
+                    const fn = String(script.sourceFunctionName || '').slice(0, 40);
+                    const when = invokerKind(script);
+                    const key = `${file}|${fn}|${when}`;
+                    const spot = ownSpots.get(key) || { file, fn, when, ms: 0, count: 0, layoutMs: 0 };
+                    spot.ms += Number(script.duration) || 0;
+                    spot.count += 1;
+                    spot.layoutMs += Number(script.forcedStyleAndLayoutDuration) || 0;
+                    ownSpots.set(key, spot);
+                }
             }
         });
     }
@@ -105,6 +158,7 @@ export function startLagCheck({ seconds = DEFAULT_SECONDS, onTick, ownFolder = '
             result.saves.fromRabbitMirror = own.length;
             result.saves.reasons = [...new Set(own.flatMap(item => String(item.reason || '').split(__rmT("jvk"))).filter(Boolean))];
             result.owners = [...owners.values()].sort((a, b) => b.ms - a.ms);
+            result.ownSpots = [...ownSpots.values()].sort((a, b) => b.ms - a.ms).slice(0, 8);
             result.endedAt = Date.now();
             running = null;
             resolve(result);
@@ -144,6 +198,13 @@ export function describeLagCheck(result) {
         }
         if (!result.owners.some(row => result.ownFolder && row.plugin === result.ownFolder))
             lines.push(__rmT("9TYPTn3BmNFnRbHGbpXmeak6Nruc1vcF"));
+        const spots = Array.isArray(result.ownSpots) ? result.ownSpots.filter(spot => spot.ms >= 50) : [];
+        if (spots.length) {
+            lines.push(__rmT("wBy8rPHPAvUZas0d6g9koudqGevTUHOBN59ybpupls1xY49x"));
+            for (const spot of spots.slice(0, 5)) {
+                lines.push(`  ${spot.file}${spot.fn ? ` · ${spot.fn}` : ''}${spot.when ? `${__rmT("eis")}${spot.when}${__rmT("eXs")}` : ''}${__rmT("7ys")}${ms(spot.ms)}${__rmT("eis")}${spot.count}${__rmT("2RUxYk")}${spot.layoutMs >= 50 ? `${__rmT("NFDCnoM2tbSr6ZuQgPD")}${ms(spot.layoutMs)}` : ''}${__rmT("eXs")}`);
+            }
+        }
         if (result.owners.some(row => row.key === 'host')) {
             lines.push(__rmT("0fl9QNTj61uaKHDQ3I21gtQjV.63iN9jpBwcK.rLkleUPKjEGJoPEnNHngyrrjOhjW_LJf4CkXAk45xaJHvtLkVb02Q9DB42dJnAVOcvEcwGbsn6njlso.N4jazD5HBWRdSi2hhLzAFIvGljTDsR9AdSzyiLnCCmUirrO81P.PPcJJEN0F.srT"));
             lines.push(__rmT("Z9s96TFHBEv7CmoFli0S2aSfW9TwWXgoLWSO8_PpiAN4jphSqD7nVr_vNp287Nhk0cu9Z5o4O0ZdAOJfNkFEpIH4Hfwhoii45WRnKOcB7caa_Xredn3PHyilx.6ZTC4yf2w4F0KF1FT"));
