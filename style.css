@@ -1252,8 +1252,9 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-generation-progress .rm-gp-line[data-state="active"] .rm-gp-mark{ animation:rm-gp-pulse 1s steps(1,end) infinite; }
 .rabbit-mirror-generation-progress .rm-gp-line[data-state="note"] .rm-gp-text{ font-style:italic !important; opacity:.85 !important; }
 
-.rabbit-mirror-generation-progress .rm-gp-line[data-key="think"]{ white-space:normal !important; align-items:flex-start !important; }
-.rabbit-mirror-generation-progress .rm-gp-line[data-key="think"] .rm-gp-text{ overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; line-height:1.45 !important; }
+.rabbit-mirror-generation-progress .rm-gp-line:is([data-key="think"], [data-key="self"], [data-key="ticket"], [data-key="title"]){ white-space:normal !important; align-items:flex-start !important; }
+.rabbit-mirror-generation-progress .rm-gp-line:is([data-key="think"], [data-key="self"], [data-key="ticket"], [data-key="title"]) .rm-gp-text{ overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; line-height:1.45 !important; }
+.rabbit-mirror-generation-progress .rm-gp-line[data-key="think"] .rm-gp-text{ font-style:normal !important; }
 .rabbit-mirror-generation-progress .rm-gp-swatches{
   display:inline-flex !important;
   flex:0 0 auto !important;
@@ -1320,7 +1321,6 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   overflow-wrap:anywhere !important;
   font-size:11px !important;
   line-height:1.45 !important;
-  font-style:italic !important;
   opacity:.8 !important;
   text-align:left !important;
 }

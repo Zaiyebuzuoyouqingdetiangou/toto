@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.3.8";
-import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=2.3.8';
+import { rmT as __rmT } from "../textTable.js?rmv=2.3.9";
+import { EXTERNAL_WORLD_BOOK_ERROR_CODES, ExternalWorldBookError } from './errors.js?rmv=2.3.9';
 export const EXTERNAL_WORLD_BOOK_SCHEMA_VERSION = 1;
 export const EXTERNAL_WORLD_BOOK_MAX_FILE_BYTES = 8 * 1024 * 1024;
 export const EXTERNAL_WORLD_BOOK_MAX_ENTRIES = 5000;

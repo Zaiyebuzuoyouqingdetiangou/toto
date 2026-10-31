@@ -1,4 +1,4 @@
-import { isRabbitMirrorOuterChatDetails } from './runtime.js?rmv=2.3.8';
+import { isRabbitMirrorOuterChatDetails } from './runtime.js?rmv=2.3.9';
 const TOOLS = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-maintenance-rabbit], '
     + '[data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-recipe], [data-rabbit-mirror-resay], '
     + '[data-rm-manual-generate], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], '

@@ -1,10 +1,10 @@
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=2.3.8';
-import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=2.3.8';
-import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=2.3.8';
-import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.3.8';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=2.3.8';
-import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=2.3.8';
-import { assertNameMaskRestorable, prepareNameMaskReplacement } from '../nameMask.js?rmv=2.3.8';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=2.3.9';
+import { installBehaviorInteractions } from './behaviorInteractions.js?rmv=2.3.9';
+import { behaviorStyleText, hasBehaviorStateClasses } from './behaviorStateMirror.js?rmv=2.3.9';
+import { rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.3.9';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=2.3.9';
+import { applyReversePatch, authoredElements, behaviorFaceTextKey, elementSignature, rememberReversePatches } from './behaviorRelayMemory.js?rmv=2.3.9';
+import { assertNameMaskRestorable, prepareNameMaskReplacement } from '../nameMask.js?rmv=2.3.9';
 export const BEHAVIOR_REVERSE_ATTR = 'data-rabbit-mirror-behavior-reverse-relayed';
 const NODE_TAG = 'data-rm-rev-node';
 const BUDGET_MS = 1500;

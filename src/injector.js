@@ -1,15 +1,15 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.8";
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.9";
 import { eventSource, event_types, setExtensionPrompt, extension_prompt_types, extension_prompt_roles } from '../../../../../script.js';
 import * as hostRuntime from '../../../../../script.js';
-import { MODULE_NAME, getSettings } from './settings.js?rmv=2.3.8';
+import { MODULE_NAME, getSettings } from './settings.js?rmv=2.3.9';
 import { extension_settings } from '../../../../extensions.js';
-import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=2.3.8';
-import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected, } from './feedbackCat.js?rmv=2.3.8';
-import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=2.3.8';
-import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=2.3.8';
-import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=2.3.8';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.8';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.3.8';
+import { faceDrawNeedsExternal } from './faceDrawRules.js?rmv=2.3.9';
+import { buildFeedbackCatFinalCheck, buildFeedbackCatPrompt, clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, markFeedbackCatInjected, } from './feedbackCat.js?rmv=2.3.9';
+import { recordRabbitMirrorInjection, recordRabbitMirrorNoInjection } from './tokenMeter.js?rmv=2.3.9';
+import { getCurrentChatKey, markPendingBatchAttempt, releasePendingComboBatch } from './storage.js?rmv=2.3.9';
+import { describeExternalWorldBookPreflightFailure } from './externalWorldBook/errors.js?rmv=2.3.9';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.9';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.3.9';
 const INJECT_KEY = `${MODULE_NAME}:auto_injection`;
 let generationInvocationSequence = 0;
 let independentGenerationIntentSequence = 0;
@@ -921,7 +921,7 @@ export function destroyIndependentGenerationIntentBridge({ clearIntents = false 
 }
 function loadPromptBuilder() {
     if (!promptBuilderPromise) {
-        promptBuilderPromise = import('./promptBuilder.js?rmv=2.3.8').catch(error => {
+        promptBuilderPromise = import('./promptBuilder.js?rmv=2.3.9').catch(error => {
             promptBuilderPromise = null;
             throw error;
         });
@@ -930,7 +930,7 @@ function loadPromptBuilder() {
 }
 function loadGenerationGuard() {
     if (!generationGuardPromise) {
-        generationGuardPromise = import('./generationGuard.js?rmv=2.3.8').then(module => { loadedGenerationGuard = module; return module; }).catch(error => {
+        generationGuardPromise = import('./generationGuard.js?rmv=2.3.9').then(module => { loadedGenerationGuard = module; return module; }).catch(error => {
             generationGuardPromise = null;
             throw error;
         });
@@ -1121,7 +1121,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             assertMemoryOwner();
             let repository;
             if (externalEnabled) {
-                repository = await import('./externalWorldBook/store.js?rmv=2.3.8');
+                repository = await import('./externalWorldBook/store.js?rmv=2.3.9');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 externalStage = 'index';
                 await repository.hydrateExternalPoolMetadata();
@@ -1144,7 +1144,7 @@ export async function rabbitMirrorGenerateInterceptor(_chat, _contextSize, _abor
             }
             if (frozenPlan.appearanceReference.enabled) {
                 externalStage = 'appearance-read';
-                const appearance = await import('./appearanceReference.js?rmv=2.3.8');
+                const appearance = await import('./appearanceReference.js?rmv=2.3.9');
                 assertFollowPrefetchOwner(prefetchOwner, _chat);
                 assertAppearanceOwner();
                 appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(frozenPlan.appearanceReference.revision);

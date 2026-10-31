@@ -1,10 +1,10 @@
-import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=2.3.8';
-import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=2.3.8';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.3.8';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=2.3.8';
-import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=2.3.8';
-import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=2.3.8';
-import { assertNameMaskRestorable, prepareNameMaskReplacement } from '../nameMask.js?rmv=2.3.8';
+import { collectGenericProbeControls, openGenericProbeSandbox, probeGenericControls } from './maintenanceGenericProbe.js?rmv=2.3.9';
+import { releaseBehaviorGroup } from './behaviorInteractions.js?rmv=2.3.9';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.3.9';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=2.3.9';
+import { INERT_ACTION_BUTTON_RESCUE_ATTR } from './diagnostics.js?rmv=2.3.9';
+import { behaviorRelayFaceKey, behaviorRelayGroupIndex, rememberBehaviorRelay } from './behaviorRelayMemory.js?rmv=2.3.9';
+import { assertNameMaskRestorable, prepareNameMaskReplacement } from '../nameMask.js?rmv=2.3.9';
 export const BEHAVIOR_RELAY_ATTR = 'data-rabbit-mirror-behavior-relayed';
 const GROUP_TAG = 'data-rm-relay-group';
 const NODE_TAG = 'data-rm-relay-node';

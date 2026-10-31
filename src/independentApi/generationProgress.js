@@ -1,7 +1,7 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.8";
-import { spritePaths } from '../pixelSprites.js?rmv=2.3.8';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.3.8';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.3.8';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.9";
+import { spritePaths } from '../pixelSprites.js?rmv=2.3.9';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.3.9';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.3.9';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -16,9 +16,9 @@ const STORED_TO_RAW = 0.75;
 const SPRITE_W = 42;
 const SPRITE_H = 30;
 const NEEDLE_X = 3;
-const SPRITE_COMMON = '..............................kk...k/.............................kpRk.kR/.............................kprk.kprk/.............................kprk.kprk/.............................kprk.kprk/.............................kprkkkprk/..........kkk...............kkrrrrrrrkk/.........kcCck.............krrrrrrrrrrrk/...ccccccccCck............krrrrrrrrrrrRRk/...c......kSk.............kreerrrrrrrrRRk/...ckkkkkkkkkkkkkkkkkkkk.krrekrrrrrrrrRRk/..kmnnnnnnnnnnnnnnnmk..skkprrrrrrrrrrrRRk/.kmmgmmmgmmmgmmmmmmmk.kSk.kbbrrrrrrrrRRk/.kmmmmmmmmmmmmmmmmmmks..k..kkrrrrrrrRRkk/.kmmmmkkkkkkkkkkkkmmmkkkkk..krrrrrrrRRRk/.kmmmk...........kmmmkrrrk.krrrrrrrrRRRRk/..kmk............kmgkrrrRkkrrrrrrrrrRRRRk/..k.k............kmmkkkkk.krrrrrrrrrRRRRRk/.km.mmmmmmgggggmmmmmmmmmk.krrrrrrrrRRRRRkk/.kk.kkkkkkkkkkkkkkkkkkkkk..kkrrrrrRRRRRkrk/kwwwwwwwwwwwwwwwwwwwwwwwwk...kkkkkkkkkkkk/kWWWWWWWWWWWWWWWWWWWWkkkWkkkkkkkkkkkkkkkk/...iI...............krrk..ttttttttttttttt/...iI..............krrRk..TTTTTTTTTTTTTTT/...iIiiiiiiii.....k.rRk.....T.........T/...iI........k.....r.kI.....T.........T/...iI.................I.....T.........T/...iI................iI.....TTTTTTTTTTT/...iI........i.......iI.....T.........T/..kkkkk......k......kkkkk...T.........T';
-const SPRITE_FRAME_A = '..................................k/....................................k//////////.....................sS/.....................S/......................Ss////...S/...s/...s/////.............iiiii.r/..............kkkkk.R/.......SSSSSSkrrrrrrrk/.......kkkkkkSSSSSSS/..............kkkkkk';
-const SPRITE_FRAME_B = '....................................k/....................................Rk//////////.....................Ss/.....................s/......................sS////...s/...m/...k/////.............kkkkk.k/..............rrrrr.r/.............SSSSSSS.i/.......SSSSSSkkkkkkk/.......kkkkkk';
+const SPRITE_COMMON = '..............................kk...k/.............................kpRk.kR/.............................kprk.kprk/.............................kprk.kprk/.............................kprk.kprk/.............................kprkkkprk/..........kkk...............kkrrrrrrrkk/.........kcCck.............krrrrrrrrrrrk/...ccccccccCck............krrrrrrrrrrrRRk/...c......kSk.............kreerrrrrrrrRRk/...ckkkkkkkkkkkkkkkkkkkk.krrekrrrrrrrrRRk/..kmnnnnnnnnnnnnnnnmk..skkprrrrrrrrrrrRRk/.kmmgmmmgmmmgmmmmmmmk.kSk.kbbrrrrrrrrRRk/.kmmmmmmmmmmmmmmmmmmks..k..kkrrrrrrrRRkk/.kmmmmkkkkkkkkkkkkmmmkkkkk..krrrrrrrRRRk/.kmmmk...........kmmmkrrrk.krrrrrrrrRRRRk/..kmk............kmgkrrrRkkrrrrrrrrrRRRRk/..k.k............kmmkkkkk.krrrrrrrrrRRRRRk/.km.mmmmmmgggggmmmmmmmmmk.krrrrrrrrRRRRRkk/.kk.kkkkkkkkkkkkkkkkkkkkk..kkrrrrrRRRRRkrk/kwwwwwwwwwwwwwwwwwwwwwwwwk...kkkkkkkkkkkk/kWWWWWWWWWWWWWWWWWWWWkkkWkkkkkkkkkkkkkkkk/...iI...........iI........ttttttttttttttt/...iI...........iI........TTTTTTTTTTTTTTT/...iIiiiiiiiiiiiiI..........T.........T/...iI...........iI..........T.........T/...iI...........iI..........T.........T/...iI...........iI..........TTTTTTTTTTT/...iI...........iI..........T.........T/..kkkkk........kkkkk........T.........T';
+const SPRITE_FRAME_A = '..................................k/....................................k//////////.....................sS/.....................S/......................Ss////...S/...s/...s///......................krrk/......................krRk/.....................krrRk/...................krrrRk/...........kkkkkkk.kkkkkk/...........SSSSSSSkSSSSSSS/...........kkkkkk..kkkkkkk/';
+const SPRITE_FRAME_B = '....................................k/....................................Rk//////////.....................Ss/.....................s/......................sS////...s/...m/...k///......................krrk/....................krrrRk/....................kkkkkk/.................kkkkkkkkk/..........kkkkkkSSSSSSSSSk/..........SSSSSSkkkkkkkkk/..........kkkkkk/';
 const SPRITE_BUBBLE = '..kkkkkkk/.krrrrrrrk/krrrrrrrrrk/.krrrrrrrk/..kkkkkkkrk/........kk';
 const BUBBLE_AT = [14, 0];
 const BUBBLE_DOTS = [[3, 2], [5, 2], [7, 2]];
@@ -523,7 +523,7 @@ export function progressView(state, now = Date.now()) {
                 lines.push(doneLine('thought', `${__rmT("5N548zwkkuf")}${thought >= 3000 ? `${__rmT("fnf.8R4jHKG")}${seconds(thought)}${__rmT("eXs")}` : ''}`));
             }
             if (current.self?.form) {
-                lines.push(doneLine('self', `${__rmT("7hbuZvUYk5ZycoOckGD")}${shortText(current.self.form, 14)}${__rmT("Yvk")}${current.self.theme ? `${__rmT("4bF.jaFygRhyXXG1")}${shortText(current.self.theme, 10)}${__rmT("Yvk")}` : ''}`));
+                lines.push(doneLine('self', `${__rmT("7hbuZvUYk5ZycoOckGD")}${shortText(current.self.form, 24)}${__rmT("Yvk")}${current.self.theme ? `${__rmT("4bF.jaFygRhyXXG1")}${shortText(current.self.theme, 24)}${__rmT("Yvk")}` : ''}`));
             }
             if (current.think)
                 lines.push({ key: 'think', state: 'note', mark: '✎', text: `${__rmT("8Xl3jLop")}${current.think}` });

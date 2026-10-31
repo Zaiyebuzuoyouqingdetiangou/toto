@@ -1,4 +1,4 @@
-import { behaviorStyleText, behaviorStyleStamp } from './behaviorStateMirror.js?rmv=2.3.8';
+import { behaviorStyleText, behaviorStyleStamp } from './behaviorStateMirror.js?rmv=2.3.9';
 const GROUP = '[data-rm-ui]';
 const CONTROLS = '[data-rm-step], [data-rm-pick], [data-rm-toggle], [data-rm-goto], [data-rm-item], [data-rm-card], [data-rm-end], [data-rm-code], [data-rm-fire], [data-rm-hold]';
 const TOOL_CHROME = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], [data-rm-mobile-controls]';
