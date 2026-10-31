@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.3";
-import { getSettings, updateSettings } from './settings.js?rmv=2.5.3';
-import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.5.3';
-import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.3';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.4";
+import { getSettings, updateSettings } from './settings.js?rmv=2.5.4';
+import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.5.4';
+import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.4';
 export const UPDATE_GUIDE_TIPS = Object.freeze([
     { id: 'ready-notice', since: '2.5.0', title: __rmT("vDfth4AqvkK2LXIOxKqXDTOn"), text: __rmT("53Foz3Xj8iwr2PzZGA3tnoLL4p1GB8c5W7RuCwW_4O.XcbQbvFvTdfuQDgCCtyHWkpzZFoWsZJkodsPWN_idg_ZNh8XIqg0r3MGAcUxbs5HuP_3qrVpm7sEIu4oX17kyInTaG..J8qOLycZGC6vwzFvIbxXlqps0"), page: 'display', target: 'rh_ready_notice_enabled' },
     { id: 'lag-check', since: '2.4.0', title: __rmT("JQSOrgTBBPA"), text: __rmT("ZzyN70o0r3Utk1ZzTr2wX_205ANfmYgJ43FfSeZX4rmaqER6rKHofL1DNMbOoY2VDKvXfSEbjO2BhQ75dF6l4rg2S0YWrdpX0RMZptaiu6e3TS1XXDD0if"), page: 'diagnosis', target: 'rh_lag_check_start' },
@@ -77,7 +77,7 @@ export async function goToUpdateTip(tip) {
     if (session)
         session.remaining = session.remaining.filter(item => item.id !== tip.id);
     if (tip.action === 'rollback') {
-        const menu = await import('./mirrorUpdateMenu.js?rmv=2.5.3');
+        const menu = await import('./mirrorUpdateMenu.js?rmv=2.5.4');
         await menu.openRabbitMirrorRollback();
         watchForReturn();
         return true;

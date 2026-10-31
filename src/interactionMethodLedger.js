@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.3";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.4";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -111,7 +111,7 @@ function readSelfForms() {
     }
 }
 const cleanSelfText = (value, max) => String(value || '').replace(/[\u0000-\u001f\u007f<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
-const SELF_LABEL_RE = __rmR("y13RjBgLdGPK5B_qDkltkI4ZpUX_EaFrXs5r0dYSdkWDmvhx3jlpgZePbeVdl4FiN7JYFai9ct2ec6HL8NjnknYH", "g");
+const SELF_LABEL_RE = __rmR("VGV7h6.PTP3yWCDBoclY2bOvK0bCRmRKBnX_MhgC7ZerbwjOQBZFZ94YO7YwuWZr2MfH5jrNuIlSfen7KtbR3VJaA3EReeCnZzWu97nN", "g");
 const SELF_SEPARATORS = __rmR("vnCGXcaI8JbPw22Uv4VlsqA2F6qqQ06Y4jIgHtNDol3B6Ye7kOqJsMs_cswIBh5oirE", "g");
 export function parseSelfInvented(raw) {
     const text = cleanSelfText(raw, 2000);
@@ -131,7 +131,8 @@ export function parseSelfInvented(raw) {
     });
     const lead = marks.length ? text.slice(0, marks[0].start) : text;
     const form = values[__rmT("gG2guk")] ?? lead.split(__rmR("pEwVbaaua.G", ""))[0].replace(SELF_SEPARATORS, '');
-    const result = { theme: cleanSelfText(values[__rmT("3F3_GT")], 80), form: cleanSelfText(form, 60), angle: cleanSelfText(values[__rmT("WUISuf")], 200), thought: cleanSelfText(values[__rmT("Y2CP.h")], 300) };
+    const result = { theme: cleanSelfText(values[__rmT("3F3_GT")], 80), form: cleanSelfText(form, 60), angle: cleanSelfText(values[__rmT("WUISuf")], 200),
+        usage: cleanSelfText(values[__rmT("uJT7eT")] ?? values[__rmT("FNG7eT")], 120), thought: cleanSelfText(values[__rmT("Y2CP.h")], 300) };
     return result.form ? result : null;
 }
 export function selfInventedOf(details) {
@@ -143,7 +144,7 @@ export function selfInventedOf(details) {
     if (result && think)
         result.thought = think;
     if (!result && think)
-        return { theme: '', form: '', angle: '', thought: think };
+        return { theme: '', form: '', angle: '', usage: '', thought: think };
     return result;
 }
 export function recordSelfInventedForm(details, { fallbackAt = 0 } = {}) {

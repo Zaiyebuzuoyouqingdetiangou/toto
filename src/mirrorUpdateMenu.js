@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.3";
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.3';
-import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, compareRabbitMirrorVersions, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.5.3';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.4";
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.4';
+import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, compareRabbitMirrorVersions, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.5.4';
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
 let applying = false;
@@ -87,7 +87,7 @@ function fillReadme(body, result, { full = false } = {}) {
             event.stopPropagation();
             sheet?.remove();
             sheet = null;
-            void import('./updateGuide.js?rmv=2.5.3').then(module => module.showAllUpdateTips()).catch(() => { });
+            void import('./updateGuide.js?rmv=2.5.4').then(module => module.showAllUpdateTips()).catch(() => { });
         });
         body.append(guide);
     }
@@ -271,7 +271,7 @@ async function showRollbackPanel(overlay, { lead = '' } = {}) {
     let module = null;
     let info = null;
     try {
-        module = await import('./versionRollback.js?rmv=2.5.3');
+        module = await import('./versionRollback.js?rmv=2.5.4');
         info = await module.listRollbackVersions();
     }
     catch (error) {

@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.3";
-import { getSettings } from '../settings.js?rmv=2.5.3';
-export const RUNTIME_VERSION = '2.5.3';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
+import { getSettings } from '../settings.js?rmv=2.5.4';
+export const RUNTIME_VERSION = '2.5.4';
 export const RUNTIME_VERSION_ATTR = 'data-rabbit-mirror-runtime-version';
 export const FEEDBACK_CAT_RUNTIME_STYLE_ID = 'rabbit-mirror-feedback-cat-runtime-style';
 export const TOOL_ENTRY_HOST_ATTR = 'data-rabbit-mirror-tool-entry-host';

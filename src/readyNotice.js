@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.3";
-import { getSettings } from './settings.js?rmv=2.5.3';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.4";
+import { getSettings } from './settings.js?rmv=2.5.4';
 const CHIP_ATTR = 'data-rm-ready-chip';
 const TITLE_MARK_OK = '🐇 ';
 const TITLE_MARK_FAIL = '🐇❌ ';
