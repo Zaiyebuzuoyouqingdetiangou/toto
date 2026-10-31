@@ -1277,6 +1277,7 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"] > .rabbit-mirror-resay-status > .rabbit-mirror-generation-progress-mini{
   display:flex !important;
+  flex-wrap:wrap !important;
   align-items:center !important;
   justify-content:center !important;
   gap:8px !important;
@@ -1306,6 +1307,22 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   bottom:0 !important;
   width:calc(var(--rm-gp-p, 0) * 100%) !important;
   background:repeating-linear-gradient(90deg, var(--rm-gp-thread, #c97a8a) 0 4px, color-mix(in srgb, var(--rm-gp-thread, #c97a8a) 35%, transparent) 4px 6px) !important;
+}
+
+.rabbit-mirror-generation-progress-mini .rm-gp-mini-note[hidden]{ display:none !important; }
+.rabbit-mirror-generation-progress-mini .rm-gp-mini-note:not([hidden]){
+  display:block !important;
+  flex:1 1 100% !important;
+  box-sizing:border-box !important;
+  max-width:min(340px, 100%) !important;
+  margin:2px auto 0 !important;
+  white-space:pre-wrap !important;
+  overflow-wrap:anywhere !important;
+  font-size:11px !important;
+  line-height:1.45 !important;
+  font-style:italic !important;
+  opacity:.8 !important;
+  text-align:left !important;
 }
 .rabbit-mirror-generation-progress-mini .rm-gp-mini-text{
   display:block !important;

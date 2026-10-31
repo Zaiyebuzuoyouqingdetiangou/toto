@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.7";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.8";
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 export function nameMaskCardKey(ctx) {
     const group = clean(ctx?.groupId ?? ctx?.group_id);

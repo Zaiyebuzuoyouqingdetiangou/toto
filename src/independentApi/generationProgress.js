@@ -1,7 +1,7 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.7";
-import { spritePaths } from '../pixelSprites.js?rmv=2.3.7';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.3.7';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.3.7';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.8";
+import { spritePaths } from '../pixelSprites.js?rmv=2.3.8';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.3.8';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.3.8';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -766,6 +766,17 @@ export function renderProgressMini(status, view, doc = status?.ownerDocument, ow
         bar.setAttribute('aria-valuenow', String(view.percent));
     const last = view.lines[view.lines.length - 1];
     setText(mini.querySelector('.rm-gp-mini-text'), `${view.percent}% · ${last?.text || ''}`);
+    const picks = view.lines.filter(line => line.key === 'self' || line.key === 'ticket' || line.key === 'think').map(line => line.text);
+    let note = mini.querySelector(':scope > .rm-gp-mini-note');
+    if (!note && picks.length) {
+        note = makeElement(doc, 'span', 'rm-gp-mini-note');
+        mini.append(note);
+    }
+    if (note) {
+        setText(note, picks.join('\n'));
+        if (note.hidden !== !picks.length)
+            note.hidden = !picks.length;
+    }
     return mini;
 }
 export function removeGenerationProgress(host, owner = 0) {

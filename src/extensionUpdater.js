@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.7";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.8";
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     const match = new URL(moduleUrl).pathname.match(/\/third-party\/([^/]+)\/src\/extensionUpdater\.js$/);
@@ -249,15 +249,28 @@ function readInstallInfoFromHost(moduleUrl) {
     })();
     return hostInstallInfo;
 }
-async function tryReadInstallInfo(moduleUrl) {
-    const fn = typeof globalThis.getExtensionInstallationInfo === 'function'
-        ? globalThis.getExtensionInstallationInfo
-        : globalThis.TavernHelper?.getExtensionStatus;
-    if (typeof fn !== 'function') {
-        if (typeof globalThis.SillyTavern?.getContext !== 'function')
-            return null;
-        return readInstallInfoFromHost(moduleUrl);
+const INSTALL_BRANCH_KEY = 'rabbit_mirror_install_branch:v1';
+function rememberInstallBranch(folder, info) {
+    const branch = currentBranchName(info);
+    if (!branch || info?.__cachedBranch)
+        return;
+    try {
+        globalThis.localStorage?.setItem(INSTALL_BRANCH_KEY, JSON.stringify({ folder, branch, remoteUrl: String(info?.remote_url || info?.remoteUrl || ''), at: Date.now() }));
     }
+    catch { }
+}
+function cachedInstallBranch(folder) {
+    try {
+        const value = JSON.parse(globalThis.localStorage?.getItem(INSTALL_BRANCH_KEY) || 'null');
+        if (!value || value.folder !== folder || typeof value.branch !== 'string' || !/^[\w./-]{1,80}$/.test(value.branch))
+            return null;
+        return { current_branch_name: value.branch, ...(value.remoteUrl ? { remote_url: value.remoteUrl } : {}), __cachedBranch: true };
+    }
+    catch {
+        return null;
+    }
+}
+async function tryReadInstallInfo(moduleUrl) {
     let folder = '';
     try {
         folder = ownExtensionFolder(moduleUrl);
@@ -265,15 +278,34 @@ async function tryReadInstallInfo(moduleUrl) {
     catch {
         return null;
     }
-    try {
-        return await Promise.race([
-            fn(folder),
-            new Promise(resolve => { setTimeout(() => resolve(null), 5000); }),
-        ]);
+    const fn = typeof globalThis.getExtensionInstallationInfo === 'function'
+        ? globalThis.getExtensionInstallationInfo
+        : globalThis.TavernHelper?.getExtensionStatus;
+    let info = null;
+    if (typeof fn === 'function') {
+        try {
+            info = await Promise.race([
+                fn(folder),
+                new Promise(resolve => { setTimeout(() => resolve(null), 12000); }),
+            ]);
+        }
+        catch {
+            info = null;
+        }
     }
-    catch {
-        return null;
+    if (!currentBranchName(info) && typeof globalThis.SillyTavern?.getContext === 'function') {
+        try {
+            info = await readInstallInfoFromHost(moduleUrl);
+        }
+        catch {
+            info = null;
+        }
     }
+    if (currentBranchName(info)) {
+        rememberInstallBranch(folder, info);
+        return info;
+    }
+    return cachedInstallBranch(folder);
 }
 function currentBranchName(info) {
     return String(info?.current_branch_name || info?.currentBranchName || '').trim();
@@ -297,7 +329,7 @@ function rememberRemote(info, remoteVersion) {
         remoteVersion: remoteVersion || '',
         remoteUrl: info?.remote_url || info?.remoteUrl || HOMEPAGE,
         remoteBranch: currentBranchName(info) || FALLBACK_BRANCH,
-        remoteBranchKnown: !!currentBranchName(info),
+        remoteBranchKnown: !!currentBranchName(info) && info?.__cachedBranch !== true,
     };
 }
 export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globalThis.fetch.bind(globalThis), moduleUrl = import.meta.url } = {}) {
@@ -311,8 +343,16 @@ export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globa
     publish({ status: 'checking', message: '' });
     checkingPromise = (async () => {
         try {
-            const info = await tryReadInstallInfo(moduleUrl);
-            const remoteVersion = await fetchRemoteManifestVersion(info, fetchImpl);
+            let info = await tryReadInstallInfo(moduleUrl);
+            let remoteVersion = await fetchRemoteManifestVersion(info, fetchImpl);
+            if (!currentBranchName(info) && remoteVersion && isNewerRabbitMirrorVersion(runningRabbitMirrorVersion(), remoteVersion)) {
+                const testInfo = { ...(info || {}), current_branch_name: 'test', __cachedBranch: true };
+                const testVersion = await fetchRemoteManifestVersion(testInfo, fetchImpl);
+                if (testVersion) {
+                    info = testInfo;
+                    remoteVersion = testVersion;
+                }
+            }
             if (sequence !== updateCheckSequence)
                 return snapshot();
             if (!remoteVersion) {

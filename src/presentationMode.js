@@ -1,5 +1,5 @@
-import { generationPaletteFields } from './paletteRecipes.js?rmv=2.3.7';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.3.7';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=2.3.8';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.3.8';
 export function normalizePresentationModes(value) {
     return Array.from({ length: 5 }, (_, index) => {
         const mode = value?.[index] === 'text' ? 'longtext' : value?.[index];

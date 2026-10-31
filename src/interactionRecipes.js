@@ -1,4 +1,4 @@
-import { INTERACTION_HISTORY_TYPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=2.3.7';
+import { INTERACTION_HISTORY_TYPES, INTERACTION_RECIPE_REPLACEMENTS } from '../data/structured/interactionIndex.js?rmv=2.3.8';
 const BY_ID = new Map(INTERACTION_HISTORY_TYPES.map(recipe => [recipe.id, recipe]));
 function canonicalRecipeIds(values) {
     return [...new Set(values.map(id => typeof id === 'string'

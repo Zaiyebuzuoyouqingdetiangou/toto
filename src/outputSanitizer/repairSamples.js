@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.7";
-import { hashText } from '../independentApi/runtime.js?rmv=2.3.7';
-import { RUNTIME_VERSION } from './runtime.js?rmv=2.3.7';
-import { maskFaceText } from './writingSkeleton.js?rmv=2.3.7';
-import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=2.3.7';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.8";
+import { hashText } from '../independentApi/runtime.js?rmv=2.3.8';
+import { RUNTIME_VERSION } from './runtime.js?rmv=2.3.8';
+import { maskFaceText } from './writingSkeleton.js?rmv=2.3.8';
+import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=2.3.8';
 export const REPAIR_SAMPLES_KEY = 'rabbit_mirror_repair_samples:v1';
 export const REPAIR_SAMPLES_EVENT = 'rabbitmirror:repair-samples';
 const MAX_ENTRIES = 40;

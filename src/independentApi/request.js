@@ -1,39 +1,39 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.7";
-import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=2.3.7';
-import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=2.3.7';
-import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=2.3.7';
-import { getRabbitMirrorRecipe } from '../blacklist.js?rmv=2.3.7';
-import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=2.3.7';
-import { createGenerationTimer } from '../generationTiming.js?rmv=2.3.7';
-import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=2.3.7';
-import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=2.3.7';
-import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=2.3.7';
-import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=2.3.7';
-import { getSettings } from '../settings.js?rmv=2.3.7';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=2.3.7';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=2.3.7';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=2.3.7';
-import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, } from '../independentSecurityGuard.js?rmv=2.3.7';
-import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, } from '../advancedRequestOptions.js?rmv=2.3.7';
-import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, promptPlanSelections, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings, } from '../promptBuilder.js?rmv=2.3.7';
-import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=2.3.7';
-import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=2.3.7';
-import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=2.3.7';
-import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=2.3.7';
-import { applyAtmosphereFields, atmosphereNotesFromHtml, stampSelfInventThink, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=2.3.7';
-import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=2.3.7';
-import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=2.3.7';
-import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=2.3.7';
-import { createVisualHistorySelection, resolveVisualHistorySelection, parseVisualFamilySkeleton, visualFamilyForCooldown, markPendingBatchAttempt, findPendingComboBatchPlan, releasePendingComboBatch, setChatRecentFacesProvider, } from '../storage.js?rmv=2.3.7';
-import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=2.3.7';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=2.3.7';
-import { RUNTIME_VERSION, EXTERNAL_SHELL_ATTR, FOLLOW_EXTERNAL_ANCHOR_ATTR, FOLLOW_ORIGIN_ATTR, INLINE_ANCHOR_ATTR, SOURCE_ATTR, byteLength, getContext, hashText, } from './runtime.js?rmv=2.3.7';
-import { operationEpochForBase } from './flights.js?rmv=2.3.7';
-import { INDEPENDENT_HTML_BUDGET_BYTES, INDEPENDENT_MAX_APPROX_DEPTH, INDEPENDENT_MAX_ATTRIBUTES, INDEPENDENT_MAX_CSS_CHARS, INDEPENDENT_MAX_CSS_RULES, INDEPENDENT_MAX_DATA_URI_CHARS, INDEPENDENT_MAX_TAGS, INDEPENDENT_RAW_MARKUP_BUDGET_CHARS, historyEntriesForSlot, normalizeHistoryEntry, normalizedConfiguredTemperature, readHistoryStore, readStore, } from './persistence.js?rmv=2.3.7';
-import { API_PROFILE_ORDER, chatKey, contextBundle, createIndependentVisibleTextReader, explainEmptyIndependentVisibleBody, endpoint, fetchIndependentUrl, forgetRememberedApiProfileIfMatches, getRememberedApiProfile, getStagedApiProfile, globalWorldInfoContextView, globalWorldInfoSnapshotFor, headers, independentBatchPlanPreflightError, independentConnectionProfilePreflightError, independentConnectionProxyPresets, independentDiagnosticBase, independentLocalPreflightFailure, isRabbitMirrorEligibleAssistantMessage, messageBaseSlotKey, messageBody, messageSourceFingerprint, normalizeIndependentConnectionText, profileTokenField, profileUsesStreaming, profileUsesSystemMessage, publishIndependentApiRequestDiagnostic, readLastIndependentApiRequestDiagnostic, rememberApiProfile, safeJson, stageNextApiProfile, stripExcludedTagsFromReference, isOutputFormatInstruction, swipeId, validatedIndependentConnectionProfile, connectionProfileSecretState, } from './connection.js?rmv=2.3.7';
-import { externalGeometryCycleSequence, externalGeometryLifecycleEpoch, externalGeometryLifecycleReason, externalGeometryOwnerNodes, prepareIndependentReadyHtml, readyDetailsFromHost, writeExternalGeometryCycleSequence, writeExternalGeometryLifecycleEpoch, writeExternalGeometryLifecycleReason, } from './geometry.js?rmv=2.3.7';
-import { INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS, INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES, automaticIndependentTiming, externalFaceDetails, externalHostSyncIndex, independentRejectedFaceControlsWired, independentRejectedFacePreviews, independentRejectedPreviewChars, independentRejectedPreviewSequence, manualBodyOwnerCurrent, writeExternalHostSyncIndex, writeIndependentRejectedPreviewChars, writeIndependentRejectedPreviewSequence, } from './mount.js?rmv=2.3.7';
-import { assertEarlyBodyOwner } from './earlyBody.js?rmv=2.3.7';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.8";
+import { bindRolePaletteCode } from '../roleColorVariants.js?rmv=2.3.8';
+import { faceDrawNeedsExternal } from '../faceDrawRules.js?rmv=2.3.8';
+import { designSamplingChecksFromHtml } from '../interactionSampling.js?rmv=2.3.8';
+import { getRabbitMirrorRecipe } from '../blacklist.js?rmv=2.3.8';
+import { claimGenerationEvidence, associateGenerationEvidence, generationEvidenceFor } from '../generationEvidence.js?rmv=2.3.8';
+import { createGenerationTimer } from '../generationTiming.js?rmv=2.3.8';
+import { isRabbitMirrorManagedChatSurface } from '../hostCompatibility.js?rmv=2.3.8';
+import { resolveBehaviorRuleText } from '../behaviorRules.js?rmv=2.3.8';
+import { presentationModeFields, hasExplicitTextFace } from '../presentationMode.js?rmv=2.3.8';
+import { readCharacterWorldBookContext } from '../characterWorldBook.js?rmv=2.3.8';
+import { getSettings } from '../settings.js?rmv=2.3.8';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=2.3.8';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=2.3.8';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from '../chatAvatarPromptReady.js?rmv=2.3.8';
+import { assertRabbitMirrorIndependentResponseBytes, assertRabbitMirrorIndependentResponseText, authorizeRabbitMirrorIndependentServiceRequest, } from '../independentSecurityGuard.js?rmv=2.3.8';
+import { parseIndependentAdvancedOptions, buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions, } from '../advancedRequestOptions.js?rmv=2.3.8';
+import { buildRabbitMirrorPromptDetails, planRabbitMirrorPromptDetails, promptPlanSelections, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings, } from '../promptBuilder.js?rmv=2.3.8';
+import { getExternalPoolHydrationStatus, getSelectedExternalEntries, hydrateExternalPoolMetadata } from '../externalWorldBook/store.js?rmv=2.3.8';
+import { describeExternalWorldBookPreflightFailure } from '../externalWorldBook/errors.js?rmv=2.3.8';
+import { cleanRabbitMirrorOutput } from '../outputSanitizer.js?rmv=2.3.8';
+import { parseMultifaceOutput, recoverableMultifaceFrames, MULTIFACE_FAILURE_ATTR, normalizedSummaryText, createMultifaceFailureSlot } from '../multifaceProtocol.js?rmv=2.3.8';
+import { applyAtmosphereFields, atmosphereNotesFromHtml, compactAtmosphereMenu, stampSelfInventThink, stripAtmosphereChoiceMarkup } from '../atmosphereChoice.js?rmv=2.3.8';
+import { isLocalPreflightFailure, isQuotaInsufficientFailure, configuredAutomaticRerollMax, automaticRerollEnabled } from '../automaticReroll.js?rmv=2.3.8';
+import { scanRabbitMirrorHtml } from '../visualScanner.js?rmv=2.3.8';
+import { serialPaletteExecutionReminder } from '../serialPaletteContext.js?rmv=2.3.8';
+import { createVisualHistorySelection, resolveVisualHistorySelection, parseVisualFamilySkeleton, visualFamilyForCooldown, markPendingBatchAttempt, findPendingComboBatchPlan, releasePendingComboBatch, setChatRecentFacesProvider, } from '../storage.js?rmv=2.3.8';
+import { promptSectionBreakdown, recordRabbitMirrorIndependentPrompt } from '../tokenMeter.js?rmv=2.3.8';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=2.3.8';
+import { RUNTIME_VERSION, EXTERNAL_SHELL_ATTR, FOLLOW_EXTERNAL_ANCHOR_ATTR, FOLLOW_ORIGIN_ATTR, INLINE_ANCHOR_ATTR, SOURCE_ATTR, byteLength, getContext, hashText, } from './runtime.js?rmv=2.3.8';
+import { operationEpochForBase } from './flights.js?rmv=2.3.8';
+import { INDEPENDENT_HTML_BUDGET_BYTES, INDEPENDENT_MAX_APPROX_DEPTH, INDEPENDENT_MAX_ATTRIBUTES, INDEPENDENT_MAX_CSS_CHARS, INDEPENDENT_MAX_CSS_RULES, INDEPENDENT_MAX_DATA_URI_CHARS, INDEPENDENT_MAX_TAGS, INDEPENDENT_RAW_MARKUP_BUDGET_CHARS, historyEntriesForSlot, normalizeHistoryEntry, normalizedConfiguredTemperature, readHistoryStore, readStore, } from './persistence.js?rmv=2.3.8';
+import { API_PROFILE_ORDER, chatKey, contextBundle, createIndependentVisibleTextReader, explainEmptyIndependentVisibleBody, endpoint, fetchIndependentUrl, forgetRememberedApiProfileIfMatches, getRememberedApiProfile, getStagedApiProfile, globalWorldInfoContextView, globalWorldInfoSnapshotFor, headers, independentBatchPlanPreflightError, independentConnectionProfilePreflightError, independentConnectionProxyPresets, independentDiagnosticBase, independentLocalPreflightFailure, isRabbitMirrorEligibleAssistantMessage, messageBaseSlotKey, messageBody, messageSourceFingerprint, normalizeIndependentConnectionText, profileTokenField, profileUsesStreaming, profileUsesSystemMessage, publishIndependentApiRequestDiagnostic, readLastIndependentApiRequestDiagnostic, rememberApiProfile, safeJson, stageNextApiProfile, stripExcludedTagsFromReference, isOutputFormatInstruction, swipeId, validatedIndependentConnectionProfile, connectionProfileSecretState, } from './connection.js?rmv=2.3.8';
+import { externalGeometryCycleSequence, externalGeometryLifecycleEpoch, externalGeometryLifecycleReason, externalGeometryOwnerNodes, prepareIndependentReadyHtml, readyDetailsFromHost, writeExternalGeometryCycleSequence, writeExternalGeometryLifecycleEpoch, writeExternalGeometryLifecycleReason, } from './geometry.js?rmv=2.3.8';
+import { INDEPENDENT_REJECTED_PREVIEW_MAX_CHARS, INDEPENDENT_REJECTED_PREVIEW_MAX_ENTRIES, automaticIndependentTiming, externalFaceDetails, externalHostSyncIndex, independentRejectedFaceControlsWired, independentRejectedFacePreviews, independentRejectedPreviewChars, independentRejectedPreviewSequence, manualBodyOwnerCurrent, writeExternalHostSyncIndex, writeIndependentRejectedPreviewChars, writeIndependentRejectedPreviewSequence, } from './mount.js?rmv=2.3.8';
+import { assertEarlyBodyOwner } from './earlyBody.js?rmv=2.3.8';
 const NON_STREAM_PROFILE_BY_STREAM_PROFILE = {
     chat_system_user_full: 'chat_system_user_full_nostream',
     chat_system_user_completion: 'chat_system_user_completion_nostream',
@@ -590,6 +590,25 @@ function recoverableCompletedIndependentAbort(error, signal, text) {
         && !!extractMirrorInner(text);
 }
 function responseFinishReason(payload) { const reason = independentTransportFinishReason(payload); return reason === 'unknown' ? '' : reason; }
+export function independentOutputCut(raw, requestDiagnostic, result) {
+    const transport = String(requestDiagnostic?.finishReason || result?.transport?.finishReason || '');
+    const finish = (transport && transport !== 'unknown' ? transport : responseFinishReason(result?.payload)).toLowerCase();
+    if (!/^(content_filter|safety|recitation|length|max_tokens|max_output_tokens)$/.test(finish))
+        return '';
+    return /<\/toto\s*>/i.test(String(raw || '')) ? '' : finish;
+}
+function markOutputCut(html, finish) {
+    const value = String(finish || '').replace(/[^a-z_]/gi, '');
+    return String(html || '').replace(/<details\b(?![^>]*\sdata-rm-output-cut=)/i, `<details data-rm-output-cut="${value}"`);
+}
+export function outputCutMessage(finish) {
+    const reason = String(finish || '');
+    if (/^(content_filter|safety|recitation)$/i.test(reason))
+        return __rmT("wykUz.7mHAZTMHkCVOJuf.KrCtoJHoNlpB.AmdMF9LVPGEm_ONKzW5.d72Lr63a5S96cabqLK_NzpomgGMZHTjHG6QxCQbTnhPaBurHCtSAPZjhjGeRuZXHz4GzzPVaNxSkuVoqfsmYoNab.6JNNd0PHvDLlAvAyv5UJOVPPn2Q2pVhnsGQsrT");
+    if (/^(length|max_tokens|max_output_tokens)$/i.test(reason))
+        return __rmT("jcy3fYVSkZj0uZCNc9vdpNCX_nCAS7gJKlxJrhbsVRgqvCEfkdbvvvghvaffK7DSqL5F3H9Hnw3RvwK1w5FgLwRlOC252whrH4ffOVfh3IV3p.5Z40SA_cdc8ik");
+    return __rmT("LzYReToUtSTykHdJZ.b.YCEWxew3KSq99FIdxmmTRFIHKNAnSbxLhD_H8d7Ounw.jEvIVR8R3d0FhXyApF1Byw5A34Py98PbIWbqCqsKHXZxyQmcqyE0if");
+}
 function independentRequestProfiles(st, systemPrompt, userPrompt, options = {}) {
     const model = st.independentApiModel;
     const maxTokens = Number(options.maxTokens ?? st.independentApiMaxTokens) || 12000;
@@ -2025,7 +2044,7 @@ export function wireIndependentRejectedFaceControls(host) {
             resay.addEventListener('click', event => {
                 event.preventDefault();
                 event.stopPropagation();
-                void import('../outputSanitizer/toolsChrome.js?rmv=2.3.7').then(module => module.openRabbitMirrorResayChooser(details)).catch(() => globalThis.toastr?.warning?.(__rmT("Qpl_vG7HBRK8aT5PZ2ApY1YuYGFaQMxLx7YyEINjKZ_.QzQX")));
+                void import('../outputSanitizer/toolsChrome.js?rmv=2.3.8').then(module => module.openRabbitMirrorResayChooser(details)).catch(() => globalThis.toastr?.warning?.(__rmT("Qpl_vG7HBRK8aT5PZ2ApY1YuYGFaQMxLx7YyEINjKZ_.QzQX")));
             }, true);
         }
     }
@@ -2253,7 +2272,7 @@ async function loadIndependentAppearanceReference(owner) {
     assertIndependentPromptOwner(owner);
     try {
         try {
-            module = await import('../appearanceReference.js?rmv=2.3.7');
+            module = await import('../appearanceReference.js?rmv=2.3.8');
         }
         catch {
             const error = new Error(__rmT("IS67c4vVThP1Ly.hIHwohgJTlK4AnIsOwptpMBsmkfV43khz3.ytHEzTNaGYuyMbYxZPOYn6ZdtH0StbyfW9hLGu"));
@@ -2997,7 +3016,8 @@ ${independentUserTail}`;
         promptOwner.batchPublished = true;
         assertIndependentPromptOwner(promptOwner);
     }
-    requestOptions.onRequestSelection?.(requestSelectionDiagnostic);
+    const progressMenu = faceCount === 1 ? compactAtmosphereMenu(details.metadata?.atmosphereMenu) : null;
+    requestOptions.onRequestSelection?.(requestSelectionDiagnostic, progressMenu ? { ...requestSelectionDiagnostic, atmosphereMenu: progressMenu } : null);
     const originalLease = requestOptions.dispatchLease;
     const dispatchLease = batchPlan || promptOwner ? {
         ...originalLease,
@@ -3091,7 +3111,8 @@ ${independentUserTail}`;
                     if (preparedHtml && independentMirrorBodyEvidence(preparedHtml)) {
                         rememberApiProfile(st, profile);
                         evidence?.finish({ phase: 'ready-to-mount', truncated: true });
-                        return { html: preparedHtml, historySelection: resolveVisualHistorySelection(historySelection, atmosphereNotes[0]?.choice), truncated: true, feedbackId: activeFeedback?.id || '', feedbackPrompt, requestDiagnostic, executionLockChars: executionLock.length };
+                        const salvageCut = independentOutputCut(raw, requestDiagnostic, result) || 'incomplete';
+                        return { html: markOutputCut(preparedHtml, salvageCut), historySelection: resolveVisualHistorySelection(historySelection, atmosphereNotes[0]?.choice), truncated: true, outputCut: salvageCut, feedbackId: activeFeedback?.id || '', feedbackPrompt, requestDiagnostic, executionLockChars: executionLock.length };
                     }
                 }
             }
@@ -3140,7 +3161,8 @@ ${independentUserTail}`;
         settleAtmosphereSingle(atmosphereNotes[0], details.metadata, requestDiagnostic);
         const resolvedHistorySelection = resolveVisualHistorySelection(historySelection, atmosphereNotes[0]?.choice);
         evidence?.finish({ phase: 'ready-to-mount' });
-        return { html: preparedHtml, historySelection: resolvedHistorySelection, feedbackId: activeFeedback?.id || '', feedbackPrompt, requestDiagnostic, executionLockChars: executionLock.length };
+        const outputCut = independentOutputCut(raw, requestDiagnostic, result);
+        return { html: outputCut ? markOutputCut(preparedHtml, outputCut) : preparedHtml, historySelection: resolvedHistorySelection, feedbackId: activeFeedback?.id || '', feedbackPrompt, requestDiagnostic, executionLockChars: executionLock.length, outputCut };
     }
     catch (error) {
         evidence?.fail(error?.rabbitMirrorFailurePhase || 'postprocess', error);

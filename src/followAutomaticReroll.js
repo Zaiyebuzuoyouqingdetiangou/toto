@@ -1,20 +1,20 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.7";
-import { getSettings } from './settings.js?rmv=2.3.7';
-import { getCurrentChatKey } from './storage.js?rmv=2.3.7';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.3.7';
-import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=2.3.7';
-import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=2.3.7';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=2.3.7';
-import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=2.3.7';
-import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=2.3.7';
-import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=2.3.7';
-import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=2.3.7';
-import { presentationModeFields } from './presentationMode.js?rmv=2.3.7';
-import { automaticRerollEnabled, automaticRerollStatusText, configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, isAutomaticRerollStall, isQuotaInsufficientFailure, isNonRetryableRequestFailure, isLocalPreflightFailure, shouldAutomaticReroll, stallTimeoutError, } from './automaticReroll.js?rmv=2.3.7';
-import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=2.3.7';
-import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=2.3.7';
-import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.3.7';
-import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=2.3.7';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.8";
+import { getSettings } from './settings.js?rmv=2.3.8';
+import { getCurrentChatKey } from './storage.js?rmv=2.3.8';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.3.8';
+import { readFollowPartialResult, saveFollowCompletedRetryResult, replaceFollowPartialResultFace } from './followPartialResults.js?rmv=2.3.8';
+import { markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from './multifaceProof.js?rmv=2.3.8';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=2.3.8';
+import { planRabbitMirrorPromptDetails, renderRabbitMirrorPromptPlan, prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './promptBuilder.js?rmv=2.3.8';
+import { hydrateExternalPoolMetadata, getSelectedExternalEntries } from './externalWorldBook/store.js?rmv=2.3.8';
+import { refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds } from './outputSanitizer.js?rmv=2.3.8';
+import { authorizeRabbitMirrorIndependentServiceRequest, assertRabbitMirrorIndependentResponseText } from './independentSecurityGuard.js?rmv=2.3.8';
+import { presentationModeFields } from './presentationMode.js?rmv=2.3.8';
+import { automaticRerollEnabled, automaticRerollStatusText, configuredAutomaticRerollIdleMs, configuredAutomaticRerollMax, isAutomaticRerollStall, isQuotaInsufficientFailure, isNonRetryableRequestFailure, isLocalPreflightFailure, shouldAutomaticReroll, stallTimeoutError, } from './automaticReroll.js?rmv=2.3.8';
+import { mergeMissingIndependentFaces, missingIndexesFromIndependentResult, recipesCoverMissing } from './missingFaceMerge.js?rmv=2.3.8';
+import { inspectRabbitMirrorGenerationSource, getRabbitMirrorGenerationSnapshot } from './generationGuard.js?rmv=2.3.8';
+import { prepareRabbitMirrorAvatarPrompt, rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.3.8';
+import { followRetryCombo, recordFollowRetriedFaces } from './followRetryHistory.js?rmv=2.3.8';
 const inFlight = new Set();
 const consumeCounts = new Map();
 const cancelledOwners = new Set();
@@ -148,7 +148,7 @@ async function requestFollowMissingFaces(ctx, index, missingIndexes, faces, deps
             assertCurrent();
         }
         if (plan.appearanceReference.enabled) {
-            const appearance = await import('./appearanceReference.js?rmv=2.3.7');
+            const appearance = await import('./appearanceReference.js?rmv=2.3.8');
             assertCurrent();
             appearanceMaterial = await appearance.loadAppearanceReferenceMaterial(plan.appearanceReference.revision);
             assertCurrent();
