@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.6.2";
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.3";
 export const VISUAL_SKELETON_MAX_CHARS = 640;
 export const COMPOSITION_LABELS = Object.freeze({
     scene_above_text: __rmT("8F5nRyaTdRcDfxAuANYmoCyc0egcyAjAAZKee9LjeEdymSEk"),
@@ -206,7 +206,7 @@ function detectMechanisms(root, operationText = '') {
     const found = new Set();
     const css = query(root, 'style').slice(0, 20).map(node => String(node.textContent || '').slice(0, 160000)).join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
     const inline = query(root, '[style]').slice(0, 800).map(node => String(node.getAttribute?.('style') || '')).join(';');
-    if (/rotate[XY]\(\s*-?180(?:deg)?\s*\)|rotate3d\([^)]*,\s*-?180deg\s*\)|backface-visibility\s*:\s*hidden/i.test(`${css};${inline}`))
+    if (/rotate[XY]\(\s*-?180(?:deg)?\s*\)|rotate3d\([^)]*,\s*-?180deg\s*\)|\brotate\s*:\s*[xy]\s+-?180/i.test(`${css};${inline}`))
         found.add('flip');
     const outer = matches(root, 'details') ? root : query(root, 'details')[0];
     if (query(root, 'details').some(node => node !== outer))

@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.6.2";
-import { cssZoomOf, layoutRect, layoutViewportWidthFor } from '../faceZoomMetrics.js?rmv=2.6.2';
+import { rmR as __rmR } from "../textTable.js?rmv=2.6.3";
+import { cssZoomOf, layoutRect, layoutViewportWidthFor } from '../faceZoomMetrics.js?rmv=2.6.3';
 const POLISH_ATTR = 'data-rm-polish';
 const FONT_ATTR = 'data-rm-polish-font';
 const LINE_ATTR = 'data-rm-polish-line';
