@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.1.11";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.1.11';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.1.11';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.1.11';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.2.0";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.2.0';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.2.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.2.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.1.11';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.1.11';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.1.11';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.1.11';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.2.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.2.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.2.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.2.0';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -222,6 +222,7 @@ export const defaultSettings = Object.freeze({
     desktopFaceZoom: true,
     desktopFaceZoomWidth: 520,
     faceHealthInMenu: false,
+    repairSampleUpload: false,
     writingStyle: '',
     independentReadCharacterWorldBook: false,
     richFormatBias: false,
@@ -284,6 +285,54 @@ export const defaultSettings = Object.freeze({
     skipImpersonate: true,
     debug: false,
 });
+const VERSION_SWITCH_BACKUP_KEY = 'rabbit_mirror_settings_before_version_switch:v1';
+const SECRET_SETTING = /(?:ApiKey|LlmKey|Secret|Token|Password)$|SecretMemo$/;
+let versionSwitchBackupChecked = false;
+export function backupSettingsBeforeVersionSwitch() {
+    const settings = getSettings();
+    const copy = {};
+    for (const [key, value] of Object.entries(settings))
+        if (!SECRET_SETTING.test(key))
+            copy[key] = value;
+    globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY, JSON.stringify({ at: Date.now(), settings: copy }));
+}
+function restoreSettingsDroppedByOtherVersion(settings) {
+    if (versionSwitchBackupChecked)
+        return;
+    versionSwitchBackupChecked = true;
+    let backup = null;
+    try {
+        backup = JSON.parse(globalThis.localStorage?.getItem(VERSION_SWITCH_BACKUP_KEY) || 'null');
+    }
+    catch {
+        backup = null;
+    }
+    if (!backup || typeof backup !== 'object' || !backup.settings || typeof backup.settings !== 'object')
+        return;
+    const drop = () => { try {
+        globalThis.localStorage?.removeItem(VERSION_SWITCH_BACKUP_KEY);
+    }
+    catch { } };
+    if (!(Date.now() - Number(backup.at || 0) < 90 * 86400000)) {
+        drop();
+        return;
+    }
+    let restored = 0;
+    for (const [key, value] of Object.entries(backup.settings)) {
+        if (!(key in defaultSettings) || SECRET_SETTING.test(key) || Object.prototype.hasOwnProperty.call(settings, key))
+            continue;
+        settings[key] = value;
+        restored += 1;
+    }
+    if (Object.keys(backup.settings).every(key => key in defaultSettings))
+        drop();
+    if (restored) {
+        try {
+            saveSettingsDebounced();
+        }
+        catch { }
+    }
+}
 export function getSettings() {
     const newInstallation = !Object.prototype.hasOwnProperty.call(extension_settings, MODULE_NAME);
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
@@ -292,6 +341,8 @@ export function getSettings() {
             extension_settings[MODULE_NAME].behaviorRuleMode = 'always';
     }
     const settings = extension_settings[MODULE_NAME];
+    if (!newInstallation)
+        restoreSettingsDroppedByOtherVersion(settings);
     if (!newInstallation && settings.behaviorRuleMode === undefined)
         settings.behaviorRuleMode = 'always';
     settings.independentGenerationTiming = independentGenerationTiming(settings);
@@ -438,6 +489,7 @@ export function getSettings() {
         settings.desktopFaceZoomWidth = Number.isFinite(width) ? Math.min(900, Math.max(400, width)) : 520;
     }
     settings.faceHealthInMenu = settings.faceHealthInMenu === true;
+    settings.repairSampleUpload = settings.repairSampleUpload === true;
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
     for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel'])
@@ -657,6 +709,8 @@ export function updateSettings(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'faceHealthInMenu'))
         safePatch.faceHealthInMenu = safePatch.faceHealthInMenu === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'repairSampleUpload'))
+        safePatch.repairSampleUpload = safePatch.repairSampleUpload === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'collectionTasteEnabled'))
         safePatch.collectionTasteEnabled = safePatch.collectionTasteEnabled !== false;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource'))
