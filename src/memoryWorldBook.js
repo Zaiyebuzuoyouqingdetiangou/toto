@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.0";
-import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=2.5.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=2.5.1';
 const MAX_MEMORY_CHARS = 6000;
 const MAX_MEMORY_ENTRIES = 24;
 const MAX_WORLD_BOOK_ID_CHARS = 1000;

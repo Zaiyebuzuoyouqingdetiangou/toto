@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.0";
-import { recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=2.5.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
+import { recentPaletteHueFamilies } from './visualDiversityPolicy.js?rmv=2.5.1';
 const FAMILY_NAMES = Object.freeze({ red: __rmT("mr8"), orange: __rmT("IqG"), yellow: __rmT("dG8"), green: __rmT("GL8"), cyan: __rmT("4D_"), blue: __rmT("hFf"), purple: __rmT("3LA"), pink: __rmT("caT") });
 const validColor = color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
 export function serialPaletteExecutionReminder(observations, target = {}, settings = {}) {

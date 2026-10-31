@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.0";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.1";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -112,7 +112,7 @@ function readSelfForms() {
 }
 const cleanSelfText = (value, max) => String(value || '').replace(/[\u0000-\u001f\u007f<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 export function parseSelfInvented(raw) {
-    const text = cleanSelfText(raw, 400);
+    const text = cleanSelfText(raw, 600);
     if (!text)
         return null;
     const LABEL = __rmT("hzdr_qyjoBoNxLA5XhBagKHk0s1tfQnoEiRTjUNQisTjA2p4wZAoMPHOePG");
@@ -120,7 +120,7 @@ export function parseSelfInvented(raw) {
     const first = text.split(__rmR("pEwVbaaua.G", ""))[0];
     const form = field(__rmT("gG2guk")) || (!new RegExp(LABEL).test(first) ? first : '');
     const thought = text.match(__rmR("ZQCc01aS.5v.0H_Yd1vTXAroFXxCJh_Qbh6iGxzY059gnh", ""))?.[1] || '';
-    const result = { theme: cleanSelfText(field(__rmT("3F3_GT")), 40), form: cleanSelfText(form, 30), angle: cleanSelfText(field(__rmT("WUISuf")), 60), thought: cleanSelfText(thought, 300) };
+    const result = { theme: cleanSelfText(field(__rmT("3F3_GT")), 80), form: cleanSelfText(form, 60), angle: cleanSelfText(field(__rmT("WUISuf")), 200), thought: cleanSelfText(thought, 300) };
     return result.form ? result : null;
 }
 export function selfInventedOf(details) {

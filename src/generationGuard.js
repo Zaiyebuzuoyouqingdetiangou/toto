@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.0";
-import { presentationModeFields } from './presentationMode.js?rmv=2.5.0';
-import { commitPendingComboBatch, getCurrentChatKey, releasePendingComboBatch, } from './storage.js?rmv=2.5.0';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=2.5.0';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=2.5.0';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.5.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
+import { presentationModeFields } from './presentationMode.js?rmv=2.5.1';
+import { commitPendingComboBatch, getCurrentChatKey, releasePendingComboBatch, } from './storage.js?rmv=2.5.1';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=2.5.1';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=2.5.1';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.5.1';
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
 const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
@@ -608,12 +608,12 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
     const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed)
         return false;
-    void import('./milestones.js?rmv=2.5.0').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => { });
+    void import('./milestones.js?rmv=2.5.1').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => { });
     setTimeout(() => {
         try {
             const faces = [...(globalThis.document?.querySelectorAll?.(`#chat .mes[mesid="${Number(owner.messageIndex)}"] toto`) || [])];
             if (faces.length)
-                void import('./readyNotice.js?rmv=2.5.0').then(module => module.noteFacesReady(faces)).catch(() => { });
+                void import('./readyNotice.js?rmv=2.5.1').then(module => module.noteFacesReady(faces)).catch(() => { });
         }
         catch { }
     }, 900);
