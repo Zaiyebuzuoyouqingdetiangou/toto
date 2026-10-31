@@ -1,4 +1,6 @@
-import { getSettings } from './settings.js?rmv=2.3.5';
+import { getSettings } from './settings.js?rmv=2.3.6';
+import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.3.6';
+const runningVersion = () => RUNTIME_VERSION;
 export const SAMPLE_RELAY_URL = 'https://samples.zaiyebuzuoyouqingdetiangou.com/';
 const SENT_KEY = 'rabbit_mirror_repair_samples_sent:v1';
 const STATUS_KEY = 'rabbit_mirror_repair_samples_upload_status:v1';
@@ -55,6 +57,7 @@ export function uploadPayload(entry) {
         dialect: entry?.dialect && typeof entry.dialect === 'object' ? entry.dialect : null,
         hits: Number(entry?.hits) || 1, at: Number(entry?.at) || Date.now(),
         source: String(entry?.source || ''), rendered: String(entry?.rendered || ''),
+        sentVersion: String(runningVersion() || ''),
     };
 }
 async function postOne(entry, { fetchImpl, url }) {
@@ -83,7 +86,7 @@ async function postOne(entry, { fetchImpl, url }) {
         clearTimeout(timer);
     }
 }
-export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImpl = globalThis.fetch?.bind(globalThis), url = SAMPLE_RELAY_URL, listSamples } = {}) {
+export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImpl = globalThis.fetch?.bind(globalThis), url = SAMPLE_RELAY_URL, listSamples, removeSamples } = {}) {
     if (running)
         return running;
     if (!sampleUploadAvailable(url) || typeof fetchImpl !== 'function')
@@ -91,7 +94,14 @@ export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImp
     if (!force && getSettings()?.repairSampleUpload !== true)
         return Promise.resolve({ sent: 0, pending: 0, skipped: 'off' });
     running = (async () => {
-        const list = listSamples ? await listSamples() : (await import('./outputSanitizer/repairSamples.js?rmv=2.3.5')).listRepairSamples();
+        const box = listSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.3.6');
+        const list = listSamples ? await listSamples() : box.listRepairSamples();
+        const delivered = [];
+        const dropDelivered = () => { try {
+            if (delivered.length)
+                (removeSamples || box?.removeRepairSamples)?.(delivered);
+        }
+        catch { } };
         const sent = sentSampleIds();
         const pending = list.filter(entry => entry?.id && !sent.has(entry.id));
         let count = 0;
@@ -105,12 +115,15 @@ export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImp
             }
             if (!ok) {
                 const status = { at: Date.now(), ok: false, sent: count, pending: pending.length - count, total: sent.size + count };
+                dropDelivered();
                 writeUploadStatus(status);
                 return status;
             }
             rememberSent(entry.id);
+            delivered.push(entry.id);
             count += 1;
         }
+        dropDelivered();
         const status = { at: Date.now(), ok: true, sent: count, pending: pending.length - count, total: sent.size + count };
         if (count || force)
             writeUploadStatus(status);

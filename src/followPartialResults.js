@@ -1,7 +1,7 @@
-import { getCurrentChatKey } from './storage.js?rmv=2.3.5';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=2.3.5';
-import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=2.3.5';
-import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=2.3.5';
+import { getCurrentChatKey } from './storage.js?rmv=2.3.6';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR } from './multifaceProtocol.js?rmv=2.3.6';
+import { rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=2.3.6';
+import { createRabbitMirrorTextReplacementReceipt } from './replacementReceipt.js?rmv=2.3.6';
 const KEY = 'rabbit_mirror_follow_partial_results_v1';
 const MAX_CHARS = 768 * 1024;
 const MAX_RECORDS = 120;

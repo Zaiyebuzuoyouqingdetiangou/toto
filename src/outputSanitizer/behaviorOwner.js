@@ -1,4 +1,4 @@
-import { EXTRA_CONTROLS } from './behaviorExtras.js?rmv=2.3.5';
+import { EXTRA_CONTROLS } from './behaviorExtras.js?rmv=2.3.6';
 export const BEHAVIOR_GROUP = '[data-rm-ui]';
 export const TYPE_CONTROLS = Object.freeze({ drag: ['place', 'return', 'move'], effect: ['fire'], motion: ['play', 'reverse', 'seek'], hold: ['hold'], reorder: ['prev', 'next'], accumulate: ['step'],
     toggle: ['toggle'], pick: ['pick'], pager: ['prev', 'next', 'goto'], roll: ['roll'], connect: ['end'], turn: ['knob'], sequence: ['code'], ...EXTRA_CONTROLS });

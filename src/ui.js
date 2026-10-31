@@ -1,46 +1,46 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.5";
-import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=2.3.5';
-import { reportRabbitMirrorStartupFailure } from './startupGuard.js?rmv=2.3.5';
-import { chatu8Status } from './chatu8Image.js?rmv=2.3.5';
-import { fetchImageLlmModels, imageLlmStatusText, importCurrentConnectionForImageLlm, listImageLlmProfiles, selectImageLlmProfile } from './imageLlm.js?rmv=2.3.5';
-import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=2.3.5';
-import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=2.3.5';
-import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=2.3.5';
-import { mountGenerationEvidenceUi, destroyGenerationEvidenceUi } from './ui/generationEvidence.js?rmv=2.3.5';
-import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=2.3.5';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.3.5';
-import { renderFaceDrawSettings } from './faceDrawUi.js?rmv=2.3.5';
-import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=2.3.5';
-import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=2.3.5';
-import { refreshMirrorAnimationIdlePause } from './animationVisibility.js?rmv=2.3.5';
-import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings, resetSettingsAndSaveNow, saveSettingsNowAndVerify } from './settings.js?rmv=2.3.5';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=2.3.5';
-import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=2.3.5';
-import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=2.3.5';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.5';
-import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=2.3.5';
-import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=2.3.5';
-import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=2.3.5';
-import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=2.3.5';
-import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=2.3.5';
-import { normalizeNameMaskRules, NAME_MASK_MAX_RULES } from './nameMask.js?rmv=2.3.5';
-import { nameMaskCardKey, nameMaskCardLabel, findNameMaskCandidates } from './nameMaskCandidates.js?rmv=2.3.5';
-import { measureStorageCleanup, runStorageCleanup, prepareStorageCleanup, rabbitMirrorLocalBytes, formatCleanupBytes } from './storageCleanup.js?rmv=2.3.5';
-import { scanAllChatsForCleanup, applyAllChatsCleanup } from './storageCleanupAllChats.js?rmv=2.3.5';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.6";
+import { SETTINGS_UI_VERSION, RUNTIME_VERSION, escapeHtml, isCurrentRuntime } from './ui/runtime.js?rmv=2.3.6';
+import { reportRabbitMirrorStartupFailure } from './startupGuard.js?rmv=2.3.6';
+import { chatu8Status } from './chatu8Image.js?rmv=2.3.6';
+import { fetchImageLlmModels, imageLlmStatusText, importCurrentConnectionForImageLlm, listImageLlmProfiles, selectImageLlmProfile } from './imageLlm.js?rmv=2.3.6';
+import { buildRabbitMirrorSettingsDialogHtml, buildWorldInfoPromptModalHtml, buildTagFilterModalHtml } from './ui/settingsTemplate.js?rmv=2.3.6';
+import { attachIndependentApiDiagnosticListener, attachTokenMeterListener, renderIndependentApiDiagnostic, renderTokenMeter } from './ui/tokenMeter.js?rmv=2.3.6';
+import { attachWorldInfoBooksListener, clearCollapsedAllWorldInfoBookRows, clearPulledWorldInfoBooks, installWorldInfoBookVisibilityObserver, pullAllWorldInfoBooks, renderWorldInfoBookSettings, resetWorldInfoBookUiState } from './ui/worldInfoBooks.js?rmv=2.3.6';
+import { mountGenerationEvidenceUi, destroyGenerationEvidenceUi } from './ui/generationEvidence.js?rmv=2.3.6';
+import { installTtDiagnosticEntry } from './ui/ttDiagnostics.js?rmv=2.3.6';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.3.6';
+import { renderFaceDrawSettings } from './faceDrawUi.js?rmv=2.3.6';
+import { listHostWorldBooks, readHostWorldBook } from './externalWorldBook/hostReader.js?rmv=2.3.6';
+import { refreshFacePagerPositions } from './facePagerPlacement.js?rmv=2.3.6';
+import { refreshMirrorAnimationIdlePause } from './animationVisibility.js?rmv=2.3.6';
+import { DEFAULT_INDEPENDENT_CONTEXT_EXCLUDED_TAGS, DEFAULT_VISUAL_PROMPT, INDEPENDENT_CONTEXT_EXCLUDED_TAG_MAX_COUNT, RABBIT_MIRROR_BANNED_WORD_MAX_COUNT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, normalizeRabbitMirrorBannedWords, updateSettings, resetSettings, resetSettingsAndSaveNow, saveSettingsNowAndVerify } from './settings.js?rmv=2.3.6';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS } from './independentRequestBudget.js?rmv=2.3.6';
+import { clearLastCombo, getCurrentChatKey } from './storage.js?rmv=2.3.6';
+import { normalizeEarlyBodyTags } from './earlyBodyTags.js?rmv=2.3.6';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.6';
+import { applyRabbitMirrorHostSurface } from './hostCompatibility.js?rmv=2.3.6';
+import { DEFAULT_BEHAVIOR_RULE_TEXT, resolveBehaviorRuleText } from './behaviorRules.js?rmv=2.3.6';
+import { clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=2.3.6';
+import { parseIndependentAdvancedOptions } from './advancedRequestOptions.js?rmv=2.3.6';
+import { parseRabbitMirrorReplacementLines, formatRabbitMirrorReplacementLines } from './bannedWords.js?rmv=2.3.6';
+import { normalizeNameMaskRules, NAME_MASK_MAX_RULES } from './nameMask.js?rmv=2.3.6';
+import { nameMaskCardKey, nameMaskCardLabel, findNameMaskCandidates } from './nameMaskCandidates.js?rmv=2.3.6';
+import { measureStorageCleanup, runStorageCleanup, prepareStorageCleanup, rabbitMirrorLocalBytes, formatCleanupBytes } from './storageCleanup.js?rmv=2.3.6';
+import { scanAllChatsForCleanup, applyAllChatsCleanup } from './storageCleanupAllChats.js?rmv=2.3.6';
 let allChatsCleanupPlan = null;
 let allChatsCleanupAbort = null;
 let nameMaskChatListenerBound = false;
-import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=2.3.5';
-import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=2.3.5';
-import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=2.3.5';
-import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=2.3.5';
-import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, buildRabbitMirrorArchiveInventory, scanCurrentChatIndependentContextTags, testIndependentConnection, getObservedWorldInfoBooks } from './independentApi.js?rmv=2.3.5';
-import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=2.3.5';
-import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=2.3.5';
-import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=2.3.5';
-import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=2.3.5';
-import { applyUserSkin, removeUserSkin } from './userSkin.js?rmv=2.3.5';
-import { mountBackfillControls, stopBackfill } from './ui/backfillPanel.js?rmv=2.3.5';
+import { clearRabbitMirrorPrompt, startManualEntryDiagnostic, stopManualEntryDiagnostic, getManualEntryDiagnosticState } from './injector.js?rmv=2.3.6';
+import { clearFeedbackCatExtensionPrompt, getActiveFeedbackForCurrentChat, syncFeedbackCatExtensionPrompt } from './feedbackCat.js?rmv=2.3.6';
+import { configureMaintenanceAutoSafeMode, refreshMaintenanceRabbits } from './outputSanitizer.js?rmv=2.3.6';
+import { scanMemoryPlugins, testMemoryProvider } from './memoryScanner.js?rmv=2.3.6';
+import { fetchIndependentModels, getIndependentConnectionProfiles, getIndependentSavedModels, getLastIndependentModelListDiagnostic, hydrateIndependentFavoriteHtml, backfillIndependentFloor, prepareIndependentBackfillFloor, independentBackfillBusy, independentBackfillChatKey, independentBackfillFloorToken, importCurrentSillyTavernConnection, listMissingIndependentRetryFloors, refreshRabbitMirrorGenerationMode, resyncMissingIndependentRetryShells, buildRabbitMirrorArchiveInventory, scanCurrentChatIndependentContextTags, testIndependentConnection, getObservedWorldInfoBooks } from './independentApi.js?rmv=2.3.6';
+import { configureRabbitMirrorNoSendRegex, inspectRabbitMirrorNoSendRegex, openSillyTavernRegexSettings } from './regexConfigurator.js?rmv=2.3.6';
+import { BLACKLIST_CHANGED_EVENT, blacklistEntries, blacklistPoolStats, clearBlacklist, removeBlacklistItem, setBlacklistEnabled, favoriteEntries, removeFavoriteItem, setFavoriteMultiplier, clearFavorites } from './blacklist.js?rmv=2.3.6';
+import { THEATER_FAVORITES_CHANGED_EVENT, deleteTheaterFavorite, groupTheaterFavoritesByCharacter, listTheaterFavorites, openTheaterFavoriteLibrary, openTheaterFavoriteViewer } from './theaterFavorites.js?rmv=2.3.6';
+import { mountSettingsAppearance, destroySettingsAppearance } from './settingsAppearance.js?rmv=2.3.6';
+import { applyUserSkin, removeUserSkin } from './userSkin.js?rmv=2.3.6';
+import { mountBackfillControls, stopBackfill } from './ui/backfillPanel.js?rmv=2.3.6';
 const LOTTERY_ENTRY_LIMIT = 80;
 const MOBILE_MODAL_IDS = ['rh_advanced_modal', 'rh_world_info_prompt_modal', 'rh_independent_tag_filter_modal'];
 let mobileModalRootObserver = null;
@@ -448,7 +448,7 @@ async function refreshMemoryWorldBookDirectory() {
     memoryWorldBookDirectoryBusy = true;
     renderMemoryWorldBookBinding();
     try {
-        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=2.3.5');
+        const { listMemoryWorldBooks, normalizeMemoryWorldBookId } = await import('./memoryWorldBook.js?rmv=2.3.6');
         if (!isAlive())
             return;
         const books = await listMemoryWorldBooks();
@@ -497,7 +497,7 @@ export function initRabbitMirrorUI() {
     catch (error) {
         console.warn(__rmT("4xrN8.vjlGvmfgDABHuLjSLH.pRIMnM9Hty.ISZGRKHtoLWpcx.wUqZk"), error);
     }
-    void import('./extensionUpdater.js?rmv=2.3.5')
+    void import('./extensionUpdater.js?rmv=2.3.6')
         .then(updater => updater.setupRabbitMirrorExtensionReloadWatch())
         .catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUa4lXyzifBfSUrIiMo4qL8jq7z.F_zk"), error));
     const finishUiInit = globalThis.__rabbitMirrorPerfDiag?.begin?.('ui.initCall', { retry: uiMountRetryCount }, 0);
@@ -941,14 +941,14 @@ export function initRabbitMirrorUI() {
     });
     $('#rh_desktop_face_zoom').prop('checked', settings.desktopFaceZoom !== false).on('change', e => {
         updateSettings({ desktopFaceZoom: e.target.checked === true });
-        void import('./desktopFaceZoom.js?rmv=2.3.5').then(module => module.refreshDesktopFaceZoom()).catch(() => { });
+        void import('./desktopFaceZoom.js?rmv=2.3.6').then(module => module.refreshDesktopFaceZoom()).catch(() => { });
     });
     const zoomWidthLabel = value => { $('#rh_desktop_face_zoom_width_value').text(String(value)); };
     $('#rh_desktop_face_zoom_width').val(settings.desktopFaceZoomWidth || 520).on('input', e => {
         const width = Number(e.target.value) || 520;
         zoomWidthLabel(width);
         updateSettings({ desktopFaceZoomWidth: width });
-        void import('./desktopFaceZoom.js?rmv=2.3.5').then(module => module.refreshDesktopFaceZoom()).catch(() => { });
+        void import('./desktopFaceZoom.js?rmv=2.3.6').then(module => module.refreshDesktopFaceZoom()).catch(() => { });
     });
     zoomWidthLabel(settings.desktopFaceZoomWidth || 520);
     $('#rh_face_pager_position').val(settings.facePagerPosition || 'top').on('change', e => {
@@ -1023,7 +1023,7 @@ export function initRabbitMirrorUI() {
             return;
         const sequence = appearanceFileSequence;
         try {
-            const module = await import('./appearanceReference.js?rmv=2.3.5');
+            const module = await import('./appearanceReference.js?rmv=2.3.6');
             if (!appearanceOwnerIsCurrent() || !appearanceUIOwner.open || sequence !== appearanceFileSequence || appearanceSaving)
                 return;
             await module.loadAppearanceReferenceMaterial(revision);
@@ -1089,7 +1089,7 @@ export function initRabbitMirrorUI() {
         const retainRevision = String(getSettings().appearanceReferenceRevision || '');
         let raw = String($('#rh_appearance_reference_input').val() || '');
         try {
-            const module = await import('./appearanceReference.js?rmv=2.3.5');
+            const module = await import('./appearanceReference.js?rmv=2.3.6');
             if (!appearanceOwnerIsCurrent())
                 return;
             if (String(getSettings().appearanceReferenceRevision || '') !== retainRevision) {
@@ -1184,7 +1184,7 @@ export function initRabbitMirrorUI() {
             return;
         guideLoading = true;
         try {
-            const module = await import('./quickStart.js?rmv=2.3.5');
+            const module = await import('./quickStart.js?rmv=2.3.6');
             if (guideDisposed || !quickStart.isConnected || !isCurrentRuntime())
                 return;
             guideCleanup = module.mountRabbitMirrorQuickStart({
@@ -1334,7 +1334,7 @@ export function initRabbitMirrorUI() {
         if (getSettings().sourceProfilesEnabled === true) {
             renderSourceProfileControls(getSettings());
             if (texturesBefore !== (getSettings().materialTextureEnabled === true)) {
-                void import('./materialTexture.js?rmv=2.3.5').then(module => {
+                void import('./materialTexture.js?rmv=2.3.6').then(module => {
                     const chat = document.getElementById('chat');
                     if (chat)
                         module.applyMaterialTextures(chat, undefined, { record: false });
@@ -1376,7 +1376,7 @@ export function initRabbitMirrorUI() {
         if (button)
             button.disabled = true;
         try {
-            const module = await import('./faceHealthUi.js?rmv=2.3.5');
+            const module = await import('./faceHealthUi.js?rmv=2.3.6');
             await module.openFaceHealthReport({ limit: Number($('#rh_face_health_limit').val()) || 0 });
         }
         catch (error) {
@@ -1415,7 +1415,7 @@ export function initRabbitMirrorUI() {
     const repairSamplesNote = () => {
         const note = document.getElementById('rh_repair_samples_note');
         const button = document.getElementById('rh_repair_samples_export');
-        void import('./outputSanitizer/repairSamples.js?rmv=2.3.5').then(module => {
+        void import('./outputSanitizer/repairSamples.js?rmv=2.3.6').then(module => {
             const count = module.countRepairSamples();
             if (button) {
                 button.textContent = count ? `${__rmT("WP7vhXWKUFdMrQvXR8wyLk")}${count}${__rmT("qGyf7qZp")}` : __rmT("BEU_SpH10Bo08kB1LZMFy92p3dk");
@@ -1437,7 +1437,7 @@ export function initRabbitMirrorUI() {
     catch { }
     globalThis.addEventListener?.('rabbitmirror:repair-samples', repairSamplesNote);
     globalThis.__rabbitMirrorRepairSamplesUiCleanup = () => globalThis.removeEventListener?.('rabbitmirror:repair-samples', repairSamplesNote);
-    void import('./repairSampleUpload.js?rmv=2.3.5').then(upload => {
+    void import('./repairSampleUpload.js?rmv=2.3.6').then(upload => {
         const block = document.getElementById('rh_repair_upload_block');
         if (!upload.sampleUploadAvailable()) {
             if (block)
@@ -1489,7 +1489,7 @@ export function initRabbitMirrorUI() {
     }).catch(() => { });
     $('#rh_repair_samples_export').on('click', async () => {
         try {
-            const module = await import('./outputSanitizer/repairSamples.js?rmv=2.3.5');
+            const module = await import('./outputSanitizer/repairSamples.js?rmv=2.3.6');
             if (!module.countRepairSamples()) {
                 toastr?.info?.(__rmT("YkeXoqJiqfKiKyHR4DD"));
                 return;
@@ -1514,7 +1514,7 @@ export function initRabbitMirrorUI() {
         if (!globalThis.confirm?.(__rmT("t84Um52cBKgAtS1JNAO_85d.Y0E7EorgoxesG4mhmmWp8ovySpm0IExOpho8eKdKrVeGE3vQSb75XlH9")))
             return;
         try {
-            const module = await import('./outputSanitizer/repairSamples.js?rmv=2.3.5');
+            const module = await import('./outputSanitizer/repairSamples.js?rmv=2.3.6');
             module.clearRepairSamples();
             repairSamplesNote();
         }
@@ -2409,12 +2409,12 @@ export function initRabbitMirrorUI() {
     $('#rh_builtin_image').on('change', e => updateSettings({ builtinImageEnabled: e.target.checked === true }));
     $('#rh_web_fonts').on('change', e => {
         updateSettings({ webFontsEnabled: e.target.checked === true });
-        void import('./webFonts.js?rmv=2.3.5').then(module => module.applyWebFontsSetting(e.target.checked === true)).catch(() => { });
+        void import('./webFonts.js?rmv=2.3.6').then(module => module.applyWebFontsSetting(e.target.checked === true)).catch(() => { });
     });
     $('#rh_collection_taste').on('change', e => updateSettings({ collectionTasteEnabled: e.target.checked === true }));
     $('#rh_material_texture').on('change', e => {
         updateSettings({ materialTextureEnabled: e.target.checked === true });
-        void import('./materialTexture.js?rmv=2.3.5').then(module => {
+        void import('./materialTexture.js?rmv=2.3.6').then(module => {
             const chat = document.getElementById('chat');
             if (chat)
                 module.applyMaterialTextures(chat, undefined, { record: false });
@@ -2512,7 +2512,7 @@ export function initRabbitMirrorUI() {
     $('#rh_image_status_refresh').on('click', async () => {
         const output = document.getElementById('rh_image_provider_status');
         try {
-            const { getImageBackendStatus } = await import('./baibaiImage.js?rmv=2.3.5');
+            const { getImageBackendStatus } = await import('./baibaiImage.js?rmv=2.3.6');
             const status = await getImageBackendStatus();
             output.textContent = status.configured ? `${__rmT("Y6gzhgW_Qvq80_RlR662E0Cx")}${status.backend || ''} ${status.model || ''}` : (status.reason || __rmT("6HDqFtppAYz__DQIpnZTk0fe.0pEt1jd4e5HLE1azqx8dBunq8_"));
         }
@@ -2621,7 +2621,7 @@ export function initRabbitMirrorUI() {
                 document.getElementById(key).disabled = true;
             button.textContent = __rmT("cIFOAP3LfCxo8h");
             try {
-                const module = await import('./externalWorldBook/importWizard.js?rmv=2.3.5');
+                const module = await import('./externalWorldBook/importWizard.js?rmv=2.3.6');
                 if (!isCurrentRuntime() || !button.isConnected)
                     return;
                 module.openExternalWorldBookImportWizard?.({ initialView });
@@ -3126,7 +3126,7 @@ export function initRabbitMirrorUI() {
                 void renderTheaterFavoriteSettings();
             }
             if (page === 'library') {
-                void import('./externalWorldBook/importWizard.js?rmv=2.3.5').then(module => {
+                void import('./externalWorldBook/importWizard.js?rmv=2.3.6').then(module => {
                     module.mountMotherLibraryManager?.(document.getElementById('rh_external_inline_manage'));
                 });
             }
@@ -3146,7 +3146,7 @@ export function initRabbitMirrorUI() {
     }
     if (settings.externalWorldBookRandomEnabled === true) {
         setTimeout(() => {
-            void import('./externalWorldBook/serverBackup.js?rmv=2.3.5').then(module => module.checkMotherLibraryServerBackupOnStartup({
+            void import('./externalWorldBook/serverBackup.js?rmv=2.3.6').then(module => module.checkMotherLibraryServerBackupOnStartup({
                 open: () => {
                     const workbench = document.getElementById('rabbit_mirror_theater_settings')?.__rabbitMirrorWorkbench;
                     workbench?.open?.();
@@ -3156,9 +3156,9 @@ export function initRabbitMirrorUI() {
         }, 6000);
     }
     setTimeout(() => {
-        void import('./favoriteServerBackup.js?rmv=2.3.5').then(module => module.checkFavoriteServerBackupOnStartup()).catch(() => { });
+        void import('./favoriteServerBackup.js?rmv=2.3.6').then(module => module.checkFavoriteServerBackupOnStartup()).catch(() => { });
     }, 8000);
-    void import('./updateGuide.js?rmv=2.3.5').then(module => { module.destroyUpdateGuide?.(); module.maybeShowUpdateGuide(); }).catch(() => { });
+    void import('./updateGuide.js?rmv=2.3.6').then(module => { module.destroyUpdateGuide?.(); module.maybeShowUpdateGuide(); }).catch(() => { });
     finishUiInit?.({ outcome: 'mounted' });
 }
 export function destroyRabbitMirrorUI() {
