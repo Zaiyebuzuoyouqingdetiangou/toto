@@ -1,7 +1,7 @@
 import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.3";
 import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.6.3';
 import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.6.3';
-import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.6.3';
+import { interactionDisplayKeys, interactionDisplayName } from './interactionMethods.js?rmv=2.6.3';
 import { parseSelfInvented } from './interactionMethodLedger.js?rmv=2.6.3';
 export const HUE_NAMES = Object.freeze({ red: __rmT("mr8"), orange: __rmT("IqG"), yellow: __rmT("dG8"), green: __rmT("GL8"), cyan: __rmT("4D_"), blue: __rmT("hFf"), purple: __rmT("3LA"), pink: __rmT("caT"), neutral: __rmT("Pgv.uk") });
 export const BRIGHTNESS_NAMES = Object.freeze({ light: __rmT("z2Zaif"), mid: __rmT("AsAr7j6q"), dark: __rmT("w2Zaif") });
@@ -26,15 +26,8 @@ export function healthRisks(face) {
         return keys.filter(key => key !== 'info_page_degrade');
     return keys;
 }
-export const FLIP_CSS_RE = /rotate(?:[XY]|3d)\s*\([^)]*180|backface-visibility\s*:\s*hidden/i;
 export function uiName(key) {
-    if (key === 'switch')
-        return __rmT(".vGMcI06NHK8Wf");
-    if (key === 'fold')
-        return __rmT("cgECNk");
-    if (key === 'popup')
-        return __rmT("3Bunff");
-    return DRIVER_METHODS[key]?.names?.[0] || '';
+    return interactionDisplayName(key);
 }
 function decode(text) {
     return String(text || '').replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,8});/gi, (all, code) => {
@@ -69,14 +62,15 @@ export function analyzeStoredFace(html) {
     const uis = [];
     const add = key => { if (key && !uis.includes(key))
         uis.push(key); };
-    for (const match of source.matchAll(/\bdata-rm-ui\s*=\s*["']?([a-z][a-z-]{1,20})/gi))
+    const markup = source.replace(/<style\b[\s\S]*?<\/style\s*>/gi, ' ');
+    for (const match of markup.matchAll(/<[a-z][^>]*?\bdata-rm-ui\s*=\s*["']?([a-z][a-z-]{1,20})/gi))
         add(match[1].toLowerCase());
-    if (/\bpopovertarget\s*=|\spopover(?:\s|=|>)/i.test(source))
+    if (/\bpopovertarget\s*=|<[a-z][^>]*\spopover(?:\s|=|>)/i.test(markup))
         add('popup');
     if ((source.match(/<details(?=[\s>])/gi) || []).length > 1)
         add('fold');
-    if (uis.includes('toggle') && !FLIP_CSS_RE.test(source))
-        uis.splice(uis.indexOf('toggle'), 1, 'switch');
+    const shown = interactionDisplayKeys(uis, source);
+    uis.splice(0, uis.length, ...shown);
     return {
         title,
         chars: source.length,

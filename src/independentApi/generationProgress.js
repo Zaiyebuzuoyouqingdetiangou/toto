@@ -1,6 +1,6 @@
 import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.3";
 import { spritePaths } from '../pixelSprites.js?rmv=2.6.3';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.6.3';
+import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.6.3';
 import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.6.3';
 import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX } from './mirrorScene.js?rmv=2.6.3';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
@@ -480,11 +480,10 @@ function elapsedLabel(ms) {
     const total = Math.max(0, Math.floor(ms / 1000));
     return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
-const FLIP_CSS_RE = /rotate(?:[XY]|3d)\s*\([^)]*180|backface-visibility\s*:\s*hidden/i;
-function uiNames(keys, flip = false) {
+function uiNames(keys, source = '') {
     const names = [];
-    for (const key of keys) {
-        const name = key === 'fold' ? __rmT("cgECNk") : key === 'popup' ? __rmT("3Bunff") : key === 'toggle' && !flip ? __rmT(".vGMcI06NHK8Wf") : DRIVER_METHODS[key]?.names?.[0];
+    for (const key of interactionDisplayKeys(keys, source)) {
+        const name = interactionDisplayName(key);
         if (name && !names.includes(name))
             names.push(name);
     }
@@ -615,7 +614,7 @@ export function progressView(state, now = Date.now()) {
                     tail: `${__rmT("tB0CyT")}${current.palette.count}${__rmT("2Rdaif")}${current.keyframes ? `${__rmT("jvk")}${current.keyframes}${__rmT("Uqjs6OOBUFV4.T")}` : ''}`,
                 }));
             }
-            const names = uiNames(current.uis, current.uis.includes('toggle') && FLIP_CSS_RE.test(request.text.slice(current.startAt)));
+            const names = uiNames(current.uis, current.uis.some(key => ['toggle', 'rhythm', 'slide'].includes(key)) ? request.text.slice(current.startAt) : '');
             if (names.length)
                 lines.push(doneLine('ui', `${__rmT("_wc4v8eJUFVStf")}${names.slice(0, 4).join(__rmT("jvk"))}${names.length > 4 ? __rmT("2RdRfk") : ''}`));
             if (request.completeAt && serial)

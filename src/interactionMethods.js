@@ -1,4 +1,22 @@
 import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.3";
+export const FLIP_CSS_RE = /rotate(?:[XY]|3d)\s*\([^)]*180|\brotate\s*:\s*[xy]\s+-?180/i;
+export function interactionDisplayKeys(keys, source = '') {
+    const text = String(source || '');
+    return [...new Set((keys || []).map(key => {
+            if (key === 'toggle')
+                return FLIP_CSS_RE.test(text) ? 'toggle' : 'switch';
+            if (key === 'rhythm')
+                return /\bdata-rm-qte\b/i.test(text) ? 'rhythm:qte' : /\bdata-rm-tap\b/i.test(text) && !/\bdata-rm-charge\b/i.test(text) ? 'rhythm:tap' : 'rhythm';
+            if (key === 'slide')
+                return /\bdata-rm-axis\s*=\s*["']?y\b/i.test(text) ? 'slide:y' : 'slide';
+            return key;
+        }))];
+}
+const DISPLAY_NAMES = Object.freeze({ switch: __rmT(".vGMcI06NHK8Wf"), toggle: __rmT(".MNdPk"), pick: __rmT("FRP6f1Ac"), 'rhythm:tap': __rmT("UA7WsynDwBh"), 'rhythm:qte': __rmT("reAGFuwJp8f"), rhythm: __rmT("fJS75xtDoUG"),
+    'slide:y': __rmT("Q6zxpushwsnu4SMX"), timer: __rmT("AFkGFB6JCBC"), fold: __rmT("cgECNk"), popup: __rmT("3Bunff") });
+export function interactionDisplayName(key) {
+    return DISPLAY_NAMES[key] || DRIVER_METHODS[String(key).split(':')[0]]?.names?.[0] || '';
+}
 export const CSS_METHODS = Object.freeze([__rmT("cgECNk"), __rmT("tNMgqU1gF2C"), __rmT(".MNdPk"), __rmT(".Fa_qt1MEBh"), __rmT("4OXCYEyJX0ANTguG2yA"), __rmT("sqVjDushwsnu4SMX"), __rmT("02jLcgYfOCs"), __rmT("nFWxFesQ2Ph")]);
 export const OFFER_LIMITS_187 = false;
 export const DRIVER_METHODS = Object.freeze({
