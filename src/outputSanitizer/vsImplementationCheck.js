@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
-import { openGenericProbeSandbox, collectGenericProbeControls, probeGenericControls } from './maintenanceGenericProbe.js?rmv=2.5.4';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.0";
+import { openGenericProbeSandbox, collectGenericProbeControls, probeGenericControls } from './maintenanceGenericProbe.js?rmv=2.6.0';
 export const VS_STEP_ATTR = 'data-vs-step';
 const CHECK_BUDGET_MS = 600;
 const results = new WeakMap();

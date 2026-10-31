@@ -1,7 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
-import { spritePaths } from '../pixelSprites.js?rmv=2.5.4';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.5.4';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.5.4';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.0";
+import { spritePaths } from '../pixelSprites.js?rmv=2.6.0';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.6.0';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.6.0';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX } from './mirrorScene.js?rmv=2.6.0';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -113,6 +114,10 @@ export function createProgressState({ faceCount = 1, expectedFaceChars = 0, now 
         retry: 0,
         drawText: '',
         faceMenuLabels: [],
+        facePicks: [],
+        sceneFoundAt: 0,
+        sceneChosen: -1,
+        sceneDone: false,
         serial: null,
         accepted: new Map(),
         request: newRequest(),
@@ -132,6 +137,7 @@ export function noteProgressSelection(state, diagnostic) {
     state.faceMenuLabels = (faces.length ? faces : [diagnostic]).map(face => (Array.isArray(face?.atmosphereMenu) && face.atmosphereMenu.length > 1
         ? face.atmosphereMenu.map(ticket => labelTitle((Array.isArray(ticket?.formatLines) ? ticket.formatLines : [])[0]))
         : []));
+    state.facePicks = (faces.length ? faces : [diagnostic]).map(face => Number(face?.designCandidatePick ?? (faces.length ? 0 : diagnostic.designCandidatePick)) || 0);
     if (faces.length > 1) {
         state.drawText = `${__rmT("X39tSec6")}${faces.length}${__rmT("N_isVKgwXNp")}`;
         return;
@@ -476,6 +482,36 @@ function requestFraction(request, now, expectedChars, closedRatio) {
     const shaped = ratio <= 0.85 ? ratio : 0.85 + 0.15 * ease((ratio - 0.85) / 0.3);
     return request.textBase + (0.97 - request.textBase) * Math.min(1, shaped);
 }
+const FALL_MS = 3600;
+const HOP_MS = 1000;
+const FOUND_WAIT_MS = 3000;
+const FOUND_MS = 2100;
+function mirrorSceneOf(state, request, parse, thread, now) {
+    if (state.sceneDone)
+        return null;
+    const menu = state.faceMenuLabels?.[0] || [];
+    const menuFace = menu.length > 1;
+    const mirrors = clampMirrorCount(menuFace ? menu.length : 3);
+    const searching = () => ({ stage: 'search', mirrors, at: Math.max(0, Math.floor((now - state.startedAt - FALL_MS) / HOP_MS)) % mirrors });
+    const writing = state.firstTextAt || request.firstTextAt || request.completeAt || state.finishingAt || state.accepted.size;
+    if (!writing)
+        return now - state.startedAt < FALL_MS ? { stage: 'fall' } : searching();
+    if (!state.sceneFoundAt) {
+        const ticket = menuFace ? Math.round(Number(parse.faces[0]?.ticket)) || 0 : 0;
+        const waited = now - (state.firstTextAt || request.firstTextAt || now);
+        const known = (!menuFace || ticket > 0) && !!thread;
+        if (!known && waited < FOUND_WAIT_MS && !request.completeAt && !state.finishingAt)
+            return searching();
+        const pick = Math.round(Number(state.facePicks?.[0])) || 0;
+        const chosen = ticket > 0 ? ticket - 1 : !menuFace && pick > 0 ? pick - 1 : Math.floor((mirrors - 1) / 2);
+        state.sceneChosen = Math.max(0, Math.min(mirrors - 1, chosen));
+        state.sceneFoundAt = now;
+    }
+    if (now - state.sceneFoundAt < FOUND_MS)
+        return { stage: 'found', mirrors, chosen: state.sceneChosen };
+    state.sceneDone = true;
+    return null;
+}
 const doneLine = (key, text, extra = {}) => ({ key, state: 'done', text, ...extra });
 const activeLine = (key, text) => ({ key, state: 'active', text });
 export function progressView(state, now = Date.now()) {
@@ -581,6 +617,7 @@ export function progressView(state, now = Date.now()) {
         thread,
         lines: [...pinned, ...rolling.slice(-(MAX_LINES - pinned.length))],
         picks: progressPicks(current, state, serial ? serial.index : faceNo - 1),
+        scene: mirrorSceneOf(state, request, parse, thread, now),
     };
 }
 const recentFaceChars = [];
@@ -713,6 +750,38 @@ function updateLog(doc, list, lines) {
     for (const li of existing.values())
         li.remove();
 }
+function syncMirrorScene(doc, card, scene) {
+    const stage = card.querySelector('.rm-gp-stage');
+    if (!stage)
+        return;
+    let svg = stage.querySelector(':scope > svg.rm-gp-scene');
+    const key = sceneKey(scene);
+    if (!key) {
+        svg?.remove();
+        if (card.hasAttribute('data-rm-gp-scene'))
+            card.removeAttribute('data-rm-gp-scene');
+        return;
+    }
+    if (!svg || svg.getAttribute('data-rm-gp-scene-key') !== key) {
+        const next = buildMirrorScene(doc, scene);
+        if (!next)
+            return;
+        next.setAttribute('data-rm-gp-scene-key', key);
+        if (svg)
+            svg.replaceWith(next);
+        else
+            stage.append(next);
+        svg = next;
+    }
+    if (scene.stage === 'search') {
+        const seeker = svg.querySelector(':scope > .rm-gp-seeker');
+        const transform = `translate(${seekerX(scene.mirrors, scene.at)} 0)`;
+        if (seeker && seeker.getAttribute('transform') !== transform)
+            seeker.setAttribute('transform', transform);
+    }
+    if (card.dataset.rmGpScene !== scene.stage)
+        card.dataset.rmGpScene = scene.stage;
+}
 function applyCommon(node, view) {
     const value = view.fraction.toFixed(3);
     if (node.style.getPropertyValue('--rm-gp-p') !== value)
@@ -759,6 +828,7 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
     const stage = card.querySelector('.rm-gp-stage');
     if (stage && stage.getAttribute('aria-valuenow') !== String(view.percent))
         stage.setAttribute('aria-valuenow', String(view.percent));
+    syncMirrorScene(doc, card, view.scene);
     updateLog(doc, card.querySelector('.rm-gp-log'), view.lines);
     return card;
 }

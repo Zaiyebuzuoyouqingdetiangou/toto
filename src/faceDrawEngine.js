@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.4";
-import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=2.5.4';
-import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=2.5.4';
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.0";
+import { FACE_DRAW_KINDS, FACE_DRAW_LABELS, faceDrawCategoryId } from './faceDrawRules.js?rmv=2.6.0';
+import { externalPoolItem } from './externalWorldBook/externalPool.js?rmv=2.6.0';
 export function faceDrawFingerprint(value) {
     const text = JSON.stringify(value);
     let a = 2166136261, b = 2246822519, c = 3266489917, d = 668265263;

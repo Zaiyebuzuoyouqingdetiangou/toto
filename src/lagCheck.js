@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.4";
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.0";
 const DEFAULT_SECONDS = 60;
 const SAVE_RE = /\/api\/chats\/(?:group\/)?save\b/i;
 const ownSaves = [];

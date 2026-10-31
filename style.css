@@ -1211,6 +1211,54 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 [data-rm-gp-phase="finishing"] .rm-gp-sprite .rm-gp-sparkle{ visibility:visible; animation:rm-gp-blink .7s steps(1,end) infinite; }
 .rm-gp-sprite .rm-gp-px-thread{ fill:var(--rm-gp-thread, #c97a8a); }
 .rm-gp-sprite .rm-gp-px-thread-dk{ fill:color-mix(in srgb, var(--rm-gp-thread, #c97a8a) 72%, #000); }
+
+.rabbit-mirror-generation-progress[data-rm-gp-scene] .rm-gp-cloth,
+.rabbit-mirror-generation-progress[data-rm-gp-scene] .rm-gp-rider{ visibility:hidden !important; }
+.rabbit-mirror-generation-progress svg.rm-gp-scene{
+  position:absolute !important;
+  left:0 !important;
+  top:0 !important;
+  z-index:2 !important;
+  filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important;
+}
+.rm-gp-scene .rm-gp-fall,
+.rm-gp-scene .rm-gp-found,
+.rm-gp-scene .rm-gp-fail{ opacity:0; }
+.rm-gp-scene .rm-gp-fall{ animation:rm-gp-quarter .64s steps(1,end) infinite; }
+.rm-gp-scene .rm-gp-fall-1{ animation-delay:-.48s; }
+.rm-gp-scene .rm-gp-fall-2{ animation-delay:-.32s; }
+.rm-gp-scene .rm-gp-fall-3{ animation-delay:-.16s; }
+.rm-gp-scene .rm-gp-found-0{ animation:rm-gp-on .65s steps(1,end) 0s; }
+.rm-gp-scene .rm-gp-found-1{ animation:rm-gp-on .3s steps(1,end) .65s; }
+.rm-gp-scene .rm-gp-found-2{ animation:rm-gp-on .35s steps(1,end) .95s; }
+.rm-gp-scene .rm-gp-found-3{ animation:rm-gp-on .1s steps(1,end) 1.3s forwards; }
+.rm-gp-scene .rm-gp-fail-0{ animation:rm-gp-on .7s steps(1,end) .2s; }
+.rm-gp-scene .rm-gp-fail-1{ animation:rm-gp-on .1s steps(1,end) .9s forwards; }
+.rm-gp-scene .rm-gp-seeker .rm-gp-px-mark{ animation:rm-gp-blink 1s steps(1,end) infinite; }
+.rm-gp-scene .rm-gp-px-glow{ fill:var(--rm-gp-thread, #f3d27a); }
+.rm-gp-scene .rm-gp-px-glow-hi{ fill:color-mix(in srgb, var(--rm-gp-thread, #f3d27a) 45%, #fff); }
+.rm-gp-scene .rm-gp-px-twinkle{ fill:color-mix(in srgb, var(--rm-gp-thread, #d9b25e) 35%, var(--rm-gp-text, currentColor)); }
+.rm-gp-scene .rm-gp-px-mark{ fill:var(--rm-gp-text, currentColor); }
+.rm-gp-scene .rm-gp-px-hole{ fill:color-mix(in srgb, var(--rm-gp-text, #2b2628) 14%, var(--rm-gp-bg, #f7f5f2)); }
+.rm-gp-scene .rm-gp-px-hole-dk{ fill:color-mix(in srgb, var(--rm-gp-text, #2b2628) 24%, var(--rm-gp-bg, #f7f5f2)); }
+.rm-gp-scene .rm-gp-px-hole-mark{ fill:color-mix(in srgb, var(--rm-gp-text, #2b2628) 22%, var(--rm-gp-bg, #f7f5f2)); }
+.rm-gp-scene .rm-gp-px-streak{ fill:color-mix(in srgb, var(--rm-gp-text, #2b2628) 30%, var(--rm-gp-bg, #f7f5f2)); }
+@keyframes rm-gp-quarter{ 0%{opacity:1} 25%{opacity:0} 100%{opacity:0} }
+@keyframes rm-gp-on{ 0%{opacity:1} 100%{opacity:1} }
+
+.rabbit-mirror-external-error-art{
+  display:flex !important;
+  justify-content:center !important;
+  margin:2px 0 6px !important;
+  filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important;
+}
+.rabbit-mirror-external-error-art svg.rm-gp-scene{ display:block !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; }
+@media (prefers-reduced-motion: reduce){
+  .rabbit-mirror-external-error-art *{ animation:none !important; }
+  .rm-gp-scene .rm-gp-fall-0,
+  .rm-gp-scene .rm-gp-found-3,
+  .rm-gp-scene .rm-gp-fail-1{ opacity:1 !important; }
+}
 @keyframes rm-gp-frame-a{ 0%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
 @keyframes rm-gp-frame-b{ 0%{opacity:0} 50%{opacity:1} 100%{opacity:1} }
 @keyframes rm-gp-dot{ 0%{opacity:1} 34%{opacity:.18} 100%{opacity:.18} }
