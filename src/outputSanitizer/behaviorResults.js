@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.5.2";
+import { rmR as __rmR } from "../textTable.js?rmv=2.5.3";
 const results = new WeakMap();
 const chooserStates = new WeakMap();
 const DISPLAY = new Set(['', 'block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid',
@@ -117,14 +117,45 @@ function chooserKeys(group) {
     }
     return keys;
 }
+const NEAR_COMMON_WORDS = new Set(['on', 'off', 'open', 'opened', 'closed', 'true', 'false', 'active', 'changed', 'done', 'match', 'miss', 'placed', 'revealed', 'reveal', 'full',
+    'left', 'right', 'top', 'running', 'charge', 'peek', 'seen', 'complete', 'completed', 'finished', 'fired', 'held', 'hold', 'unlocked', 'locked']);
+function nearOwnWords(group) {
+    const words = new Set();
+    const add = value => String(value || '').split(__rmR("yomYAOXSe3NI061Ham4.HT", "")).forEach(word => { if (word)
+        words.add(word.replace(/^[.#]/, '')); });
+    for (const node of [group, ...(group.querySelectorAll?.('*') || [])]) {
+        if (node !== group && node.closest('[data-rm-ui]') !== group)
+            continue;
+        for (const attribute of node.attributes || []) {
+            if (!attribute.name.startsWith('data-rm-') || attribute.name === 'data-rm-show' || attribute.name === 'data-rm-ui')
+                continue;
+            add(attribute.value);
+            add(attribute.name.slice(8));
+        }
+    }
+    return words;
+}
+function nearMayProduce(group, token) {
+    if (NEAR_COMMON_WORDS.has(token.toLowerCase()) || /^(?:p|s|step|page|part|ch|chapter|seg|track|item)?\d+$/i.test(token))
+        return true;
+    return nearOwnWords(group).has(token);
+}
 function showOwner(node) {
     const near = node.matches?.('[data-rm-ui]') ? node.parentElement?.closest?.('[data-rm-ui]') : node.closest?.('[data-rm-ui]');
     if (!near || !near.parentElement?.closest?.('[data-rm-ui]'))
         return near;
     const nearKeys = chooserKeys(near);
-    if (!nearKeys.size)
-        return near;
     const tokens = splitShowTokens(node.getAttribute?.('data-rm-show') || '').map(normalizeShowToken).map(token => token.replace(/^!/, '')).filter(Boolean);
+    if (!nearKeys.size) {
+        if (!tokens.length || tokens.some(token => nearMayProduce(near, token)))
+            return near;
+        for (let up = near.parentElement?.closest?.('[data-rm-ui]'); up; up = up.parentElement?.closest?.('[data-rm-ui]')) {
+            const keys = chooserKeys(up);
+            if (keys.size && tokens.every(token => keys.has(token)))
+                return up;
+        }
+        return near;
+    }
     if (!tokens.length || tokens.some(token => nearKeys.has(token)))
         return near;
     for (let up = near.parentElement?.closest?.('[data-rm-ui]'); up; up = up.parentElement?.closest?.('[data-rm-ui]')) {

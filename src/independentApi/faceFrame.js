@@ -1,4 +1,4 @@
-import { layoutRect } from '../faceZoomMetrics.js?rmv=2.5.2';
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.5.3';
 const PROBE_ATTR = 'data-rm-frame-probe';
 export const FACE_FRAME_ATTR = 'data-rm-face-frame';
 export const FACE_FRAME_BODY_ATTR = 'data-rm-face-frame-body';

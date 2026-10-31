@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.2";
-import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.5.2';
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.5.2';
-import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.5.2';
-import { parseSelfInvented } from './interactionMethodLedger.js?rmv=2.5.2';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.3";
+import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.5.3';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.5.3';
+import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.5.3';
+import { parseSelfInvented } from './interactionMethodLedger.js?rmv=2.5.3';
 export const HUE_NAMES = Object.freeze({ red: __rmT("mr8"), orange: __rmT("IqG"), yellow: __rmT("dG8"), green: __rmT("GL8"), cyan: __rmT("4D_"), blue: __rmT("hFf"), purple: __rmT("3LA"), pink: __rmT("caT"), neutral: __rmT("Pgv.uk") });
 export const BRIGHTNESS_NAMES = Object.freeze({ light: __rmT("z2Zaif"), mid: __rmT("AsAr7j6q"), dark: __rmT("w2Zaif") });
 export const RISK_NAMES = Object.freeze({
@@ -19,6 +19,13 @@ export const RISK_NAMES = Object.freeze({
     weak_spatial_complexity: __rmT("e87yvhTZRwqulK3G"),
     visual_promise_unfulfilled: __rmT("aztf1dVW0FwdMvMRERXp7gwLuGJOnT"),
 });
+const LAYOUT_RISKS = ['same_block_stack', 'same_grid_card_risk', 'catalog_page_risk', 'flat_vertical_flow', 'repeated_unit_shape'];
+export function healthRisks(face) {
+    const keys = [...new Set((face?.risks || []).filter(key => RISK_NAMES[key]))];
+    if (keys.includes('info_page_degrade') && !keys.some(key => LAYOUT_RISKS.includes(key)))
+        return keys.filter(key => key !== 'info_page_degrade');
+    return keys;
+}
 export function uiName(key) {
     if (key === 'fold')
         return __rmT("cgECNk");
@@ -207,7 +214,7 @@ export function summarizeFaceHealth(allFaces, { limit = 30 } = {}) {
     const uis = countBy(faces, face => face.analysis?.uis || []).map(item => ({ ...item, name: uiName(item.key) || item.key }));
     const hues = countBy(faces, face => face.analysis?.hueFamily || '');
     const brightness = countBy(faces, face => face.analysis?.brightness || '');
-    const risks = countBy(faces, face => (face.risks || []).filter(key => RISK_NAMES[key]));
+    const risks = countBy(faces, face => healthRisks(face));
     let sameFormat = 0, sameColor = 0, sameUis = 0;
     for (let index = 1; index < faces.length; index += 1) {
         const before = faces[index - 1], now = faces[index];
@@ -238,7 +245,7 @@ export function summarizeFaceHealth(allFaces, { limit = 30 } = {}) {
             repaired: group.filter(face => face.repaired).length,
             tested: groupTested.length,
             deadFaces: groupTested.filter(face => Number(face.probe?.dead) > 0).length,
-            risky: group.filter(face => (face.risks || []).some(key => RISK_NAMES[key])).length,
+            risky: group.filter(face => healthRisks(face).length).length,
             avgSeconds: groupTimed.length ? Math.round(average(groupTimed.map(timing => timing.totalMs)) / 1000) : null,
             approx: group.some(face => face.versionApprox),
         };
@@ -305,7 +312,7 @@ export function buildFaceHealthText(summary, { runtimeVersion = '' } = {}) {
         lines.push(`  ${item.name} × ${item.count}`);
     lines.push(__rmT("pEwa4uCDa.G"));
     lines.push(`${__rmT("wRemaFj_y5KvY8OhA4VLE0Cx")}${summary.repaired}${__rmT("2RddPk")}`);
-    lines.push(`${__rmT("fiXGAGqmfC2r1j3Lwt4dHT")}${summary.tested}${__rmT("4b6BvpJxB_o6g_Bq")}${summary.deadFaces}${__rmT("tMyfaDQmSssqN4KBz0kmBeiBbaSYLJsWxhSoDf")}${summary.deadControls}${__rmT("qGtBWWZp")}`);
+    lines.push(`${__rmT("fiXGAGqmfC2r1j3Lwt4dHT")}${summary.tested}${__rmT("4b6BvpJxB_o6g_Bq")}${summary.deadFaces}${__rmT("tMyfaDQmSssqN4KBz0kmBeiBbaSYLJsWxhSoDf")}${summary.deadControls}${__rmT("qGtBWWZp")}${summary.tested ? '' : __rmT("B4KsAW7mFSp.xwa0EfEB3xsSezdmWJEynMomAWX5g529WPM3XyJn_PmqAaqOtbYQSFTO8OGZw43v_.6MPHWblQGc8vLyLDA6YMCOVDOCnLk")}`);
     for (const item of summary.risks)
         lines.push(`  ${item.name}: ${item.count}${__rmT("2RddPk")}`);
     lines.push(`${__rmT("yomq7sPsQRN._ly1TNbdHT")}${summary.avgChars}${__rmT("7aAV7XLiXHBFTzRAgPD")}${summary.medianChars}${__rmT("Uaa9QE7wKQ3ekN8LwT6zdFwHjFs")}${summary.avgTextChars}${__rmT("PD9rcn3FIguBTh")}${summary.pixelArt}${__rmT("2RddPk")}`);
@@ -322,7 +329,7 @@ export function buildFaceHealthText(summary, { runtimeVersion = '' } = {}) {
     lines.push(__rmT("AkY2YfrostY1jXbm72._BaT3AAXcs7nY"));
     for (const face of summary.faces) {
         const a = face.analysis || {};
-        lines.push(`  ${day(face.ts)} ${face.version || __rmT("uP8Onk")}${face.versionApprox ? '≈' : ''}${__rmT("2RWGfk")}${Number(face.index) + 1}${__rmT("DWC")}${face.faceCount > 1 ? `${__rmT("_dE")}${Number(face.faceIndex) + 1}${__rmT("tD_")}` : ''} ${maskTitle(a.title)}${__rmT("4b6rjaFy3_dutlBq")}${exportFormat(face)} | ${BRIGHTNESS_NAMES[a.brightness] || '-'}${HUE_NAMES[a.hueFamily] || ''} ${a.colors?.slice(0, 4).join(' ') || ''}${__rmT("4b6rjaFyO3hXl_Bq")}${(a.uis || []).map(uiName).filter(Boolean).join(__rmT("jvk")) || __rmT("wWY")} | ${a.chars || 0}${__rmT("qGyUScEk")}${face.repaired ? __rmT("4b6rjaFy8XO8gzr8") : ''}${face.probe?.tested ? `${__rmT("4b6rjaFyQEm0psBq")}${face.probe.dead}` : ''}${(face.risks || []).filter(key => RISK_NAMES[key]).length ? ` | ${(face.risks || []).filter(key => RISK_NAMES[key]).map(key => RISK_NAMES[key]).join(__rmT("jvk"))}` : ''}${Number(face.timing?.totalMs) > 0 ? ` | ${Math.round(face.timing.totalMs / 1000)}${__rmT("2RCLfh")}` : ''}`);
+        lines.push(`  ${day(face.ts)} ${face.version || __rmT("uP8Onk")}${face.versionApprox ? '≈' : ''}${__rmT("2RWGfk")}${Number(face.index) + 1}${__rmT("DWC")}${face.faceCount > 1 ? `${__rmT("_dE")}${Number(face.faceIndex) + 1}${__rmT("tD_")}` : ''} ${maskTitle(a.title)}${__rmT("4b6rjaFy3_dutlBq")}${exportFormat(face)} | ${BRIGHTNESS_NAMES[a.brightness] || '-'}${HUE_NAMES[a.hueFamily] || ''} ${a.colors?.slice(0, 4).join(' ') || ''}${__rmT("4b6rjaFyO3hXl_Bq")}${(a.uis || []).map(uiName).filter(Boolean).join(__rmT("jvk")) || __rmT("wWY")} | ${a.chars || 0}${__rmT("qGyUScEk")}${face.repaired ? __rmT("4b6rjaFy8XO8gzr8") : ''}${face.probe?.tested ? `${__rmT("4b6rjaFyQEm0psBq")}${face.probe.dead}` : ''}${healthRisks(face).length ? ` | ${healthRisks(face).map(key => RISK_NAMES[key]).join(__rmT("jvk"))}` : ''}${Number(face.timing?.totalMs) > 0 ? ` | ${Math.round(face.timing.totalMs / 1000)}${__rmT("2RCLfh")}` : ''}`);
     }
     return lines.join('\n');
 }

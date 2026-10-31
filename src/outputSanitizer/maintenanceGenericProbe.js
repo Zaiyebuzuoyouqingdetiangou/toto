@@ -1,10 +1,10 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.2";
-import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=2.5.2';
-import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=2.5.2';
-import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.5.2';
-import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=2.5.2';
-import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=2.5.2';
-import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=2.5.2';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.3";
+import { createMaintenanceLabeledCheckedProbeSandbox, installNestedDetailsReplacementContainment } from './fallbackRescue.js?rmv=2.5.3';
+import { rearmOrphanStateWiring } from './orphanStateWiring.js?rmv=2.5.3';
+import { activateRabbitMirrorInteractionRescue, rearmRabbitMirrorSerializedInteractionRoot } from './idsAndRearm.js?rmv=2.5.3';
+import { clearPersistedCheckedInlineArtifacts } from './checkedStateRescue.js?rmv=2.5.3';
+import { rehydrateRabbitMirrorMaintenanceRepairs, installSelectionOnlyStateFallback } from './choiceRescue.js?rmv=2.5.3';
+import { remoteMotionGroup, remoteToggleGroup } from './behaviorDialect.js?rmv=2.5.3';
 export const GENERIC_PROBE_RESULT_ATTR = 'data-rabbit-mirror-generic-probe';
 const TOOL_SELECTOR = '[data-rabbit-mirror-tool-entry-host],[data-rabbit-mirror-diagnostic-panel],.rabbit-mirror-maintenance-menu,[data-rm-face-swipe-host],[data-rm-image-region],[data-rm-mobile-controls],[data-rabbit-mirror-maintenance-rabbit],[data-rabbit-mirror-feedback-cat]';
 const MAX_CONTROLS = 40;

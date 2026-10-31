@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.2";
-import { getSettings } from './settings.js?rmv=2.5.2';
-import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.5.2';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.3";
+import { getSettings } from './settings.js?rmv=2.5.3';
+import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.5.3';
 const runningVersion = () => RUNTIME_VERSION;
 export const SAMPLE_RELAY_URL = 'https://samples.zaiyebuzuoyouqingdetiangou.com/';
 const SENT_KEY = 'rabbit_mirror_repair_samples_sent:v1';
@@ -142,12 +142,12 @@ export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImp
     if (!force && !sampleUploadEnabled(getSettings(), url))
         return Promise.resolve({ sent: 0, pending: 0, skipped: 'off' });
     running = (async () => {
-        const box = listSamples && removeSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.5.2');
+        const box = listSamples && removeSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.5.3');
         const list = listSamples ? await listSamples() : box.listRepairSamples();
         let reclean = resanitize;
         if (typeof reclean !== 'function') {
             try {
-                reclean = (await import('./outputSanitizer/writingSkeleton.js?rmv=2.5.2')).skeletonizeRabbitMirrorHtml;
+                reclean = (await import('./outputSanitizer/writingSkeleton.js?rmv=2.5.3')).skeletonizeRabbitMirrorHtml;
             }
             catch {
                 reclean = null;

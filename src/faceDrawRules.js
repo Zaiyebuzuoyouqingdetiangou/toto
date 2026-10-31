@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.2";
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.3";
 export const FACE_DRAW_KINDS = Object.freeze(['theme', 'format', 'text']);
 export const FACE_DRAW_LABELS = Object.freeze({ theme: __rmT("_GerrIjDHM_"), format: __rmT("1Q3is5nrSDY"), text: __rmT("Ybcc.ep_") });
 const ids = value => [...new Set((Array.isArray(value) ? value : []).filter(id => typeof id === 'string' && id.length > 0))];
