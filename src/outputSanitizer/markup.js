@@ -1,9 +1,9 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.4";
-import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=2.3.4';
-import { getSettings } from '../settings.js?rmv=2.3.4';
-import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=2.3.4';
-import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=2.3.4';
-import { EXTERNAL_REFERENCE_NOTE_ATTR, INTERACTION_HOME_ATTR, RABBIT_MIRROR_CSS_SCOPE_ATTR, RAW_SELF_MUTATION_ACTIVE_ATTR, RAW_SELF_MUTATION_HTML_BASELINE_ATTR, REVERSIBLE_STYLE_BASELINE_ATTR, REVERSIBLE_TEXT_BASELINE_ATTR, clearMirrorTitleDisplayArtifacts, escapeRegExp, hashInteractionSignature, } from './runtime.js?rmv=2.3.4';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.5";
+import { postGenerationRecolorEnabled } from '../visualDesign.js?rmv=2.3.5';
+import { getSettings } from '../settings.js?rmv=2.3.5';
+import { compileRoleColorVariants, originalRoleColorHtml } from '../roleColorVariants.js?rmv=2.3.5';
+import { applyRabbitMirrorBannedWordsToDom } from '../bannedWords.js?rmv=2.3.5';
+import { EXTERNAL_REFERENCE_NOTE_ATTR, INTERACTION_HOME_ATTR, RABBIT_MIRROR_CSS_SCOPE_ATTR, RAW_SELF_MUTATION_ACTIVE_ATTR, RAW_SELF_MUTATION_HTML_BASELINE_ATTR, REVERSIBLE_STYLE_BASELINE_ATTR, REVERSIBLE_TEXT_BASELINE_ATTR, clearMirrorTitleDisplayArtifacts, escapeRegExp, hashInteractionSignature, } from './runtime.js?rmv=2.3.5';
 const TOTO_BLOCK_RE = /<toto\b[\s\S]*?<\/toto>/gi;
 export const TOTO_BLOCK_SINGLE_RE = /<toto\b[\s\S]*?<\/toto>/i;
 export const FENCED_BLOCK_RE = /```(?:html|HTML|xml|XML)?\s*\n?([\s\S]*?)\n?```/gi;

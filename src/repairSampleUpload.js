@@ -1,5 +1,5 @@
-import { getSettings } from './settings.js?rmv=2.3.4';
-export const SAMPLE_RELAY_URL = '';
+import { getSettings } from './settings.js?rmv=2.3.5';
+export const SAMPLE_RELAY_URL = 'https://samples.zaiyebuzuoyouqingdetiangou.com/';
 const SENT_KEY = 'rabbit_mirror_repair_samples_sent:v1';
 const STATUS_KEY = 'rabbit_mirror_repair_samples_upload_status:v1';
 const MAX_SENT = 300;
@@ -91,7 +91,7 @@ export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImp
     if (!force && getSettings()?.repairSampleUpload !== true)
         return Promise.resolve({ sent: 0, pending: 0, skipped: 'off' });
     running = (async () => {
-        const list = listSamples ? await listSamples() : (await import('./outputSanitizer/repairSamples.js?rmv=2.3.4')).listRepairSamples();
+        const list = listSamples ? await listSamples() : (await import('./outputSanitizer/repairSamples.js?rmv=2.3.5')).listRepairSamples();
         const sent = sentSampleIds();
         const pending = list.filter(entry => entry?.id && !sent.has(entry.id));
         let count = 0;
