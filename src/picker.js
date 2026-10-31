@@ -1,18 +1,18 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.2";
-import { usesModelOriginalColors } from './visualDesign.js?rmv=2.3.2';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.3.2';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.3.2';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.3.2';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.2';
-import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.3.2';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.3.2';
-import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.3.2';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.3.2';
-import { isDocumentFormat } from './documentFormats.js?rmv=2.3.2';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.3.2';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.3.2';
-import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.3.2';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.3";
+import { usesModelOriginalColors } from './visualDesign.js?rmv=2.3.3';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.3.3';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.3.3';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.3.3';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.3';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.3';
+import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.3.3';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.3.3';
+import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.3.3';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.3.3';
+import { isDocumentFormat } from './documentFormats.js?rmv=2.3.3';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.3.3';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.3.3';
+import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.3.3';
 function randomUnit() {
     try {
         const cryptoApi = globalThis.crypto;

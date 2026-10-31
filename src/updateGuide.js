@@ -1,11 +1,10 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.2";
-import { getSettings, updateSettings } from './settings.js?rmv=2.3.2';
-import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.3.2';
-import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.2';
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.3";
+import { getSettings, updateSettings } from './settings.js?rmv=2.3.3';
+import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.3.3';
+import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.3';
 export const UPDATE_GUIDE_TIPS = Object.freeze([
     { id: 'self-invent', since: '2.3.0', title: __rmT("OZRqydFrGFtotFLDVmNKErqZmG5g3T"), text: __rmT("2oltqlCmf4OegxitoigaDFGiXdx2HOlbRCZ8V70keiG51bneP28wv8lki7InJQrJ6FnUwP9awS4ZVYWmlnfamN0GGywmvMNBDBo0qCw9"), page: 'draw', target: 'rh_self_invent' },
     { id: 'face-health', since: '2.3.0', title: __rmT("guUPAJ8b3f1Vgzub"), text: __rmT("YjvHt9WAfXBcLNRkNMWTUOtkLwQ3oDh_WDRKzxfQ1wPA.jZUlKzRA2bJtwFiWABr3YeUgjZkIO.hw66w4pQehGJ.WAT"), page: 'health', target: 'rh_face_health_block' },
-    { id: 'rollback', since: '2.2.0', title: __rmT("UFqopI6P96A"), text: __rmT("3_DUHZtui9hlx7Lk7NNArWIrDxW7YUfIoAuuLe4DZNNYNH3YHYI9N2x1PW4gK5HHuknza3MruCwnxbE8Uz97iFCpiwBcxf"), action: 'rollback' },
     { id: 'desktop-width', since: '2.1.4', title: __rmT("9NIyLdwEhZVaLn9MCsOgMxu."), text: __rmT("WevGsCtuVHOZICadd4MpJFhU27H57mdzGqxThQP14Yae0pcORARnfGt.zBG"), page: 'display', target: 'rh_desktop_face_zoom_width' },
 ]);
 export function pendingUpdateTips(seen, current, tips = UPDATE_GUIDE_TIPS) {
@@ -58,7 +57,7 @@ function watchForReturn() {
             clearInterval(returnWatch);
             return;
         }
-        if (settingsOpen() || document.querySelector('[data-rm-update-sheet]'))
+        if (settingsOpen())
             return;
         clearInterval(returnWatch);
         showUpdateGuideCard(session.remaining, session.version, { all: !!session.all });
@@ -68,12 +67,6 @@ export async function goToUpdateTip(tip) {
     closeUpdateGuide();
     if (session)
         session.remaining = session.remaining.filter(item => item.id !== tip.id);
-    if (tip.action === 'rollback') {
-        const menu = await import('./mirrorUpdateMenu.js?rmv=2.3.2');
-        await menu.openRabbitMirrorRollback();
-        watchForReturn();
-        return true;
-    }
     const root = settingsRoot();
     const workbench = root?.__rabbitMirrorWorkbench;
     if (!workbench) {

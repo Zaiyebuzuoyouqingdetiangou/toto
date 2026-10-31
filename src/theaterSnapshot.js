@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.2";
-import { RUNTIME_VERSION } from './ui/runtime.js?rmv=2.3.2';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.3";
+import { RUNTIME_VERSION } from './ui/runtime.js?rmv=2.3.3';
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 const GENERATING_PLACEHOLDER = __rmR("fHMzM4BtaqM2L2tfR0kFG94cofYHtJklITg.EzPL0qURCpVB53Y", "");
 const FAILURE_MARK = __rmR("MgDOkYgsodAHzAgueF5sr.DsJQQYfl8mjLY8npEe1APZEhpt2A1rR9tgRH7tTDkSptjSAxWHyE.i8FXWHRJESicrrrw.TjToUfIMJsRDPqbyooc8I7ehCA4z0T2AvtTigAN7wVqNxoVF7xAM6VJq6Bjgm5vdzNkPdPY12.flzgkjBdtqr8l8dDURM.ICSqbDT0j240Yr6qOSbqG4itNrbROh5YSvtjbMt1KS8ujAvxtNOIGiZ55VMbUiJX9bvAXIwcPXUkiJkPO6YTUwBi3wlV2sL38q0k", "");
@@ -550,13 +550,13 @@ function updateThumbScale(grid) {
 export async function openTheaterSnapshot() {
     const generation = ++openGeneration;
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime, connection, mount] = await Promise.all([
-        import('./appearanceTheme.js?rmv=2.3.2'),
-        import('./independentApi.js?rmv=2.3.2'),
-        import('./theaterFavorites.js?rmv=2.3.2'),
-        import('./independentApi/persistence.js?rmv=2.3.2'),
-        import('./independentApi/runtime.js?rmv=2.3.2'),
-        import('./independentApi/connection.js?rmv=2.3.2'),
-        import('./independentApi/mount.js?rmv=2.3.2'),
+        import('./appearanceTheme.js?rmv=2.3.3'),
+        import('./independentApi.js?rmv=2.3.3'),
+        import('./theaterFavorites.js?rmv=2.3.3'),
+        import('./independentApi/persistence.js?rmv=2.3.3'),
+        import('./independentApi/runtime.js?rmv=2.3.3'),
+        import('./independentApi/connection.js?rmv=2.3.3'),
+        import('./independentApi/mount.js?rmv=2.3.3'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -591,31 +591,31 @@ export async function openTheaterSnapshot() {
     let applyTextures = () => 0;
     let applySprites = () => 0;
     try {
-        const textures = await import('./materialTexture.js?rmv=2.3.2');
+        const textures = await import('./materialTexture.js?rmv=2.3.3');
         applyTextures = root => textures.applyMaterialTextures(root, undefined, { record: false });
     }
     catch { }
     try {
-        const sprites = await import('./pixelSprites.js?rmv=2.3.2');
+        const sprites = await import('./pixelSprites.js?rmv=2.3.3');
         applySprites = root => sprites.applyPixelSprites(root);
     }
     catch { }
     try {
-        const connection = await import('./independentApi/connection.js?rmv=2.3.2');
+        const connection = await import('./independentApi/connection.js?rmv=2.3.3');
         imageChatKey = String(connection.chatKey(ctx) || '');
     }
     catch {
         imageChatKey = '';
     }
     try {
-        const images = await import('./builtinImage.js?rmv=2.3.2');
+        const images = await import('./builtinImage.js?rmv=2.3.3');
         if (typeof images.restoreSavedBuiltinImages === 'function')
             restoreBuiltinImages = images.restoreSavedBuiltinImages;
     }
     catch { }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=2.3.2');
+        const flights = await import('./independentApi/flights.js?rmv=2.3.3');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -644,8 +644,8 @@ export async function openTheaterSnapshot() {
     let items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
     try {
         const [swipes, faceSwipe] = await Promise.all([
-            import('./swipeVersions.js?rmv=2.3.2'),
-            import('./independentApi/faceSwipe.js?rmv=2.3.2'),
+            import('./swipeVersions.js?rmv=2.3.3'),
+            import('./independentApi/faceSwipe.js?rmv=2.3.3'),
         ]);
         let archive = new Map();
         if (imageChatKey && typeof swipes.loadFaceSwipeArchiveRows === 'function') {
@@ -674,7 +674,7 @@ export async function openTheaterSnapshot() {
     catch { }
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=2.3.2');
+        const markup = await import('./outputSanitizer/markup.js?rmv=2.3.3');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function')
             expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     }

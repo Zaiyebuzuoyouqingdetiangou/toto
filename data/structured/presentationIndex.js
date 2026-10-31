@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.3.2";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.3.3";
 export const PRESENTATION_FORMATS = [
     {
         "id": "10.2",
