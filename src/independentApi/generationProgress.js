@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.1";
-import { spritePaths } from '../pixelSprites.js?rmv=2.6.1';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.6.1';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.6.1';
-import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX } from './mirrorScene.js?rmv=2.6.1';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.2";
+import { spritePaths } from '../pixelSprites.js?rmv=2.6.2';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.6.2';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.6.2';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX } from './mirrorScene.js?rmv=2.6.2';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -313,34 +313,58 @@ function funcRgb(name, args) {
 }
 const toHex = rgb => `#${rgb.map(value => value.toString(16).padStart(2, '0')).join('')}`;
 function hsl([r, g, b]) {
-    const max = Math.max(r, g, b) / 255, min = Math.min(r, g, b) / 255;
+    const R = r / 255, G = g / 255, B = b / 255;
+    const max = Math.max(R, G, B), min = Math.min(R, G, B);
     const l = (max + min) / 2;
-    const s = max === min ? 0 : (l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min));
-    return { s, l };
+    const d = max - min;
+    const s = d === 0 ? 0 : (l > 0.5 ? d / (2 - max - min) : d / (max + min));
+    let h = 0;
+    if (d)
+        h = max === R ? 60 * (((G - B) / d) % 6) : max === G ? 60 * ((B - R) / d + 2) : 60 * ((R - G) / d + 4);
+    return { h: (h + 360) % 360, s, l };
+}
+function rgbFromHsl(h, s, l) {
+    const a = s * Math.min(l, 1 - l);
+    const f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    return [f(0), f(8), f(4)].map(value => Math.max(0, Math.min(255, Math.round(value * 255))));
 }
 export function paletteFromSource(source) {
-    const colors = [];
+    const weighted = [];
     const re = /#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z_-])|\b(rgba?|hsla?)\(\s*([^()]{3,80})\)/gi;
     let match;
     let scanned = 0;
     while ((match = re.exec(String(source || ''))) && scanned < 400) {
         scanned += 1;
         const rgb = match[1] ? hexRgb(match[1]) : funcRgb(match[2], match[3]);
-        if (!rgb || colors.some(other => Math.hypot(other[0] - rgb[0], other[1] - rgb[1], other[2] - rgb[2]) < 26))
+        if (!rgb)
             continue;
-        colors.push(rgb);
+        const near = weighted.find(item => Math.hypot(item.rgb[0] - rgb[0], item.rgb[1] - rgb[1], item.rgb[2] - rgb[2]) < 26);
+        if (near)
+            near.weight += 1;
+        else
+            weighted.push({ rgb, weight: 1 });
     }
+    const colors = weighted.map(item => item.rgb);
     let thread = null;
-    let best = -1;
-    for (const rgb of colors) {
-        const { s, l } = hsl(rgb);
-        if (l < 0.18 || l > 0.82 || s < 0.22)
+    const bins = new Map();
+    for (const item of weighted) {
+        const { h, s, l } = hsl(item.rgb);
+        if (s < 0.15 || l < 0.08 || l > 0.92)
             continue;
-        const score = s * (1 - Math.abs(l - 0.45) * 2);
-        if (score > best) {
-            best = score;
-            thread = rgb;
-        }
+        const bin = Math.round(h / 30) % 12;
+        const entry = bins.get(bin) || { weight: 0, best: null };
+        entry.weight += item.weight;
+        if (!entry.best || item.weight + s > entry.best.weight + entry.best.s)
+            entry.best = { ...item, h, s, l };
+        bins.set(bin, entry);
+    }
+    let top = null;
+    for (const entry of bins.values())
+        if (!top || entry.weight > top.weight || (entry.weight === top.weight && entry.best.s > top.best.s))
+            top = entry;
+    if (top) {
+        const { h, s, l } = top.best;
+        thread = rgbFromHsl(h, Math.min(0.85, Math.max(0.35, s)), Math.min(0.62, Math.max(0.42, l)));
     }
     if (!thread) {
         let distance = Infinity;

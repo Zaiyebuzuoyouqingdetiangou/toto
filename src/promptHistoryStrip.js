@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.6.1";
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.2";
 import { eventSource, event_types } from '../../../../../script.js';
 const BLOCK_RE = /<toto\b[^>]*>[\s\S]*?<\/toto>\s*/gi;
 const PROTECTED = [[__rmT("GRYgS01FSojlhsFKmKDQ8v_x"), __rmT("GHJQau.QlFtD1_4Ofk3u92Wwfus")], [__rmT("GRYgS01FSojq0bLh6oXIx7SC"), __rmT("pJOFYgVkrYU5K63Ww5bbof5xWY2MJk")]];
