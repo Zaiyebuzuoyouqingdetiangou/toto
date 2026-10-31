@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.9";
-import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=2.3.9';
+import { rmT as __rmT } from "./textTable.js?rmv=2.4.0";
+import { sanitizeExternalTransportSummary as sanitizeTransportSummary, getRecentIndependentTransportDiagnostics, clearRecentIndependentTransportDiagnostics } from './transportDiagnostics.js?rmv=2.4.0';
 const DIAG_VERSION = '1.5.53-ttperfdiag1';
 const MAX_ENTRIES = 1800;
 const STALL_INTERVAL_MS = 1000;

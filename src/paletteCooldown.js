@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.9";
-import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=2.3.9';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.4.0";
+import { getRecentPaletteCooldown, getActivePaletteCooldown } from './storage.js?rmv=2.4.0';
 const SAFE_PALETTE_LABEL_RE = __rmR("KOLHjhl0D2owKymhvfvRF.8VQ_HR2VY3jwnqAK78H8LY5hRh8rFuRlOZcIHlZ6evADRkkQd5G30g0x7PaAdO6FJG.wnJ3YcoO8Oqf3cU5vva5Q_fGmKz82PEvkwiW.dqL2zS3jQd4geCMRC8s7RmRJE9VgYnHRTgxmmIClPAy2ozL8DcWaz7mlW7", "");
 function nearNeutralMain(fingerprint) {
     const hex = Array.isArray(fingerprint?.mainColors) ? fingerprint.mainColors[0] : '';

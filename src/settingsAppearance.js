@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.9";
-import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=2.3.9';
-import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.3.9';
-import { mountUserSkinControls } from './userSkin.js?rmv=2.3.9';
-export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.3.9';
+import { rmT as __rmT } from "./textTable.js?rmv=2.4.0";
+import { closeTheaterFavoriteLibrary, closeTheaterFavoriteViewer } from './theaterFavorites.js?rmv=2.4.0';
+import { UI_THEMES, APPEARANCE_STORAGE_KEY, paletteKeys, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.4.0';
+import { mountUserSkinControls } from './userSkin.js?rmv=2.4.0';
+export { UI_THEMES, APPEARANCE_STORAGE_KEY, normalizeAppearance, applyAppearanceTheme } from './appearanceTheme.js?rmv=2.4.0';
 const colorLabels = [__rmT("hVdPjf"), __rmT("JQSusEt1Keh"), __rmT("g6Q4jh"), __rmT("5p7qA.1sADp"), __rmT("3Foaif"), __rmT("oTx2hhmF"), __rmT("KeNzYT")];
 const mounts = new WeakMap();
 globalThis.__rabbitMirrorApplyAppearanceTheme = applyAppearanceTheme;
@@ -57,7 +57,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
     const subtitle = head.querySelector('small');
     subtitle.replaceWith(versionRow);
     versionRow.append(subtitle);
-    void import('./mirrorUpdateMenu.js?rmv=2.3.9').then(mod => {
+    void import('./mirrorUpdateMenu.js?rmv=2.4.0').then(mod => {
         if (versionRow.isConnected)
             mod.mountSettingsUpdateChrome(versionRow);
     }).catch(error => console.warn(__rmT("UnX0nRLVcQzumShYaRVSwKc82KFBM7GDygWrKZLNEXY6ii06tl6OBPDATF6KabUlMIrQGzxWLNE"), error));
@@ -113,7 +113,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
         health: ['tools', __rmT("guUPAJ8b3f1Vgzub"), __rmT("YjvHt9WAfXBcLNRkNMWTUOtkLwQ3oDh_WDRKzxfQ1wPA.jZUlKzRA2bJtwFiWABr3YeUgjZkIO.hw66w4pQehGJ.WAT")],
         usage: ['tools', __rmT("UMQYPgh.KIi2BVuKCbzEmVVm"), __rmT("r1caqYQbBbB0sfzNa9KS5_V8P3FgaADGqzAALyVKwwpN82RQtPGnoQMLjKtybvaNoAGaJ_nQus1xDUaFqAk")],
         regex: ['tools', __rmT("Y5h2kfQAVB3RKN.FDo1Ao508w2UtbT"), __rmT("p2QXa.bilbj2mhkYmRVdwF78k9EMS8R.7CN5hRTe2kCaPw2IBKdIo9pqK8cH8yQMVohVUH3bY3Y")],
-        diagnosis: ['tools', __rmT("jgaMwR6F608GngShE.azQ8rH"), __rmT("y8FoW9uHrJfyCkjTcU7siFhRDjNtTIs2")],
+        diagnosis: ['tools', __rmT("jgaMwR6F608GngShE.azQ8rH"), __rmT("PavycV8pYmb5kYH0h6bVMF8a56q_HMR9JRhbhTxU4V6UnPPlBn2f7Y3SUHTaxWS9FIhUHL7fY3Y")],
         cleanup: ['tools', __rmT("EO.ts7UJjNRcdT"), __rmT("PWiZDYqy7gamtaKDJRQEgM3T4O_Cnkzvv.Jo8spzS2tGO23CqpH_nShxzBG")],
         help: ['tools', __rmT("nHZDWpqQIHdUIoZDc9iNlh"), __rmT("sAyiphJMgmizeNnGBAwpKbIUXzLXjui6rW.l3VUbCbim5W3Z_5U3p0XNgmC9uT")],
     };
@@ -286,6 +286,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
     move('rh_face_health_block', 'health');
     move('rh_update_guide_block', 'help');
     note('mirror', __rmT("9h71AXJF2C6_g7f_LvCRQ2LPBkkSCySPiuH_cyy6zfHUPvG6RM54i2wR16zAD3oKk1mRUUt6HiGvglLyDJ7gKJNhlQtcDbgQhR3qFj3gMmLtu8DsFYcnbT8sL2X4xLVv5Mft7TTduoC5LAayiyhnFkSZq8LVcAhVP_95YmqZp2TrMjCqlN3srT"));
+    move('rh_lag_check_block', 'diagnosis');
     move('rh_generation_evidence', 'diagnosis');
     move('rh_manual_entry_diag', 'diagnosis');
     move('rh_token_meter', 'usage');
@@ -484,7 +485,7 @@ export function mountSettingsAppearance(root, { onNavigate = () => { } } = {}) {
             applyTheme();
             paint();
             close.focus({ preventScroll: true });
-            void import('./mirrorUpdateMenu.js?rmv=2.3.9').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUb5oykH.tFb26g8apR3SqFnm2mRwdDT"), error));
+            void import('./mirrorUpdateMenu.js?rmv=2.4.0').then(mod => mod.refreshRabbitMirrorUpdateOnOpen()).catch(error => console.warn(__rmT("kgRTYhcxXS2m4ONWwxNuOg_eeQb7JQvzO3QRKgCUb5oykH.tFb26g8apR3SqFnm2mRwdDT"), error));
         }
         else {
             closeTheaterFavoriteViewer();

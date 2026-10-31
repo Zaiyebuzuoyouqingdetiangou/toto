@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.9";
-import { presentationModeFields } from './presentationMode.js?rmv=2.3.9';
-import { commitPendingComboBatch, getCurrentChatKey, releasePendingComboBatch, } from './storage.js?rmv=2.3.9';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=2.3.9';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=2.3.9';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.3.9';
+import { rmT as __rmT } from "./textTable.js?rmv=2.4.0";
+import { presentationModeFields } from './presentationMode.js?rmv=2.4.0';
+import { commitPendingComboBatch, getCurrentChatKey, releasePendingComboBatch, } from './storage.js?rmv=2.4.0';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=2.4.0';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=2.4.0';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.4.0';
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
 const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
@@ -608,7 +608,7 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
     const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed)
         return false;
-    void import('./milestones.js?rmv=2.3.9').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => { });
+    void import('./milestones.js?rmv=2.4.0').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => { });
     recordRabbitMirrorRecipe({
         chat,
         chatKey: record.chatKey,

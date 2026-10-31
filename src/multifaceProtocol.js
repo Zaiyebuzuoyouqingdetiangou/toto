@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.9";
+import { rmT as __rmT } from "./textTable.js?rmv=2.4.0";
 export const MULTIFACE_PROTOCOL_LIMITS = Object.freeze({
     chars: 768 * 1024,
     bytes: 512 * 1024,

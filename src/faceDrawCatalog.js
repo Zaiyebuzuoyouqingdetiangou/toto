@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.9";
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.9';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.9';
-import { filterRandomThemePool, filterRandomFormatPool } from './blacklist.js?rmv=2.3.9';
-import { listExternalLibraries, listExternalLibraryEntryChoices, listExternalLibraryTitleIndex } from './externalWorldBook/store.js?rmv=2.3.9';
+import { rmT as __rmT } from "./textTable.js?rmv=2.4.0";
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.4.0';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.4.0';
+import { filterRandomThemePool, filterRandomFormatPool } from './blacklist.js?rmv=2.4.0';
+import { listExternalLibraries, listExternalLibraryEntryChoices, listExternalLibraryTitleIndex } from './externalWorldBook/store.js?rmv=2.4.0';
 const GROUPS = {
     theme: { A: __rmT("xbolF7UJDJghdf"), B: __rmT("j8HuPArSXWkrk9RtzRm6cVO_"), C: __rmT("nhtMOoteqLCA0G.oRiT"), D: __rmT("3J1pHM8PL3NS_Q4uD2KbKh"), E: __rmT("lrxLLYvSe.N._4eYRGRBmk"), F: __rmT("r0yJhiteqLCA0WIb1sC"), G: __rmT("jmBNaIRAlahtBCWG4gOEJJorwRR6eh"), H: __rmT("vTq4NoteqLCA0C72I08"), I: __rmT("klKk19UCSFEtBCWG4gOa3M5YLMhCYh") },
     format: { 1: __rmT("yNMQaAWEwg_"), 2: __rmT("4T.U8OUJGuh7Ek"), 3: __rmT("H4.nvxUJLuOjHf"), 4: __rmT("QZsNvOUJxuDTEk"), 5: __rmT("5b3d8OUJeA.EPf"), 6: __rmT("0x.rFxUJPBqfCk"), 7: __rmT("5N94Ho21EvEGnrH6PbIq8peX"), 8: __rmT("CG1OYg0xj08GnpHY5yhyQBIH"), 10: __rmT("0ADjz_0zzAk") },
