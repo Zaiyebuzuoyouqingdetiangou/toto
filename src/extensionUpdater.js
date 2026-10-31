@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.9";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.4";
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     const match = new URL(moduleUrl).pathname.match(/\/third-party\/([^/]+)\/src\/extensionUpdater\.js$/);
@@ -16,7 +16,7 @@ function failure(status) {
         return __rmT("DhohoAlSXfrDAhqMa_4868cgaWVXm5ZmbG6_fb043qu4yeqp_kreJxl4X38z1W7qaxMtBXzF1dNgN3bDuu.etXnBW0zN9EDKANA");
     return __rmT("PLQBMC8F20mhWelqupYNbNgRty0pab3rRZ6csVSAITJe1LjAC6bdvl1HZSCVa_bDNPVTokj93GA4eTlAggwTwNhINjDTu0WqP87k5IZ2ccdo.k");
 }
-async function fetchWithTimeout(fetchImpl, url, init, ms, label) {
+export async function fetchWithTimeout(fetchImpl, url, init, ms, label) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     let timer = 0;
     const timeout = new Promise((_, reject) => {
@@ -35,7 +35,7 @@ async function fetchWithTimeout(fetchImpl, url, init, ms, label) {
         clearTimeout(timer);
     }
 }
-async function hostRequestHeaders() {
+export async function hostRequestHeaders() {
     try {
         const context = globalThis.SillyTavern?.getContext?.();
         if (typeof context?.getRequestHeaders === 'function')
@@ -139,13 +139,14 @@ export function requestRabbitMirrorUpdate({ fetchImpl = globalThis.fetch.bind(gl
 const HOMEPAGE = 'https://github.com/Zaiyebuzuoyouqingdetiangou/toto';
 const FALLBACK_BRANCH = 'main';
 const UPDATE_CHECK_THROTTLE_MS = 30000;
+const UNKNOWN_RECHECK_MS = 10000;
 const LOADED_VERSION_KEY = '__rabbitMirrorLoadedVersion';
 const RELOAD_GUARD_KEY = 'rabbitMirrorReloadedVersion';
 let updateCheckSequence = 0;
 let lastUpdateCheckAt = 0;
 let checkingPromise = null;
 let reloadWatchInstalled = false;
-let updateState = { status: 'idle', remoteVersion: '', remoteUrl: HOMEPAGE, remoteBranch: 'main', remoteBranchKnown: false, message: '' };
+let updateState = { status: 'idle', remoteVersion: '', remoteUrl: HOMEPAGE, remoteBranch: 'main', remoteBranchKnown: false, remoteBranchSource: 'fallback', message: '' };
 const updateListeners = new Set();
 function validVersion(value) {
     return typeof value === 'string' && /^[0-9][\w.+-]{0,79}$/.test(value) ? value : '';
@@ -229,12 +230,54 @@ async function fetchManifestVersionFromUrl(url, fetchImpl) {
         return '';
     }
 }
-async function tryReadInstallInfo(moduleUrl) {
-    const fn = typeof globalThis.getExtensionInstallationInfo === 'function'
-        ? globalThis.getExtensionInstallationInfo
-        : globalThis.TavernHelper?.getExtensionStatus;
-    if (typeof fn !== 'function')
+const HOST_INFO_RETRY_MS = 10 * 60 * 1000;
+let hostInstallInfo = null;
+let hostInstallFailedAt = 0;
+function readInstallInfoFromHost(moduleUrl) {
+    if (hostInstallInfo)
+        return hostInstallInfo;
+    if (hostInstallFailedAt && Date.now() - hostInstallFailedAt < HOST_INFO_RETRY_MS)
+        return Promise.resolve(null);
+    hostInstallInfo = (async () => {
+        try {
+            const result = await inspectRabbitMirrorVersion({ moduleUrl });
+            if (!result?.branch) {
+                hostInstallInfo = null;
+                hostInstallFailedAt = Date.now();
+                return null;
+            }
+            return { current_branch_name: result.branch };
+        }
+        catch {
+            hostInstallInfo = null;
+            hostInstallFailedAt = Date.now();
+            return null;
+        }
+    })();
+    return hostInstallInfo;
+}
+const INSTALL_BRANCH_KEY = 'rabbit_mirror_install_branch:v1';
+function rememberInstallBranch(folder, info) {
+    const branch = currentBranchName(info);
+    if (!branch || info?.__cachedBranch)
+        return;
+    try {
+        globalThis.localStorage?.setItem(INSTALL_BRANCH_KEY, JSON.stringify({ folder, branch, remoteUrl: String(info?.remote_url || info?.remoteUrl || ''), at: Date.now() }));
+    }
+    catch { }
+}
+function cachedInstallBranch(folder) {
+    try {
+        const value = JSON.parse(globalThis.localStorage?.getItem(INSTALL_BRANCH_KEY) || 'null');
+        if (!value || value.folder !== folder || typeof value.branch !== 'string' || !/^[\w./-]{1,80}$/.test(value.branch))
+            return null;
+        return { current_branch_name: value.branch, ...(value.remoteUrl ? { remote_url: value.remoteUrl } : {}), __cachedBranch: true };
+    }
+    catch {
         return null;
+    }
+}
+async function tryReadInstallInfo(moduleUrl) {
     let folder = '';
     try {
         folder = ownExtensionFolder(moduleUrl);
@@ -242,15 +285,34 @@ async function tryReadInstallInfo(moduleUrl) {
     catch {
         return null;
     }
-    try {
-        return await Promise.race([
-            fn(folder),
-            new Promise(resolve => { setTimeout(() => resolve(null), 5000); }),
-        ]);
+    const fn = typeof globalThis.getExtensionInstallationInfo === 'function'
+        ? globalThis.getExtensionInstallationInfo
+        : globalThis.TavernHelper?.getExtensionStatus;
+    let info = null;
+    if (typeof fn === 'function') {
+        try {
+            info = await Promise.race([
+                fn(folder),
+                new Promise(resolve => { setTimeout(() => resolve(null), 12000); }),
+            ]);
+        }
+        catch {
+            info = null;
+        }
     }
-    catch {
-        return null;
+    if (!currentBranchName(info) && typeof globalThis.SillyTavern?.getContext === 'function') {
+        try {
+            info = await readInstallInfoFromHost(moduleUrl);
+        }
+        catch {
+            info = null;
+        }
     }
+    if (currentBranchName(info)) {
+        rememberInstallBranch(folder, info);
+        return info;
+    }
+    return cachedInstallBranch(folder);
 }
 function currentBranchName(info) {
     return String(info?.current_branch_name || info?.currentBranchName || '').trim();
@@ -269,31 +331,51 @@ async function fetchRemoteManifestVersion(info, fetchImpl) {
     }
     return '';
 }
+function branchSourceOf(info) {
+    if (!currentBranchName(info))
+        return 'fallback';
+    if (info?.__inferredBranch === true)
+        return 'inferred';
+    return info?.__cachedBranch === true ? 'cache' : 'host';
+}
 function rememberRemote(info, remoteVersion) {
     return {
         remoteVersion: remoteVersion || '',
         remoteUrl: info?.remote_url || info?.remoteUrl || HOMEPAGE,
         remoteBranch: currentBranchName(info) || FALLBACK_BRANCH,
-        remoteBranchKnown: !!currentBranchName(info),
+        remoteBranchKnown: !!currentBranchName(info) && info?.__cachedBranch !== true,
+        remoteBranchSource: branchSourceOf(info),
     };
 }
 export async function checkRabbitMirrorUpdate({ force = false, fetchImpl = globalThis.fetch.bind(globalThis), moduleUrl = import.meta.url } = {}) {
     if (updateState.status === 'checking' && checkingPromise)
         return checkingPromise;
     const now = Date.now();
-    if (!force && updateState.status !== 'unknown' && now - lastUpdateCheckAt < UPDATE_CHECK_THROTTLE_MS)
+    const throttle = updateState.status === 'unknown' ? UNKNOWN_RECHECK_MS : UPDATE_CHECK_THROTTLE_MS;
+    if (!force && updateState.status !== 'idle' && now - lastUpdateCheckAt < throttle)
         return snapshot();
     const sequence = ++updateCheckSequence;
     lastUpdateCheckAt = now;
     publish({ status: 'checking', message: '' });
     checkingPromise = (async () => {
         try {
-            const info = await tryReadInstallInfo(moduleUrl);
-            const remoteVersion = await fetchRemoteManifestVersion(info, fetchImpl);
+            let info = await tryReadInstallInfo(moduleUrl);
+            let remoteVersion = await fetchRemoteManifestVersion(info, fetchImpl);
+            const guessable = !currentBranchName(info) || (info?.__cachedBranch === true && currentBranchName(info) === 'main');
+            if (guessable && remoteVersion && isNewerRabbitMirrorVersion(runningRabbitMirrorVersion(), remoteVersion)) {
+                const testInfo = { ...(info || {}), current_branch_name: 'test', __cachedBranch: true, __inferredBranch: true };
+                const testVersion = await fetchRemoteManifestVersion(testInfo, fetchImpl);
+                if (testVersion) {
+                    info = testInfo;
+                    remoteVersion = testVersion;
+                }
+            }
             if (sequence !== updateCheckSequence)
                 return snapshot();
             if (!remoteVersion) {
-                publish({ status: 'unknown', message: __rmT("uHMYbyll9C7rH9lu_YdUkV58CdqJZx9.o1np2sKrVKqqQykrQFD5f3xaY6lNkZkC"), ...rememberRemote(info, '') });
+                const pinned = /^v\d{1,3}\.\d{1,4}\.\d{1,4}$/.test(currentBranchName(info));
+                publish({ status: 'unknown', message: pinned
+                        ? `${__rmT("_N6MJlG8jXZMIlBq")}${currentBranchName(info)}${__rmT("l0dlKAbbgk_oiP0AzSnc_BT4hRkqxoc62oK_2QQdgsrCb6h8Rs1HiGZyvjGWMN1kZW3ynZLKdDvpGPADEGcsKqKwfJmkjR5qGgGBMbMOZ1Zo.k")}` : __rmT("uHMYbyll9C7rH9lu_YdUkV58CdqJZx9.o1np2sKrVKqqQykrQFD5f3xaY6lNkZkC"), ...rememberRemote(info, '') });
                 return snapshot();
             }
             const current = runningRabbitMirrorVersion();
@@ -539,6 +621,16 @@ function afterPullBlocked(branch, folder, detail = '') {
         throw new Error(__rmT("AMOs6JpjnuehBfQIiEyTkHbtP0wFsOpz_djXdcn1Cen_Hmumq8_"));
     return overwriteFromGithub(folder);
 }
+function alreadyCurrentResult() {
+    const branch = String(updateState.remoteBranch || '');
+    if (updateState.remoteBranchKnown === true && (branch === 'main' || branch === 'test')) {
+        return { ok: true, skipped: true, message: `${__rmT("auZRLQozXN7bX6TzgqFFnOGyO1RcsuU3")}${branch === 'test' ? __rmT(".o8WL5YQ") : __rmT("Wo0K05YQ")}${__rmT("_aS9JjS5zFOOwWr3NMR4Gp9TUFOJ6RdiE2HhR2wXpjF6lLEKO4JwRmEKqj21GLy.Ghl8h.J5WVO5tMbVEN7_aYgbrU.Ye_TuANA")}` };
+    }
+    if (updateState.remoteBranchSource === 'inferred') {
+        return { ok: true, skipped: true, message: __rmT("1x_2mC9_fB2TuYdYtUGPISF9OCmM5LDOR6QQC9au8PgykZLzMT1DDbWTuuN0_2Jn7Zrz2KcnKMBLyfU2UffMrNWJ7TlweE_EANe7ZIiKQmKwP8.bDY.ruHZRplWhuaL_Au0fhklj3oMd71IKWOKn1k") };
+    }
+    return { ok: true, skipped: true, pinnedSuspect: true, message: __rmT("cpA2U.3XfbEioNktLj3C1iky6iJPEarhVRa_acTfpYHQXa1cTele.10fGWW.yKYsKTwrfULHrERINW.LAIjAEhRnSY26PgqD7nRliGurou.u9pvqGlQtHx5q8ik") };
+}
 export async function applyRabbitMirrorUpdateAndReload(options = {}) {
     const check = await checkRabbitMirrorUpdate({ ...options, force: true });
     if (check.status !== 'available') {
@@ -557,8 +649,19 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
     if (updateFn) {
         try {
             const response = await updateFn(folder);
-            if (response?.ok === true)
+            if (response?.ok === true) {
+                let upToDate = false;
+                try {
+                    const data = await (typeof response.clone === 'function' ? response.clone() : response).json?.();
+                    upToDate = data?.isUpToDate === true;
+                }
+                catch {
+                    upToDate = false;
+                }
+                if (upToDate)
+                    return alreadyCurrentResult();
                 return finishUpdated();
+            }
             const status = typeof response?.status === 'number' ? response.status : 0;
             let detail = '';
             try {
@@ -578,10 +681,8 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
     }
     try {
         const result = await requestRabbitMirrorUpdate(options);
-        if (result.status === 'current') {
-            publish({ status: 'latest' });
-            return { ok: true, skipped: true, message: __rmT("VqJztZbwFCQ7kUxOpfgsXVf3Y7Tl3ofO4iXL.lmEB6P0.rcRzj6R3cBvzBG") };
-        }
+        if (result.status === 'current')
+            return alreadyCurrentResult();
         return finishUpdated();
     }
     catch (error) {

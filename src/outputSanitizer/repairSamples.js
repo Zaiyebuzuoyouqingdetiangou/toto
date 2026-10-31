@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.9";
-import { hashText } from '../independentApi/runtime.js?rmv=2.1.9';
-import { RUNTIME_VERSION } from './runtime.js?rmv=2.1.9';
-import { maskFaceText } from './writingSkeleton.js?rmv=2.1.9';
-import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=2.1.9';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
+import { hashText } from '../independentApi/runtime.js?rmv=2.5.4';
+import { RUNTIME_VERSION } from './runtime.js?rmv=2.5.4';
+import { maskFaceText } from './writingSkeleton.js?rmv=2.5.4';
+import { inspectBehaviorDialect } from './behaviorDialect.js?rmv=2.5.4';
 export const REPAIR_SAMPLES_KEY = 'rabbit_mirror_repair_samples:v1';
 export const REPAIR_SAMPLES_EVENT = 'rabbitmirror:repair-samples';
 const MAX_ENTRIES = 40;
@@ -43,6 +43,21 @@ function write(box) {
 }
 export function listRepairSamples() { return read().entries.slice().sort((a, b) => Number(b.at || 0) - Number(a.at || 0)); }
 export function countRepairSamples() { return read().entries.length; }
+export function removeRepairSamples(ids) {
+    const drop = new Set((Array.isArray(ids) ? ids : [...(ids || [])]).map(String));
+    if (!drop.size)
+        return 0;
+    const box = read();
+    const kept = box.entries.filter(entry => !drop.has(String(entry?.id || '')));
+    const removed = box.entries.length - kept.length;
+    if (!removed)
+        return 0;
+    if (!kept.length) {
+        clearRepairSamples();
+        return removed;
+    }
+    return write({ ...box, entries: kept }) ? removed : 0;
+}
 export function clearRepairSamples() { try {
     globalThis.localStorage?.removeItem(REPAIR_SAMPLES_KEY);
 }

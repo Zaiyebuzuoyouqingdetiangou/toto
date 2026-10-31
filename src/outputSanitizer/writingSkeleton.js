@@ -1,12 +1,14 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.9";
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
 const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description', 'aria-roledescription', 'placeholder', 'srcset', 'poster', 'srcdoc']);
-const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
+const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self(?:-think)?$|data-rm-face-recipe$|data-rm-owner-|data-rm-title-label$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
 const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
 export function maskFaceText(value) {
     const text = String(value ?? '').replace(/\s+/g, ' ').trim();
     if (!text)
         return '';
+    if (__rmR("yLAV7xnePdUT0CY6JPD", "").test(text))
+        return text;
     return `${__rmT("r8DnyT")}${text.length}`;
 }
 function placeholderFor(text) {
@@ -28,6 +30,8 @@ function scrubUrl(value) {
     const scheme = /^([a-z][a-z0-9+.-]*:)/i.exec(text);
     return scheme ? `${scheme[1]}…` : '…';
 }
+const CSS_NAME_START = /[-\w\u0080-\uffff\\]/;
+const CSS_NAME_CHAR = /[-\w\u0080-\uffff]/;
 function scrubCss(text, keys = new Map()) {
     const source = String(text || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/url\(\s*(['"]?)[^)]*\1\s*\)/gi, 'url()');
     let out = '';
@@ -47,6 +51,15 @@ function scrubCss(text, keys = new Map()) {
             index = end;
             continue;
         }
+        if (CSS_NAME_START.test(char) && char !== '\\') {
+            let end = index;
+            while (end < source.length && CSS_NAME_CHAR.test(source[end]))
+                end += 1;
+            const name = source.slice(index, end);
+            out += /[^\x00-\x7f]/.test(name) ? maskKeys(name, keys) : name;
+            index = end - 1;
+            continue;
+        }
         if (char === '{') {
             depth += 1;
             inValue = false;
@@ -63,12 +76,16 @@ function scrubCss(text, keys = new Map()) {
     }
     return out;
 }
-function scrubStyleAttribute(value) {
-    return scrubCss(`{${value}}`).slice(1, -1);
+function scrubStyleAttribute(value, keys) {
+    return scrubCss(`{${value}}`, keys).slice(1, -1);
 }
 const KEY_ATTRS = new Set(['data-rm-show', 'data-rm-pick', 'data-rm-picked', 'data-rm-on', 'data-rm-toggle', 'data-rm-page', 'data-rm-goto', 'data-rm-item', 'data-rm-slot', 'data-rm-end', 'data-rm-code', 'data-rm-answer', 'data-rm-seq', 'data-rm-part', 'data-rm-step', 'data-rm-when', 'data-rm-cover', 'data-rm-state', 'data-rm-target', 'data-rm-card', 'data-rm-peek', 'data-rm-spoiler', 'data-rm-memory', 'data-rm-recall', 'data-rm-left', 'data-rm-right', 'data-rm-swiped-left', 'data-rm-swiped-right', 'data-rm-peeking']);
 const PLAIN_KEY = /^!?[\w.-]{1,24}$/;
 const STRUCTURAL_ATTRS = new Set(['id', 'class', 'for', 'name', 'type', 'min', 'max', 'step', 'open', 'hidden', 'checked', 'disabled', 'role', 'tabindex', 'aria-pressed', 'aria-expanded', 'aria-hidden', 'aria-controls', 'aria-live', 'aria-checked', 'aria-selected', 'lang', 'dir', 'width', 'height', 'viewbox', 'preserveaspectratio', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'fill', 'stroke', 'stroke-width', 'opacity', 'transform', 'colspan', 'rowspan', 'loop', 'autoplay', 'muted', 'controls', 'popover', 'popovertarget', 'inert', 'draggable', 'contenteditable', 'inputmode', 'maxlength', 'readonly', 'required', 'multiple', 'selected', 'start', 'reversed', 'scope', 'headers', 'datetime', 'dirname']);
+function nextKeyCode(keys) {
+    keys.counter = (keys.counter || 0) + 1;
+    return `k${keys.counter}`;
+}
 function maskKeys(value, keys) {
     return String(value || '').split(__rmR(".HgKaulBplS8SzNbMLjExboXeHs", "")).map(token => {
         if (!token || __rmR("TQgKaulBplS8SzNbMLjExboXLFs", "").test(token))
@@ -81,11 +98,11 @@ function maskKeys(value, keys) {
         if (colon > 0 && PLAIN_KEY.test(key.slice(colon + 1))) {
             const head = key.slice(0, colon);
             if (!PLAIN_KEY.test(head) && !keys.has(head))
-                keys.set(head, `k${keys.size + 1}`);
+                keys.set(head, nextKeyCode(keys));
             return `${negated ? '!' : ''}${keys.get(head) || head}${key.slice(colon)}`;
         }
         if (!keys.has(key))
-            keys.set(key, `k${keys.size + 1}`);
+            keys.set(key, nextKeyCode(keys));
         return `${negated ? '!' : ''}${keys.get(key)}`;
     }).join('');
 }
@@ -106,10 +123,21 @@ function codedId(token, keys) {
         return token;
     return /[^\x20-\x7e]/.test(token) || quotedInFaceCss(keys, token) ? maskKeys(token, keys) : token;
 }
+function looksLikeEnglishSentence(value) {
+    const text = String(value || '').trim();
+    if (!/\s/.test(text) || /[#:;(){}=<>\/\\|]/.test(text))
+        return false;
+    const tokens = text.split(/\s+/);
+    if (tokens.length < 4)
+        return false;
+    return tokens.filter(token => /^[A-Za-z][A-Za-z'’-]*[,.!?]?$/.test(token)).length >= tokens.length * 0.75;
+}
 function scrubAttribute(element, name, value, keys) {
     const lower = name.toLowerCase();
+    if (__rmR(".Kgkf3WXQ2hVFvuP7.Kh4cgdafjwl0DghAnXlqwp7227PT7y", "").test(String(value || '')))
+        return value;
     if (lower === 'style')
-        return scrubStyleAttribute(value);
+        return scrubStyleAttribute(value, keys);
     if (lower === 'href' && /^#/.test(String(value || '').trim())) {
         const target = String(value).trim().slice(1);
         return `#${codedId(target, keys)}`;
@@ -126,7 +154,13 @@ function scrubAttribute(element, name, value, keys) {
         const tag = element.tagName.toLowerCase();
         const kind = String(element.getAttribute('type') || '').toLowerCase();
         const textual = tag === 'option' || tag === 'button' || (tag === 'input' && !['range', 'checkbox', 'radio', 'number', 'hidden'].includes(kind));
-        return textual && !PLAIN_KEY.test(value) ? maskFaceText(value) : value;
+        if (tag === 'input' && textual)
+            return value ? maskFaceText(value) : value;
+        if (textual)
+            return PLAIN_KEY.test(value) ? value : maskFaceText(value);
+        if (!value || PLAIN_KEY.test(value) || /^-?\d+(?:\.\d+)?$/.test(value))
+            return value;
+        return /\s/.test(value.trim()) ? maskFaceText(value) : maskKeys(value, keys);
     }
     if (/^data-rabbit-mirror-title-/.test(lower))
         return value && !/^(?:true|false|\d+)$/.test(value) ? maskFaceText(value) : value;
@@ -137,9 +171,15 @@ function scrubAttribute(element, name, value, keys) {
             return maskKeys(value, keys);
         if (value && ID_REF_ATTRS.has(lower))
             return value.split(/(\s+)/).map(token => (/^\s+$/.test(token) ? token : codedId(token, keys))).join('');
+        if (lower.startsWith('data-') && !STRUCTURAL_ATTRS.has(lower) && looksLikeEnglishSentence(value))
+            return maskFaceText(value);
         return value;
     }
-    return PLAIN_KEY.test(value) ? value : maskFaceText(value);
+    if (PLAIN_KEY.test(value))
+        return value;
+    if (value && !/\s/.test(value.trim()) && value.trim().length <= 24)
+        return maskKeys(value.trim(), keys);
+    return maskFaceText(value);
 }
 function walk(node, keys) {
     for (const child of [...(node.content ? node.content.childNodes : node.childNodes)]) {
@@ -179,6 +219,10 @@ function walk(node, keys) {
                 element.removeAttribute(attribute.name);
                 continue;
             }
+            if (!attribute.value && !knownAttributeName(attribute.name)) {
+                element.removeAttribute(attribute.name);
+                continue;
+            }
             const next = scrubAttribute(element, attribute.name, attribute.value, keys);
             if (next === '' && /^on[a-z]+$/i.test(attribute.name))
                 element.removeAttribute(attribute.name);
@@ -191,28 +235,49 @@ function walk(node, keys) {
             walk(element, keys);
     }
 }
+const BOOLEAN_ATTRS = new Set(['open', 'hidden', 'checked', 'disabled', 'selected', 'readonly', 'required', 'multiple', 'autoplay', 'loop', 'muted',
+    'controls', 'playsinline', 'inert', 'reversed', 'novalidate', 'formnovalidate', 'async', 'defer', 'default', 'itemscope', 'allowfullscreen',
+    'autofocus', 'nomodule', 'ismap', 'download', 'popover', 'contenteditable', 'draggable', 'spellcheck', 'translate', 'class', 'id', 'style',
+    'value', 'name', 'for', 'type', 'title', 'alt', 'href', 'src', 'role', 'tabindex', 'lang', 'dir', 'slot', 'part']);
+function knownAttributeName(name) {
+    const lower = String(name || '').toLowerCase();
+    return BOOLEAN_ATTRS.has(lower) || STRUCTURAL_ATTRS.has(lower) || CONTENT_ATTRS.has(lower) || URL_ATTRS.has(lower) || KEY_ATTRS.has(lower)
+        || /^(?:data-|aria-|on[a-z]|xmlns|xlink:)/.test(lower);
+}
+const PLUGIN_STYLE_NOTE = __rmT("lJtBnMEBYlK1NtisfxL_eKzxctf1B8bBWed7Df");
+function scrubLeftoverText(html) {
+    return String(html || '').split(PLUGIN_STYLE_NOTE)
+        .map(part => part.replace(__rmR("n9_BYGVX3RhScYJnyBS0fomOYMOe.Qw_gPYZUzjbI68", "g"), match => __rmT("zYE").repeat(Math.max(1, Math.min(match.length, 8)))))
+        .join(PLUGIN_STYLE_NOTE);
+}
 export function skeletonizeRabbitMirrorHtml(input) {
     if (typeof document === 'undefined')
         return '';
     let container;
+    let raw = '';
     if (typeof input === 'string') {
         const template = document.createElement('template');
         template.innerHTML = input;
         container = template.content;
+        raw = input;
     }
     else if (input?.cloneNode) {
         const template = document.createElement('template');
         template.content.append(input.cloneNode(true));
         container = template.content;
+        raw = String(input.outerHTML || '');
     }
     else
         return '';
     const keys = new Map();
     keys.quotedCss = collectQuotedCss(container);
+    keys.counter = 0;
+    for (const match of raw.matchAll(/\bk(\d{1,6})\b/g))
+        keys.counter = Math.max(keys.counter, Number(match[1]));
     walk(container, keys);
     const wrapper = document.createElement('div');
     wrapper.append(container);
-    return wrapper.innerHTML;
+    return scrubLeftoverText(wrapper.innerHTML);
 }
 export function buildWritingSkeleton(rawSource, renderedClone) {
     return {

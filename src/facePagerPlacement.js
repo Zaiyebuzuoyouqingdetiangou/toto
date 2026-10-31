@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.9";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.4";
 const footersByFace = new WeakMap();
 const facesByFooter = new WeakMap();
 const FOOTER = '[data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]';
@@ -122,8 +122,57 @@ export function refreshFacePagerPositions(scope, position) {
 }
 const COLLAPSE = '[data-rm-face-swipe-host][data-rm-face-swipe-position="collapse"]';
 const collapseByFace = new WeakMap();
+const HOST_COLLAPSE = '.details-collapse-btn, [data-collapse-btn]';
+const COLLAPSE_TEXT = __rmR("aRvc4x5cGWZDRF.xgKGSuHHeVQebXeJO4QD3ek.9NvqnWhz1A0fWZvob3vGdqw6OGcvy7FXAiQeqWm3AELbTcnB3EjNBEchMcdzVC591R_dkftv_GnFHXriVxRk", "");
+const RUNTIME_UI = '[data-rabbit-mirror-tool-entry-host], [data-rm-face-swipe-host], [data-rm-image-region], [data-rm-image-portal], '
+    + '[data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rabbit-mirror-resay], [data-rabbit-mirror-interaction-diagnostic], '
+    + '[data-rabbit-mirror-reference-note], [data-rabbit-mirror-source-truncation-notice], [popover]';
+function looksLikeCollapse(node) {
+    if (!node || node.nodeType !== 1 || node.matches?.(COLLAPSE))
+        return false;
+    if (node.matches?.(HOST_COLLAPSE))
+        return true;
+    if ((node.children?.length || 0) > 2)
+        return false;
+    return COLLAPSE_TEXT.test(String(node.textContent || '').replace(/\s+/g, ''));
+}
+function displayed(node) {
+    try {
+        return node.ownerDocument.defaultView.getComputedStyle(node).display !== 'none';
+    }
+    catch {
+        return true;
+    }
+}
+export function hasOtherBottomCollapse(details) {
+    try {
+        if (details.querySelector(`:scope > :is(${HOST_COLLAPSE})`))
+            return true;
+        for (let node = details.lastElementChild; node; node = node.previousElementSibling) {
+            if (node.matches('summary'))
+                break;
+            if (node.matches('style, script, template, link, meta') || node.matches(RUNTIME_UI) || !displayed(node))
+                continue;
+            if (looksLikeCollapse(node))
+                return true;
+            break;
+        }
+        for (let node = details.nextElementSibling; node; node = node.nextElementSibling) {
+            if (node.matches(COLLAPSE) || node.matches(FOOTER) || node.matches('style, script, template') || !displayed(node))
+                continue;
+            return looksLikeCollapse(node);
+        }
+    }
+    catch { }
+    return false;
+}
 function syncCollapse(details, button) {
-    const hidden = !details.open || !details.isConnected;
+    const yieldTo = details.isConnected && hasOtherBottomCollapse(details);
+    if (yieldTo)
+        button.setAttribute('data-rm-collapse-yield', 'true');
+    else
+        button.removeAttribute('data-rm-collapse-yield');
+    const hidden = !details.open || !details.isConnected || yieldTo;
     if (button.hidden !== hidden)
         button.hidden = hidden;
     let summary = null;

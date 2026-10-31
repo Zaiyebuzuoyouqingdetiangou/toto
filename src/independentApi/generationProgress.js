@@ -1,6 +1,7 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.9";
-import { spritePaths } from '../pixelSprites.js?rmv=2.1.9';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.9';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.4";
+import { spritePaths } from '../pixelSprites.js?rmv=2.5.4';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.5.4';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.5.4';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -8,6 +9,21 @@ const MINI_CLASS = 'rabbit-mirror-generation-progress-mini';
 const PLACEHOLDER_SELECTOR = ':scope > details.rabbit-mirror-external-placeholder';
 const RESAY_STATUS_SELECTOR = ':scope > [data-rabbit-mirror-resay-status="true"]';
 const MAX_LINES = 5;
+const isPinnedLine = line => line.key === 'self' || line.key === 'ticket' || (line.key === 'think' && line.state === 'note');
+function progressPicks(face, state, menuIndex) {
+    const picks = [];
+    if (!face)
+        return picks;
+    if (face.self?.form)
+        picks.push(`${__rmT("7hbuZvUYk5ZycoOckGD")}${shortText(face.self.form, 24)}${__rmT("Yvk")}${face.self.theme ? `${__rmT("4bF.jaFygRhyXXG1")}${shortText(face.self.theme, 24)}${__rmT("Yvk")}` : ''}`);
+    if (face.ticket) {
+        const label = (state.faceMenuLabels?.[menuIndex] || [])[face.ticket - 1];
+        picks.push(`${__rmT("LJ055WPSHKG")}${face.ticket}${__rmT("qGtZ0Tlk")}${label ? `${__rmT("YSk")}${shortText(label, 12)}${__rmT("Yvk")}` : ''}`);
+    }
+    if (face.think)
+        picks.push(`${__rmT("8Xl3jLop")}${face.think}`);
+    return picks;
+}
 const DEFAULT_FACE_CHARS = 12000;
 const MIN_FACE_CHARS = 4000;
 const MAX_FACE_CHARS = 40000;
@@ -15,9 +31,9 @@ const STORED_TO_RAW = 0.75;
 const SPRITE_W = 42;
 const SPRITE_H = 30;
 const NEEDLE_X = 3;
-const SPRITE_COMMON = '..............................kk...k/.............................kpRk.kR/.............................kprk.kprk/.............................kprk.kprk/.............................kprk.kprk/.............................kprkkkprk/..........kkk...............kkrrrrrrrkk/.........kcCck.............krrrrrrrrrrrk/...ccccccccCck............krrrrrrrrrrrRRk/...c......kSk.............kreerrrrrrrrRRk/...ckkkkkkkkkkkkkkkkkkkk.krrekrrrrrrrrRRk/..kmnnnnnnnnnnnnnnnmk..skkprrrrrrrrrrrRRk/.kmmgmmmgmmmgmmmmmmmk.kSk.kbbrrrrrrrrRRk/.kmmmmmmmmmmmmmmmmmmks..k..kkrrrrrrrRRkk/.kmmmmkkkkkkkkkkkkmmmkkkkk..krrrrrrrRRRk/.kmmmk...........kmmmkrrrk.krrrrrrrrRRRRk/..kmk............kmgkrrrRkkrrrrrrrrrRRRRk/..k.k............kmmkkkkk.krrrrrrrrrRRRRRk/.km.mmmmmmgggggmmmmmmmmmk.krrrrrrrrRRRRRkk/.kk.kkkkkkkkkkkkkkkkkkkkk..kkrrrrrRRRRRkrk/kwwwwwwwwwwwwwwwwwwwwwwwwk...kkkkkkkkkkkk/kWWWWWWWWWWWWWWWWWWWWkkkWkkkkkkkkkkkkkkkk/...iI...............krrk..ttttttttttttttt/...iI..............krrRk..TTTTTTTTTTTTTTT/...iIiiiiiiii.....k.rRk.....T.........T/...iI........k.....r.kI.....T.........T/...iI.................I.....T.........T/...iI................iI.....TTTTTTTTTTT/...iI........i.......iI.....T.........T/..kkkkk......k......kkkkk...T.........T';
-const SPRITE_FRAME_A = '..................................k/....................................k//////////.....................sS/.....................S/......................Ss////...S/...s/...s/////.............iiiii.r/..............kkkkk.R/.......SSSSSSkrrrrrrrk/.......kkkkkkSSSSSSS/..............kkkkkk';
-const SPRITE_FRAME_B = '....................................k/....................................Rk//////////.....................Ss/.....................s/......................sS////...s/...m/...k/////.............kkkkk.k/..............rrrrr.r/.............SSSSSSS.i/.......SSSSSSkkkkkkk/.......kkkkkk';
+const SPRITE_COMMON = '..............................kk...k/.............................kpRk.kR/.............................kprk.kprk/.............................kprk.kprk/.............................kprk.kprk/.............................kprkkkprk/..........kkk...............kkrrrrrrrkk/.........kcCck.............krrrrrrrrrrrk/...ccccccccCck............krrrrrrrrrrrRRk/...c......kSk.............kreerrrrrrrrRRk/...ckkkkkkkkkkkkkkkkkkkk.krrekrrrrrrrrRRk/..kmnnnnnnnnnnnnnnnmk..skkprrrrrrrrrrrRRk/.kmmgmmmgmmmgmmmmmmmk.kSk.kbbrrrrrrrrRRk/.kmmmmmmmmmmmmmmmmmmks..k..kkrrrrrrrRRkk/.kmmmmkkkkkkkkkkkkmmmkkkkk..krrrrrrrRRRk/.kmmmk...........kmmmkrrrk.krrrrrrrrRRRRk/..kmk............kmgkrrrRkkrrrrrrrrrRRRRk/..k.k............kmmkkkkk.krrrrrrrrrRRRRRk/.km.mmmmmmgggggmmmmmmmmmk.krrrrrrrrRRRRRkk/.kk.kkkkkkkkkkkkkkkkkkkkk..kkrrrrrRRRRRkrk/kwwwwwwwwwwwwwwwwwwwwwwwwk...kkkkkkkkkkkk/kWWWWWWWWWWWWWWWWWWWWkkkWkkkkkkkkkkkkkkkk/...iI...........iI........ttttttttttttttt/...iI...........iI........TTTTTTTTTTTTTTT/...iIiiiiiiiiiiiiI..........T.........T/...iI...........iI..........T.........T/...iI...........iI..........T.........T/...iI...........iI..........TTTTTTTTTTT/...iI...........iI..........T.........T/..kkkkk........kkkkk........T.........T';
+const SPRITE_FRAME_A = '..................................k/....................................k//////////.....................sS/.....................S/......................Ss////...S/...s/...s///......................krrk/......................krRk/.....................krrRk/...................krrrRk/...........kkkkkkk.kkkkkk/...........SSSSSSSkSSSSSSS/...........kkkkkk..kkkkkkk/';
+const SPRITE_FRAME_B = '....................................k/....................................Rk//////////.....................Ss/.....................s/......................sS////...s/...m/...k///......................krrk/....................krrrRk/....................kkkkkk/.................kkkkkkkkk/..........kkkkkkSSSSSSSSSk/..........SSSSSSkkkkkkkkk/..........kkkkkk/';
 const SPRITE_BUBBLE = '..kkkkkkk/.krrrrrrrk/krrrrrrrrrk/.krrrrrrrk/..kkkkkkkrk/........kk';
 const BUBBLE_AT = [14, 0];
 const BUBBLE_DOTS = [[3, 2], [5, 2], [7, 2]];
@@ -78,7 +94,7 @@ export function buildSewingSprite(doc, scale = 2) {
     return svg;
 }
 function newFace(startAt = 0) {
-    return { startAt, summaryAt: -1, title: '', styleAt: -1, palette: null, keyframes: 0, uis: [], details: 0, ticket: 0, closed: false };
+    return { startAt, summaryAt: -1, title: '', styleAt: -1, palette: null, threadHint: '', keyframes: 0, uis: [], details: 0, ticket: 0, closed: false, selfAt: -1, self: null, think: '' };
 }
 function newRequest() {
     return { sentAt: 0, headersAt: 0, firstTextAt: 0, completeAt: 0, chars: 0, text: '', frames: 0, textBase: null, parse: { pos: 0, faces: [newFace(0)] } };
@@ -126,6 +142,10 @@ export function noteProgressSelection(state, diagnostic) {
         return;
     }
     const face = faces[0] || diagnostic;
+    if ((face?.samplingMode || diagnostic.samplingMode) === 'self_invent') {
+        state.drawText = __rmT("WzGXrD65dmbY5HQaaNnLHCOozjB6YT2vWmE");
+        return;
+    }
     const titles = list => (Array.isArray(list) ? list : []).map(labelTitle).filter(Boolean);
     const formats = titles(face?.formatLabels ?? diagnostic.formatLabels);
     const themes = titles(face?.themeLabels ?? diagnostic.themeLabels);
@@ -234,7 +254,7 @@ export function noteProgressFinishing(state, now = Date.now()) {
     if (!state.serial && state.request.chars > 0)
         rememberFaceChars(state.request.chars / Math.max(1, state.attemptFaceCount));
 }
-const MARKER_SOURCE = String.raw `<summary(?=[\s>])|<\/summary\s*>|<style(?=[\s>])|<\/style\s*>|<details(?=[\s>])|\bdata-rm-ui\s*=\s*["']?([a-z][a-z-]{1,20})(?=["'\s>])|\bpopovertarget\s*=|<rm-ticket\b[^>]{0,40}>\s*(\d{1,2})(?=\D)|<\/toto\s*>`;
+const MARKER_SOURCE = String.raw `<summary(?=[\s>])|<\/summary\s*>|<style(?=[\s>])|<\/style\s*>|<details(?=[\s>])|\bdata-rm-ui\s*=\s*["']?([a-z][a-z-]{1,20})(?=["'\s>])|\bpopovertarget\s*=|<rm-ticket\b[^>]{0,40}>\s*(\d{1,2})(?=\D)|<\/toto\s*>|\bdata-rm-self\s*=`;
 function decodeEntities(text) {
     return String(text || '').replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,8});/gi, (all, code) => {
         const lower = code.toLowerCase();
@@ -334,6 +354,18 @@ function addUi(face, key) {
     if (!face.uis.includes(key) && face.uis.length < 12)
         face.uis.push(key);
 }
+function readSelfInvented(face, text) {
+    const attr = text.slice(face.selfAt, face.selfAt + 900).match(/^data-rm-self\s*=\s*(["'])([\s\S]*?)\1/);
+    if (!attr)
+        return;
+    face.selfAt = -1;
+    try {
+        face.self = parseSelfInvented(decodeEntities(attr[2]));
+    }
+    catch {
+        face.self = null;
+    }
+}
 export function parseRequestText(request) {
     const parse = request.parse;
     const text = request.text;
@@ -352,6 +384,8 @@ export function parseRequestText(request) {
         else if (token.startsWith('</summary')) {
             if (!face.title && face.summaryAt >= 0)
                 face.title = titleFromSummary(text.slice(face.summaryAt, match.index));
+            if (!face.palette && !face.threadHint)
+                face.threadHint = paletteFromSource(text.slice(face.startAt, match.index)).thread;
         }
         else if (token.startsWith('<style'))
             face.styleAt = match.index;
@@ -376,7 +410,16 @@ export function parseRequestText(request) {
             if (!face.ticket)
                 face.ticket = Number(match[2]);
         }
+        else if (token.startsWith('data-rm-s')) {
+            if (face.selfAt < 0 && !face.self)
+                face.selfAt = match.index;
+        }
         else if (token.startsWith('</toto')) {
+            if (!face.palette) {
+                const whole = paletteFromSource(text.slice(face.startAt, match.index));
+                if (whole.count)
+                    face.palette = whole;
+            }
             face.closed = true;
             if (parse.faces.length < 13) {
                 face = newFace(re.lastIndex);
@@ -384,6 +427,18 @@ export function parseRequestText(request) {
             }
         }
         parse.pos = re.lastIndex;
+    }
+    for (const item of parse.faces) {
+        if (item.selfAt >= 0 && !item.self)
+            readSelfInvented(item, text);
+        if (!item.think && item.summaryAt >= 0 && text.length - item.startAt < 16000) {
+            const think = text.slice(item.startAt, item.startAt + 8000).match(/<rm-think(?:\s[^>]*)?>([\s\S]*?)<\/rm-think\s*>/i);
+            if (think)
+                item.think = decodeEntities(think[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim().slice(0, 300);
+        }
+    }
+    if (face && !face.palette && !face.threadHint && text.length - face.startAt > 3000) {
+        face.threadHint = paletteFromSource(text.slice(face.startAt, face.startAt + 6000)).thread;
     }
     parse.pos = Math.max(parse.pos, text.length - 96);
     return parse;
@@ -482,6 +537,11 @@ export function progressView(state, now = Date.now()) {
                 const thought = request.firstTextAt - request.headersAt;
                 lines.push(doneLine('thought', `${__rmT("5N548zwkkuf")}${thought >= 3000 ? `${__rmT("fnf.8R4jHKG")}${seconds(thought)}${__rmT("eXs")}` : ''}`));
             }
+            if (current.self?.form) {
+                lines.push(doneLine('self', `${__rmT("7hbuZvUYk5ZycoOckGD")}${shortText(current.self.form, 24)}${__rmT("Yvk")}${current.self.theme ? `${__rmT("4bF.jaFygRhyXXG1")}${shortText(current.self.theme, 24)}${__rmT("Yvk")}` : ''}`));
+            }
+            if (current.think)
+                lines.push({ key: 'think', state: 'note', mark: '✎', text: `${__rmT("8Xl3jLop")}${current.think}` });
             if (current.title)
                 lines.push(doneLine('title', `${__rmT("TthAqIIEHc.Ash")}${current.title}${__rmT("Yvk")}`));
             if (current.ticket) {
@@ -509,14 +569,18 @@ export function progressView(state, now = Date.now()) {
         phase = 'finishing';
         lines.push(activeLine('finish', __rmT("AX6mls8cD.RNl4CAVinh8d31eV_6DGI1.Hm9PR.W")));
     }
-    const thread = current.palette?.thread || parse.faces.find(face => face.palette?.thread)?.palette.thread || '';
+    const thread = current.palette?.thread || current.threadHint
+        || parse.faces.find(face => face.palette?.thread)?.palette.thread || parse.faces.find(face => face.threadHint)?.threadHint || '';
+    const pinned = lines.filter(isPinnedLine).slice(-2);
+    const rolling = lines.filter(line => !isPinnedLine(line));
     return {
         percent: Math.round(state.shown * 100),
         fraction: state.shown,
         elapsed: elapsedLabel(now - state.startedAt),
         phase,
         thread,
-        lines: lines.slice(-MAX_LINES),
+        lines: [...pinned, ...rolling.slice(-(MAX_LINES - pinned.length))],
+        picks: progressPicks(current, state, serial ? serial.index : faceNo - 1),
     };
 }
 const recentFaceChars = [];
@@ -597,7 +661,7 @@ function updateLine(doc, li, line) {
         text = makeElement(doc, 'span', 'rm-gp-text');
         li.append(text);
     }
-    setText(mark, MARKS[line.state] || '•');
+    setText(mark, line.mark || MARKS[line.state] || '•');
     setText(text, line.text);
     let swatches = li.querySelector(':scope > .rm-gp-swatches');
     const colors = Array.isArray(line.swatches) ? line.swatches : [];
@@ -720,6 +784,18 @@ export function renderProgressMini(status, view, doc = status?.ownerDocument, ow
         bar.setAttribute('aria-valuenow', String(view.percent));
     const last = view.lines[view.lines.length - 1];
     setText(mini.querySelector('.rm-gp-mini-text'), `${view.percent}% · ${last?.text || ''}`);
+    const picks = Array.isArray(view.picks) ? view.picks
+        : view.lines.filter(isPinnedLine).map(line => line.text);
+    let note = mini.querySelector(':scope > .rm-gp-mini-note');
+    if (!note && picks.length) {
+        note = makeElement(doc, 'span', 'rm-gp-mini-note');
+        mini.append(note);
+    }
+    if (note) {
+        setText(note, picks.join('\n'));
+        if (note.hidden !== !picks.length)
+            note.hidden = !picks.length;
+    }
     return mini;
 }
 export function removeGenerationProgress(host, owner = 0) {

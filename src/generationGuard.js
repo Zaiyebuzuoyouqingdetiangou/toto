@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.9";
-import { presentationModeFields } from './presentationMode.js?rmv=2.1.9';
-import { commitPendingComboBatch, getCurrentChatKey, releasePendingComboBatch, } from './storage.js?rmv=2.1.9';
-import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=2.1.9';
-import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=2.1.9';
-import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.1.9';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.4";
+import { presentationModeFields } from './presentationMode.js?rmv=2.5.4';
+import { commitPendingComboBatch, getCurrentChatKey, releasePendingComboBatch, } from './storage.js?rmv=2.5.4';
+import { recordRabbitMirrorRecipe } from './blacklist.js?rmv=2.5.4';
+import { parseMultifaceOutput, recoverableMultifaceFrames, createMultifaceFailureSlot, multifaceRecoveryWithinRawBudgets } from './multifaceProtocol.js?rmv=2.5.4';
+import { atmosphereChoicesFromFaces, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.5.4';
 const SNAPSHOT_STORAGE_KEY = 'rabbit_mirror_theater:generation_snapshots:v1';
 const ACTIVE_ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:active_generation_attempt:v1';
 const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
@@ -588,6 +588,29 @@ export function getRabbitMirrorFollowBatchTargetIndexes(chat) {
         .filter((value, index, values) => values.indexOf(value) === index)
         .slice(0, MAX_ACTIVE_FOLLOW_BATCHES);
 }
+const followReadyNoticed = new Set();
+export function noteFollowFacesReady(chat, messageIndex, key = '') {
+    if (typeof setTimeout !== 'function')
+        return;
+    if (key) {
+        if (followReadyNoticed.has(key))
+            return;
+        followReadyNoticed.add(key);
+        if (followReadyNoticed.size > 50)
+            followReadyNoticed.delete(followReadyNoticed.values().next().value);
+    }
+    setTimeout(() => {
+        try {
+            const hostChat = globalThis.SillyTavern?.getContext?.()?.chat;
+            if (Array.isArray(hostChat) && hostChat !== chat)
+                return;
+            const faces = [...(globalThis.document?.querySelectorAll?.(`#chat .mes[mesid="${Number(messageIndex)}"] toto`) || [])];
+            if (faces.length)
+                void import('./readyNotice.js?rmv=2.5.4').then(module => module.noteFacesReady(faces)).catch(() => { });
+        }
+        catch { }
+    }, 900);
+}
 export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], expectedOwner = null) {
     const record = activeFollowBatches.get(String(batchId || '')) || null;
     const owner = followOwner(record, chat);
@@ -608,7 +631,8 @@ export function commitRabbitMirrorFollowBatch(batchId, chat, faceScans = [], exp
     const committed = commitPendingComboBatch(faceScans, { batchId: record.plan.batchId, identity: record.plan.identity, partial, chosenTickets });
     if (!committed)
         return false;
-    void import('./milestones.js?rmv=2.1.9').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => { });
+    void import('./milestones.js?rmv=2.5.4').then(module => module.recordMirrorMilestone(`follow:${record.chatKey}:${owner.messageIndex}:${owner.swipeId}:${owner.sourceHash}`)).catch(() => { });
+    noteFollowFacesReady(chat, owner.messageIndex);
     recordRabbitMirrorRecipe({
         chat,
         chatKey: record.chatKey,

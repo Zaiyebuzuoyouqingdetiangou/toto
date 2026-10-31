@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.1.9";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.4";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -98,4 +98,83 @@ export function rememberFollowPicks(picks = []) {
 export function recentFollowPicks(faces = 2) {
     const now = Date.now();
     return readFollowPicks().filter(item => now - Number(item.at) <= FRESH_MS).slice(-faces).map(item => item.pick);
+}
+const SELF_FORM_KEY = 'rabbitMirrorSelfFormLedger';
+const SELF_FORM_FRESH_MS = 3 * 24 * 60 * 60 * 1000;
+function readSelfForms() {
+    try {
+        const parsed = JSON.parse(globalThis.localStorage?.getItem(SELF_FORM_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(item => item && typeof item.form === 'string' && typeof item.key === 'string') : [];
+    }
+    catch {
+        return [];
+    }
+}
+const cleanSelfText = (value, max) => String(value || '').replace(/[\u0000-\u001f\u007f<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+const SELF_LABEL_RE = __rmR("VGV7h6.PTP3yWCDBoclY2bOvK0bCRmRKBnX_MhgC7ZerbwjOQBZFZ94YO7YwuWZr2MfH5jrNuIlSfen7KtbR3VJaA3EReeCnZzWu97nN", "g");
+const SELF_SEPARATORS = __rmR("vnCGXcaI8JbPw22Uv4VlsqA2F6qqQ06Y4jIgHtNDol3B6Ye7kOqJsMs_cswIBh5oirE", "g");
+export function parseSelfInvented(raw) {
+    const text = cleanSelfText(raw, 2000);
+    if (!text)
+        return null;
+    const marks = [];
+    const seen = new Set();
+    for (const match of text.matchAll(SELF_LABEL_RE)) {
+        if (seen.has(match[2]))
+            continue;
+        seen.add(match[2]);
+        marks.push({ name: match[2], start: match.index + match[1].length, valueStart: match.index + match[0].length });
+    }
+    const values = {};
+    marks.forEach((mark, index) => {
+        values[mark.name] = text.slice(mark.valueStart, index + 1 < marks.length ? marks[index + 1].start : text.length).replace(SELF_SEPARATORS, '');
+    });
+    const lead = marks.length ? text.slice(0, marks[0].start) : text;
+    const form = values[__rmT("gG2guk")] ?? lead.split(__rmR("pEwVbaaua.G", ""))[0].replace(SELF_SEPARATORS, '');
+    const result = { theme: cleanSelfText(values[__rmT("3F3_GT")], 80), form: cleanSelfText(form, 60), angle: cleanSelfText(values[__rmT("WUISuf")], 200),
+        usage: cleanSelfText(values[__rmT("uJT7eT")] ?? values[__rmT("FNG7eT")], 120), thought: cleanSelfText(values[__rmT("Y2CP.h")], 300) };
+    return result.form ? result : null;
+}
+export function selfInventedOf(details) {
+    if (!details?.getAttribute)
+        return null;
+    const raw = details.getAttribute('data-rm-self') || details.querySelector?.(':scope > :not(summary)[data-rm-self]')?.getAttribute('data-rm-self');
+    const result = raw ? parseSelfInvented(raw) : null;
+    const think = cleanSelfText(details.getAttribute('data-rm-self-think') || '', 300);
+    if (result && think)
+        result.thought = think;
+    if (!result && think)
+        return { theme: '', form: '', angle: '', usage: '', thought: think };
+    return result;
+}
+export function recordSelfInventedForm(details, { fallbackAt = 0 } = {}) {
+    const self = selfInventedOf(details);
+    if (!self?.form)
+        return;
+    const key = `${details.getAttribute('data-rabbit-mirror-owner-key') || ''}#${self.form}#${self.angle}`;
+    let at = 0;
+    try {
+        const stamp = JSON.parse(details.getAttribute('data-rm-generated') || 'null');
+        if (Number.isFinite(Number(stamp?.t)) && Number(stamp.t) > 0)
+            at = Number(stamp.t);
+    }
+    catch { }
+    if (!at && Number.isFinite(Number(fallbackAt)) && Number(fallbackAt) > 0)
+        at = Number(fallbackAt);
+    if (!at || Date.now() - at > SELF_FORM_FRESH_MS)
+        return;
+    const list = readSelfForms();
+    if (list.some(item => item.key === key))
+        return;
+    list.push({ key, form: self.form, at });
+    list.sort((a, b) => Number(a.at) - Number(b.at));
+    try {
+        globalThis.localStorage?.setItem(SELF_FORM_KEY, JSON.stringify(list.slice(-LEDGER_LIMIT)));
+    }
+    catch { }
+}
+export function recentSelfInventedForms(faces = 6) {
+    const now = Date.now();
+    const recent = readSelfForms().filter(item => Number.isFinite(Number(item.at)) && now - Number(item.at) <= SELF_FORM_FRESH_MS).slice(-faces);
+    return [...new Set(recent.map(item => item.form).filter(Boolean))];
 }

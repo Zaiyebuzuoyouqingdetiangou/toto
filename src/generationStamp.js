@@ -20,6 +20,9 @@ export function compactGenerationStamp(value) {
 const escapeAttr = text => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const unescapeAttr = text => String(text).replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 const STAMP_IN_ATTRS = /\sdata-rm-generated\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi;
+const TAG_ATTRS = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+const FACE_OPENINGS = new RegExp(`(<toto\\b${TAG_ATTRS}>)((?:(?!<toto\\b|<details\\b)[\\s\\S])*)<details\\b(${TAG_ATTRS})>`, 'gi');
+const FIRST_DETAILS = new RegExp(`<details\\b(${TAG_ATTRS})>`, 'i');
 function stampTag(attrs, value) {
     return `<details${String(attrs || '').replace(STAMP_IN_ATTRS, '')} ${GENERATION_STAMP_ATTR}="${value}">`;
 }
@@ -30,16 +33,16 @@ export function stampGeneratedFaces(html, stamp) {
         return source;
     const value = escapeAttr(JSON.stringify(compact));
     let stamped = 0;
-    const result = source.replace(/(<toto\b[^>]*>)((?:(?!<toto\b|<details\b)[\s\S])*)<details\b([^>]*)>/gi, (all, toto, between, attrs) => {
+    const result = source.replace(FACE_OPENINGS, (all, toto, between, attrs) => {
         stamped += 1;
         return `${toto}${between}${stampTag(attrs, value)}`;
     });
     if (stamped)
         return result;
-    return source.replace(/<details\b([^>]*)>/i, (all, attrs) => stampTag(attrs, value));
+    return source.replace(FIRST_DETAILS, (all, attrs) => stampTag(attrs, value));
 }
 export function readGenerationStamp(html) {
-    const tag = String(html || '').match(/<details\b[^>]*>/i)?.[0] || '';
+    const tag = String(html || '').match(FIRST_DETAILS)?.[0] || '';
     const match = tag.match(/\sdata-rm-generated\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
     if (!match)
         return null;
