@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.3";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.4";
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     const match = new URL(moduleUrl).pathname.match(/\/third-party\/([^/]+)\/src\/extensionUpdater\.js$/);
@@ -229,12 +229,35 @@ async function fetchManifestVersionFromUrl(url, fetchImpl) {
         return '';
     }
 }
+let hostInstallInfo = null;
+function readInstallInfoFromHost(moduleUrl) {
+    if (hostInstallInfo)
+        return hostInstallInfo;
+    hostInstallInfo = (async () => {
+        try {
+            const result = await inspectRabbitMirrorVersion({ moduleUrl });
+            if (!result?.branch) {
+                hostInstallInfo = null;
+                return null;
+            }
+            return { current_branch_name: result.branch };
+        }
+        catch {
+            hostInstallInfo = null;
+            return null;
+        }
+    })();
+    return hostInstallInfo;
+}
 async function tryReadInstallInfo(moduleUrl) {
     const fn = typeof globalThis.getExtensionInstallationInfo === 'function'
         ? globalThis.getExtensionInstallationInfo
         : globalThis.TavernHelper?.getExtensionStatus;
-    if (typeof fn !== 'function')
-        return null;
+    if (typeof fn !== 'function') {
+        if (typeof globalThis.SillyTavern?.getContext !== 'function')
+            return null;
+        return readInstallInfoFromHost(moduleUrl);
+    }
     let folder = '';
     try {
         folder = ownExtensionFolder(moduleUrl);
@@ -579,8 +602,7 @@ export async function applyRabbitMirrorUpdateAndReload(options = {}) {
     try {
         const result = await requestRabbitMirrorUpdate(options);
         if (result.status === 'current') {
-            publish({ status: 'latest' });
-            return { ok: true, skipped: true, message: __rmT("VqJztZbwFCQ7kUxOpfgsXVf3Y7Tl3ofO4iXL.lmEB6P0.rcRzj6R3cBvzBG") };
+            return { ok: true, skipped: true, pinnedSuspect: true, message: __rmT("cpA2U.3XfbEioNktLj3C1iky6iJPEarhVRa_acTfpYHQXa1cTele.10fGWW.yKYsKTwrfULHrERINW.LAIjAEhRnSY26PgqD7nRliGurou.u9pvqGlQtHx5q8ik") };
         }
         return finishUpdated();
     }

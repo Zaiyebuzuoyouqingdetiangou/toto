@@ -1,18 +1,18 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.3";
-import { usesModelOriginalColors } from './visualDesign.js?rmv=2.3.3';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.3.3';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.3.3';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.3.3';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.3';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.3';
-import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.3.3';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.3.3';
-import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.3.3';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.3.3';
-import { isDocumentFormat } from './documentFormats.js?rmv=2.3.3';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.3.3';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.3.3';
-import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.3.3';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.4";
+import { usesModelOriginalColors } from './visualDesign.js?rmv=2.3.4';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.3.4';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.3.4';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.3.4';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.4';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.4';
+import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.3.4';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.3.4';
+import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.3.4';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.3.4';
+import { isDocumentFormat } from './documentFormats.js?rmv=2.3.4';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.3.4';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.3.4';
+import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.3.4';
 function randomUnit() {
     try {
         const cryptoApi = globalThis.crypto;
@@ -1675,6 +1675,7 @@ export function pickSelfInventSelection(settings, faceIndex = 0, generationConte
     if (!longText) {
         combo.selfInvent = true;
         combo.samplingMode = 'self_invent';
+        combo.selfInventScope = settings.samplingMode === 'format_only' ? 'format' : settings.singlePairSampling === true ? 'pair' : 'classic';
     }
     else
         combo.blankLongText = true;

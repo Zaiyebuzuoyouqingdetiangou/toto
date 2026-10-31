@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.3.3";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.4";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -112,19 +112,26 @@ function readSelfForms() {
 }
 const cleanSelfText = (value, max) => String(value || '').replace(/[\u0000-\u001f\u007f<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 export function parseSelfInvented(raw) {
-    const text = cleanSelfText(raw, 240);
+    const text = cleanSelfText(raw, 400);
     if (!text)
         return null;
-    const form = text.match(__rmR("t_y9Aklu5j1AAfa80nZvzpqNLiSRV9TfnZnYp9bFkJcTv9SqykJOGayXW6kTHAGgUmuJ1uZweiy8l5LEZAdVLV5f5ZrlHxPoJQljW1FZ7P5Ul3.3QHKGrSksRWBVDmCa", ""))?.[1] || (!__rmR("nU5FOnaSHWklk0Aw4YVLECfx", "").test(text.split(__rmR("pEwVbaaua.G", ""))[0]) ? text.split(__rmR("pEwVbaaua.G", ""))[0] : '');
-    const angle = text.match(__rmR("1Ujq.KCym19mNVwEyxsWfi86yD9ZN0XjBVDDGYEL9mbFfcM1Kef.3f", ""))?.[1] || '';
-    const result = { form: cleanSelfText(form, 30), angle: cleanSelfText(angle, 60) };
+    const LABEL = __rmT("hzdr_qyjoBoNxLA5XhBagKHk0s1tfQnoEiRTjUNQisTjA2p4wZAoMPHOePG");
+    const field = name => text.match(new RegExp(`${name}${__rmT("S0tEc_IfuGZccp32ha5VYh2utIg3Scr9kdG0HcFrPzngDTglq3aJi1XfGFFU.4vIpqRaLqRWTB8anh")}${LABEL}${__rmT("1imnAW33f.2f_l5uGw4wHT")}`))?.[1] || '';
+    const first = text.split(__rmR("pEwVbaaua.G", ""))[0];
+    const form = field(__rmT("gG2guk")) || (!new RegExp(LABEL).test(first) ? first : '');
+    const thought = text.match(__rmR("ZQCc01aS.5v.0H_Yd1vTXAroFXxCJh_Qbh6iGxzY059gnh", ""))?.[1] || '';
+    const result = { theme: cleanSelfText(field(__rmT("3F3_GT")), 40), form: cleanSelfText(form, 30), angle: cleanSelfText(field(__rmT("WUISuf")), 60), thought: cleanSelfText(thought, 300) };
     return result.form ? result : null;
 }
 export function selfInventedOf(details) {
     if (!details?.getAttribute)
         return null;
     const raw = details.getAttribute('data-rm-self') || details.querySelector?.(':scope > :not(summary)[data-rm-self]')?.getAttribute('data-rm-self');
-    return raw ? parseSelfInvented(raw) : null;
+    const result = raw ? parseSelfInvented(raw) : null;
+    const think = cleanSelfText(details.getAttribute('data-rm-self-think') || '', 300);
+    if (result && think)
+        result.thought = think;
+    return result;
 }
 export function recordSelfInventedForm(details) {
     const self = selfInventedOf(details);

@@ -1,6 +1,7 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.3";
-import { spritePaths } from '../pixelSprites.js?rmv=2.3.3';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.3.3';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.4";
+import { spritePaths } from '../pixelSprites.js?rmv=2.3.4';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.3.4';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.3.4';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -78,7 +79,7 @@ export function buildSewingSprite(doc, scale = 2) {
     return svg;
 }
 function newFace(startAt = 0) {
-    return { startAt, summaryAt: -1, title: '', styleAt: -1, palette: null, threadHint: '', keyframes: 0, uis: [], details: 0, ticket: 0, closed: false };
+    return { startAt, summaryAt: -1, title: '', styleAt: -1, palette: null, threadHint: '', keyframes: 0, uis: [], details: 0, ticket: 0, closed: false, selfAt: -1, self: null, think: '' };
 }
 function newRequest() {
     return { sentAt: 0, headersAt: 0, firstTextAt: 0, completeAt: 0, chars: 0, text: '', frames: 0, textBase: null, parse: { pos: 0, faces: [newFace(0)] } };
@@ -126,6 +127,10 @@ export function noteProgressSelection(state, diagnostic) {
         return;
     }
     const face = faces[0] || diagnostic;
+    if ((face?.samplingMode || diagnostic.samplingMode) === 'self_invent') {
+        state.drawText = __rmT("WzGXrD65dmbY5HQaaNnLHCOozjB6YT2vWmE");
+        return;
+    }
     const titles = list => (Array.isArray(list) ? list : []).map(labelTitle).filter(Boolean);
     const formats = titles(face?.formatLabels ?? diagnostic.formatLabels);
     const themes = titles(face?.themeLabels ?? diagnostic.themeLabels);
@@ -234,7 +239,7 @@ export function noteProgressFinishing(state, now = Date.now()) {
     if (!state.serial && state.request.chars > 0)
         rememberFaceChars(state.request.chars / Math.max(1, state.attemptFaceCount));
 }
-const MARKER_SOURCE = String.raw `<summary(?=[\s>])|<\/summary\s*>|<style(?=[\s>])|<\/style\s*>|<details(?=[\s>])|\bdata-rm-ui\s*=\s*["']?([a-z][a-z-]{1,20})(?=["'\s>])|\bpopovertarget\s*=|<rm-ticket\b[^>]{0,40}>\s*(\d{1,2})(?=\D)|<\/toto\s*>`;
+const MARKER_SOURCE = String.raw `<summary(?=[\s>])|<\/summary\s*>|<style(?=[\s>])|<\/style\s*>|<details(?=[\s>])|\bdata-rm-ui\s*=\s*["']?([a-z][a-z-]{1,20})(?=["'\s>])|\bpopovertarget\s*=|<rm-ticket\b[^>]{0,40}>\s*(\d{1,2})(?=\D)|<\/toto\s*>|\bdata-rm-self\s*=`;
 function decodeEntities(text) {
     return String(text || '').replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,8});/gi, (all, code) => {
         const lower = code.toLowerCase();
@@ -334,6 +339,18 @@ function addUi(face, key) {
     if (!face.uis.includes(key) && face.uis.length < 12)
         face.uis.push(key);
 }
+function readSelfInvented(face, text) {
+    const attr = text.slice(face.selfAt, face.selfAt + 900).match(/^data-rm-self\s*=\s*(["'])([\s\S]*?)\1/);
+    if (!attr)
+        return;
+    face.selfAt = -1;
+    try {
+        face.self = parseSelfInvented(decodeEntities(attr[2]));
+    }
+    catch {
+        face.self = null;
+    }
+}
 export function parseRequestText(request) {
     const parse = request.parse;
     const text = request.text;
@@ -378,6 +395,10 @@ export function parseRequestText(request) {
             if (!face.ticket)
                 face.ticket = Number(match[2]);
         }
+        else if (token.startsWith('data-rm-s')) {
+            if (face.selfAt < 0 && !face.self)
+                face.selfAt = match.index;
+        }
         else if (token.startsWith('</toto')) {
             if (!face.palette) {
                 const whole = paletteFromSource(text.slice(face.startAt, match.index));
@@ -391,6 +412,15 @@ export function parseRequestText(request) {
             }
         }
         parse.pos = re.lastIndex;
+    }
+    for (const item of parse.faces) {
+        if (item.selfAt >= 0 && !item.self)
+            readSelfInvented(item, text);
+        if (!item.think && item.summaryAt >= 0 && text.length - item.startAt < 16000) {
+            const think = text.slice(item.startAt, item.startAt + 8000).match(/<rm-think(?:\s[^>]*)?>([\s\S]*?)<\/rm-think\s*>/i);
+            if (think)
+                item.think = decodeEntities(think[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim().slice(0, 300);
+        }
     }
     if (face && !face.palette && !face.threadHint && text.length - face.startAt > 3000) {
         face.threadHint = paletteFromSource(text.slice(face.startAt, face.startAt + 6000)).thread;
@@ -492,6 +522,11 @@ export function progressView(state, now = Date.now()) {
                 const thought = request.firstTextAt - request.headersAt;
                 lines.push(doneLine('thought', `${__rmT("5N548zwkkuf")}${thought >= 3000 ? `${__rmT("fnf.8R4jHKG")}${seconds(thought)}${__rmT("eXs")}` : ''}`));
             }
+            if (current.self?.form) {
+                lines.push(doneLine('self', `${__rmT("7hbuZvUYk5ZycoOckGD")}${shortText(current.self.form, 14)}${__rmT("Yvk")}${current.self.theme ? `${__rmT("4bF.jaFygRhyXXG1")}${shortText(current.self.theme, 10)}${__rmT("Yvk")}` : ''}`));
+            }
+            if (current.think)
+                lines.push({ key: 'think', state: 'note', mark: '✎', text: `${__rmT("8Xl3jLop")}${current.think}` });
             if (current.title)
                 lines.push(doneLine('title', `${__rmT("TthAqIIEHc.Ash")}${current.title}${__rmT("Yvk")}`));
             if (current.ticket) {
@@ -608,7 +643,7 @@ function updateLine(doc, li, line) {
         text = makeElement(doc, 'span', 'rm-gp-text');
         li.append(text);
     }
-    setText(mark, MARKS[line.state] || '•');
+    setText(mark, line.mark || MARKS[line.state] || '•');
     setText(text, line.text);
     let swatches = li.querySelector(':scope > .rm-gp-swatches');
     const colors = Array.isArray(line.swatches) ? line.swatches : [];

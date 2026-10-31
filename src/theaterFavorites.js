@@ -1,9 +1,9 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.3";
-import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=2.3.3';
-import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=2.3.3';
-import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=2.3.3';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.3.3';
-import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=2.3.3';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.4";
+import { expandHtmlDocumentCodeBlocks } from './outputSanitizer/markup.js?rmv=2.3.4';
+import { restoreRuntimeAnimationClone } from './runtimeAnimationState.js?rmv=2.3.4';
+import { setContinuationCandidates, setContinuationCharacterResolver } from './continuationCache.js?rmv=2.3.4';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.3.4';
+import { createFavoriteAtlasPanel } from './favoriteAtlasesUi.js?rmv=2.3.4';
 const DB_NAME = 'rabbit_mirror_theater_favorites_v1';
 const STORE = 'favorites';
 const DB_VERSION = 1;
@@ -22,7 +22,7 @@ function byteLength(value = '') {
 }
 function notifyChanged() {
     contentIndexPromise = null;
-    void import('./favoriteServerBackup.js?rmv=2.3.3').then(module => module.scheduleFavoriteServerBackup()).catch(() => { });
+    void import('./favoriteServerBackup.js?rmv=2.3.4').then(module => module.scheduleFavoriteServerBackup()).catch(() => { });
     void listTheaterFavorites().then(rows => {
         setContinuationCandidatesFromRows(rows);
         try {
@@ -208,10 +208,10 @@ function normalizeRecord(value) {
     };
 }
 function noteReadded(ids) {
-    void import('./favoriteServerBackup.js?rmv=2.3.3').then(module => module.forgetFavoriteBackupDeletes(ids)).catch(() => { });
+    void import('./favoriteServerBackup.js?rmv=2.3.4').then(module => module.forgetFavoriteBackupDeletes(ids)).catch(() => { });
 }
 function noteDeleted(ids) {
-    void import('./favoriteServerBackup.js?rmv=2.3.3').then(module => module.noteFavoriteBackupDeletes({ favorites: ids })).catch(() => { });
+    void import('./favoriteServerBackup.js?rmv=2.3.4').then(module => module.noteFavoriteBackupDeletes({ favorites: ids })).catch(() => { });
 }
 export async function importTheaterFavoriteRecords(values) {
     const records = (Array.isArray(values) ? values : []).map(normalizeRecord).filter(Boolean);
@@ -551,7 +551,7 @@ async function favoriteImagesFor(captured) {
     if (!Number.isInteger(captured?.mesid) || !Number.isInteger(captured?.swipe))
         return null;
     try {
-        return (await import('./imageStore.js?rmv=2.3.3')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || '');
+        return (await import('./imageStore.js?rmv=2.3.4')).mirrorImagesForSlot(captured.mesid, captured.swipe, captured.chatKey || '');
     }
     catch {
         return null;
@@ -698,7 +698,7 @@ export async function removeDuplicateTheaterFavorites() {
     const remap = await findDuplicateTheaterFavorites();
     if (!remap.size)
         return 0;
-    const atlases = await import('./favoriteAtlases.js?rmv=2.3.3');
+    const atlases = await import('./favoriteAtlases.js?rmv=2.3.4');
     for (const atlas of await atlases.listFavoriteAtlases()) {
         let changed = false;
         const selections = {};
@@ -1235,7 +1235,7 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     let backupRefresh = 0;
     const refreshBackup = () => {
         const ticket = ++backupRefresh;
-        void import('./favoriteServerBackup.js?rmv=2.3.3').then(async (module) => {
+        void import('./favoriteServerBackup.js?rmv=2.3.4').then(async (module) => {
             const status = module.getFavoriteServerBackupStatus();
             const when = Number(status?.savedAt) ? new Date(Number(status.savedAt)).toLocaleString('zh-CN', { hour12: false }) : '';
             backupText.textContent = status?.ok ? `${__rmT("Font1II3TGcStf")}${status.count}${__rmT("qGltWWrp")}${when}${__rmT("N_iraKgwOoG")}` : status?.message ? `${__rmT("l18yZaw6OQhE1ySz0g6_Lk")}${status.message}` : __rmT("suodofgD_Q_vomk8yjeAJLMNRqoliwlcILTS3PVqKymUqyUB2HCWB.LfOU6QuvkC");
@@ -1248,7 +1248,7 @@ export async function openTheaterFavoriteLibrary(hydrate) {
     };
     restoreButton.addEventListener('click', () => {
         restoreButton.disabled = true;
-        void import('./favoriteServerBackup.js?rmv=2.3.3').then(module => module.restoreFavoritesFromServerBackup()).then(result => {
+        void import('./favoriteServerBackup.js?rmv=2.3.4').then(module => module.restoreFavoritesFromServerBackup()).then(result => {
             globalThis.toastr?.success?.(result.empty ? __rmT("nnQAcGxIbXQK.5KB5h7p2gHdIUqdBQrKoRvspf") : `${__rmT("iFN6zD0tHKG")}${result.restored}${__rmT("N_E05d4sZVs")}${result.atlases ? `${__rmT("jvk")}${result.atlases}${__rmT("N_wvFM0tsAh")}` : ''}${result.failed ? `${__rmT("7os")}${result.failed}${__rmT("wHQ2U5Zn2GuiaYs1FJHzZIExX3p")}` : ''}${__rmT("jzk")}`);
         }).catch(error => globalThis.toastr?.warning?.(`${__rmT("VOUk8WJl8ueStf")}${String(error?.message || error || __rmT("cHhXcUwjS2T"))}${__rmT("gHOMRKKa5LfuIMU.03fEnK00RD1rrk")}`))
             .finally(() => { restoreButton.disabled = false; refreshBackup(); });

@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.3.3";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.3.3';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.3.3';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.3.3';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.3.4";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.3.4';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.3.4';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.3.4';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.3';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.3.3';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.3.3';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.3.3';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.3.4';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.3.4';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.3.4';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.3.4';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -288,6 +288,64 @@ export const defaultSettings = Object.freeze({
     skipImpersonate: true,
     debug: false,
 });
+const VERSION_SWITCH_BACKUP_KEY = 'rabbit_mirror_settings_before_version_switch:v1';
+const VERSION_SWITCH_BACKUP_KEY_V2 = 'rabbit_mirror_settings_before_version_switch:v2';
+const SECRET_SETTING = /(?:ApiKey|LlmKey|Secret|Token|Password)$|SecretMemo$/;
+let versionSwitchBackupChecked = false;
+export function backupSettingsBeforeVersionSwitch() {
+    const settings = getSettings();
+    const copy = {};
+    for (const [key, value] of Object.entries(settings))
+        if (!SECRET_SETTING.test(key))
+            copy[key] = value;
+    const payload = JSON.stringify({ at: Date.now(), settings: copy });
+    globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY, payload);
+    try {
+        const kept = JSON.parse(globalThis.localStorage?.getItem(VERSION_SWITCH_BACKUP_KEY_V2) || 'null')?.settings || {};
+        globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY_V2, JSON.stringify({ at: Date.now(), settings: { ...kept, ...copy } }));
+    }
+    catch { }
+}
+function restoreSettingsDroppedByOtherVersion(settings) {
+    if (versionSwitchBackupChecked)
+        return;
+    versionSwitchBackupChecked = true;
+    const readBackup = key => { try {
+        const value = JSON.parse(globalThis.localStorage?.getItem(key) || 'null');
+        return value?.settings && typeof value.settings === 'object' ? value : null;
+    }
+    catch {
+        return null;
+    } };
+    const first = readBackup(VERSION_SWITCH_BACKUP_KEY_V2), second = readBackup(VERSION_SWITCH_BACKUP_KEY);
+    if (!first && !second)
+        return;
+    const backup = { at: Math.max(Number(first?.at || 0), Number(second?.at || 0)), settings: Number(second?.at || 0) > Number(first?.at || 0) ? { ...(first?.settings || {}), ...(second?.settings || {}) } : { ...(second?.settings || {}), ...(first?.settings || {}) } };
+    const drop = () => { try {
+        globalThis.localStorage?.removeItem(VERSION_SWITCH_BACKUP_KEY);
+        globalThis.localStorage?.removeItem(VERSION_SWITCH_BACKUP_KEY_V2);
+    }
+    catch { } };
+    if (!(Date.now() - Number(backup.at || 0) < 90 * 86400000)) {
+        drop();
+        return;
+    }
+    let restored = 0;
+    for (const [key, value] of Object.entries(backup.settings)) {
+        if (!(key in defaultSettings) || SECRET_SETTING.test(key) || Object.prototype.hasOwnProperty.call(settings, key))
+            continue;
+        settings[key] = value;
+        restored += 1;
+    }
+    if (Object.keys(backup.settings).every(key => key in defaultSettings))
+        drop();
+    if (restored) {
+        try {
+            saveSettingsDebounced();
+        }
+        catch { }
+    }
+}
 export function getSettings() {
     const newInstallation = !Object.prototype.hasOwnProperty.call(extension_settings, MODULE_NAME);
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
@@ -298,6 +356,8 @@ export function getSettings() {
             extension_settings[MODULE_NAME].updateGuideSeenVersion = 'fresh';
     }
     const settings = extension_settings[MODULE_NAME];
+    if (!newInstallation)
+        restoreSettingsDroppedByOtherVersion(settings);
     if (!newInstallation && settings.behaviorRuleMode === undefined)
         settings.behaviorRuleMode = 'always';
     settings.independentGenerationTiming = independentGenerationTiming(settings);

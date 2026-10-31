@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.3";
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.3.4";
 const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description', 'aria-roledescription', 'placeholder', 'srcset', 'poster', 'srcdoc']);
-const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
+const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self(?:-think)?$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
 const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
 export function maskFaceText(value) {

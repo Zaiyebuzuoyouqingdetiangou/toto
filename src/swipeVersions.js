@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.3";
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.4";
 export const FACE_SWIPE_MAX = 5;
 export const FACE_SWIPE_FULL_MESSAGE = __rmT(".m0by1h9qE.UYxirWf9m0aUMvUR_h5GXdIk");
 const STORE_KEY = 'rabbit_mirror_face_swipes_v1';

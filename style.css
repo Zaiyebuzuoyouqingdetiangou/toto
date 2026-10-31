@@ -1251,6 +1251,9 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-generation-progress .rm-gp-line[data-state="active"] .rm-gp-text{ font-weight:600 !important; }
 .rabbit-mirror-generation-progress .rm-gp-line[data-state="active"] .rm-gp-mark{ animation:rm-gp-pulse 1s steps(1,end) infinite; }
 .rabbit-mirror-generation-progress .rm-gp-line[data-state="note"] .rm-gp-text{ font-style:italic !important; opacity:.85 !important; }
+
+.rabbit-mirror-generation-progress .rm-gp-line[data-key="think"]{ white-space:normal !important; align-items:flex-start !important; }
+.rabbit-mirror-generation-progress .rm-gp-line[data-key="think"] .rm-gp-text{ overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; line-height:1.45 !important; }
 .rabbit-mirror-generation-progress .rm-gp-swatches{
   display:inline-flex !important;
   flex:0 0 auto !important;

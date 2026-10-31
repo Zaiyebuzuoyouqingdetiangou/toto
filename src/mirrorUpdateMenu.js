@@ -1,17 +1,31 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.3";
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.3';
-import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.3.3';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.4";
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.4';
+import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, compareRabbitMirrorVersions, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.3.4';
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
 let applying = false;
 let sheetKeyInstalled = false;
+export function pinnedVersionOf(snap = getRabbitMirrorUpdateSnapshot()) {
+    if (snap?.remoteBranchKnown !== true)
+        return '';
+    return String(snap.remoteBranch || '').match(/^v(\d{1,3}\.\d{1,4}\.\d{1,4})$/)?.[1] || '';
+}
 function paintRow(row, snap) {
     const check = row.querySelector('[data-rm-update-check]');
     if (!check)
         return;
     const checking = snap.status === 'checking';
     const available = snap.status === 'available';
+    const pinned = pinnedVersionOf(snap);
     check.disabled = checking || applying;
+    if (pinned && !checking) {
+        check.dataset.rmUpdateMode = 'pinned';
+        check.textContent = `${__rmT("LPLoTyteP0CsaY86ogD")}${pinned}${__rmT("NFQbY.dNrySsqQH3w._")}`;
+        check.title = __rmT("6DC40iA5rd9qqlx5li2HCItIsF82cn.PRrqk671N6CS4Jf");
+        check.style.removeProperty('border-color');
+        check.style.removeProperty('font-weight');
+        return;
+    }
     check.dataset.rmUpdateMode = available ? 'update' : 'check';
     if (available) {
         check.textContent = snap.remoteVersion ? `${__rmT("ssMGAdjV02kKVu4ulb4dHT")}${snap.remoteVersion}` : __rmT("QU7HO7F0vMjDHT");
@@ -73,7 +87,7 @@ function fillReadme(body, result, { full = false } = {}) {
             event.stopPropagation();
             sheet?.remove();
             sheet = null;
-            void import('./updateGuide.js?rmv=2.3.3').then(module => module.showAllUpdateTips()).catch(() => { });
+            void import('./updateGuide.js?rmv=2.3.4').then(module => module.showAllUpdateTips()).catch(() => { });
         });
         body.append(guide);
     }
@@ -94,7 +108,7 @@ function fillReadme(body, result, { full = false } = {}) {
         body.append(sectionBlock(section));
 }
 function closeSheet() {
-    if (!sheet?.isConnected || applying)
+    if (!sheet?.isConnected || applying || switching)
         return;
     sheet.remove();
 }
@@ -137,7 +151,12 @@ function ensureSheet() {
     apply.dataset.rmUpdateSheetApply = 'true';
     apply.textContent = __rmT("Q6RMzMgmR6s");
     apply.style.cssText = `${buttonStyle}margin-top:0;flex:1;border-color:var(--SmartThemeQuoteColor,#c47a3a);`;
-    actions.append(close, apply);
+    const rollback = document.createElement('button');
+    rollback.type = 'button';
+    rollback.dataset.rmUpdateSheetRollback = 'true';
+    rollback.textContent = __rmT("ORXNjFkBVT2op_Hf");
+    rollback.style.cssText = `${buttonStyle}margin-top:0;flex:1;`;
+    actions.append(close, rollback, apply);
     card.append(title, body, actions);
     overlay.append(card);
     overlay.addEventListener('cancel', event => {
@@ -152,6 +171,13 @@ function ensureSheet() {
         event.preventDefault();
         event.stopPropagation();
         closeSheet();
+    });
+    rollback.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (applying)
+            return;
+        void showRollbackPanel(overlay);
     });
     apply.addEventListener('click', event => {
         event.preventDefault();
@@ -188,12 +214,16 @@ async function runApply(apply, close, body) {
     try {
         const result = await applyRabbitMirrorUpdateAndReload();
         if (result.skipped) {
-            globalThis.toastr?.info?.(result.message || __rmT("VwH5II8Fi3KHvcxGWZd5idjgBCn77ftQqt8"));
             applying = false;
             apply.disabled = false;
             close.disabled = false;
             apply.textContent = __rmT("Q6RMzMgmR6s");
             wait.remove();
+            if (result.pinnedSuspect && sheet?.isConnected) {
+                void showRollbackPanel(sheet, { lead: result.message });
+                return;
+            }
+            globalThis.toastr?.info?.(result.message || __rmT("VwH5II8Fi3KHvcxGWZd5idjgBCn77ftQqt8"));
             return;
         }
         apply.textContent = __rmT("cIFOASIL0Muo8h");
@@ -208,7 +238,251 @@ async function runApply(apply, close, body) {
         globalThis.toastr?.error?.(message);
     }
 }
-async function openRabbitMirrorChangelog({ mode = 'view' } = {}) {
+function para(text, extra = '') {
+    const node = document.createElement('p');
+    node.textContent = text;
+    node.style.cssText = `margin:0 0 10px;${extra}`;
+    return node;
+}
+const ROLLBACK_LIST_MAX = 10;
+let switching = false;
+async function showRollbackPanel(overlay, { lead = '' } = {}) {
+    const body = overlay.querySelector('[data-rm-update-sheet-body]');
+    const title = overlay.querySelector('[data-rm-update-sheet-title]');
+    const rollbackButton = overlay.querySelector('[data-rm-update-sheet-rollback]');
+    const apply = overlay.querySelector('[data-rm-update-sheet-apply]');
+    if (!body || switching)
+        return;
+    title.textContent = __rmT("UFqopI6P96A");
+    if (apply) {
+        apply.hidden = true;
+        apply.style.setProperty('display', 'none', 'important');
+    }
+    if (rollbackButton)
+        rollbackButton.disabled = true;
+    body.dataset.rmRollbackPanel = 'true';
+    body.replaceChildren(para(__rmT("_eQgsMEg0l.jjBAxEzBNb2G453hjIXIiGKRsKpmRIJX8e0E.C.Thfoz8sr_Vafdnx0CZrdrRlKPdl.eMZgUxS2STChBbjZpfCeBMA7rwAWXo.k")));
+    let module = null;
+    let info = null;
+    try {
+        module = await import('./versionRollback.js?rmv=2.3.4');
+        info = await module.listRollbackVersions();
+    }
+    catch (error) {
+        if (!overlay.isConnected)
+            return;
+        body.replaceChildren(para(String(error?.message || __rmT("JdWafuSzWNbhsTjukqLaGgpo5r2Hsxs2"))));
+        if (error?.detail)
+            body.append(para(`${__rmT("rcHBrNDZWZY")}${error.detail}`, 'opacity:.7;font-size:12px;'));
+        if (rollbackButton)
+            rollbackButton.disabled = false;
+        return;
+    }
+    if (!overlay.isConnected)
+        return;
+    body.replaceChildren();
+    body.scrollTop = 0;
+    const status = para('', 'font-weight:600;padding:8px 10px;border-radius:9px;background:color-mix(in srgb,currentColor 10%,transparent);');
+    status.hidden = true;
+    status.setAttribute('role', 'status');
+    body.append(status);
+    const say = text => {
+        status.hidden = false;
+        status.textContent = text;
+        try {
+            status.scrollIntoView({ block: 'nearest' });
+        }
+        catch { }
+    };
+    const allButtons = [];
+    const lockAll = locked => {
+        allButtons.forEach(button => { button.disabled = locked || button.dataset.rmKeepDisabled === 'true'; });
+        overlay.querySelectorAll('[data-rm-update-sheet-close]').forEach(button => { button.disabled = locked; });
+    };
+    const reloadSoon = () => {
+        module.reloadAfterVersionSwitch();
+        setTimeout(() => { try {
+            globalThis.location?.reload();
+        }
+        catch { } }, 6000);
+        setTimeout(() => { switching = false; lockAll(false); }, 12000);
+    };
+    const run = async (label, task) => {
+        if (switching)
+            return;
+        switching = true;
+        lockAll(true);
+        say(`${__rmT("g6gE2k")}${label}……`);
+        try {
+            module.backupSettingsBeforeVersionSwitch();
+        }
+        catch { }
+        try {
+            await task();
+            say(`${__rmT("wGfg7f")}${label.replace(__rmR("VswuA0nM.8h", ""), __rmT("Z8wANf"))}${__rmT("CzGsEpWc8SJLuxyq3ZUJC0s7")}`);
+            reloadSoon();
+        }
+        catch (error) {
+            if (error?.switched) {
+                say(`${String(error.message || '')}${__rmT("3IrkE8PV8ydGagd0rdCE4t5lvIoXiy0NcPq72fSBo_AZ755y2OCkx15X")}`);
+                reloadSoon();
+                return;
+            }
+            switching = false;
+            lockAll(false);
+            say(String(error?.message || `${__rmT("62YFiT")}${label}${__rmT("jzk")}`));
+            if (error?.detail)
+                status.title = error.detail;
+        }
+    };
+    const button = (text, onClick) => {
+        const node = document.createElement('button');
+        node.type = 'button';
+        node.textContent = text;
+        node.style.cssText = buttonStyle;
+        node.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); onClick(node); });
+        allButtons.push(node);
+        return node;
+    };
+    const confirmTwice = (node, text, action) => {
+        const armedAt = Number(node.dataset.rmArmedAt || 0);
+        if (armedAt && Date.now() - armedAt < 5000) {
+            delete node.dataset.rmArmedAt;
+            if (node.dataset.rmLabel)
+                node.textContent = node.dataset.rmLabel;
+            action();
+            return;
+        }
+        const original = node.dataset.rmLabel || node.textContent;
+        node.dataset.rmLabel = original;
+        node.dataset.rmArmedAt = String(Date.now());
+        node.textContent = text;
+        setTimeout(() => { if (node.dataset.rmArmedAt && Date.now() - Number(node.dataset.rmArmedAt) >= 4900) {
+            delete node.dataset.rmArmedAt;
+            node.textContent = original;
+        } }, 5000);
+    };
+    const running = runningRabbitMirrorVersion();
+    if (lead)
+        body.append(para(lead, 'font-weight:600;'));
+    const onChannel = info.current === 'main' || info.current === 'test';
+    if (!onChannel) {
+        body.append(para(info.pinned
+            ? `${__rmT("IvgS2XizP0CsaY86ogD")}${info.pinned}${__rmT("OmPZnCU1FB_0xXquxax_EuAM_1Qcs7s2")}` : __rmT("pjTzmKEOTL5bf5y.TL9E6gsiXQpBEfh40YqprHwe94HF8vc7sL.3Cnm8sdSA7DWPhHpPVPBh9ycarV7HbOnckDx.D2kPptWkRjvEiDPmFprEqWWcDGcQkwcYKIAEZf"), 'font-weight:600;'));
+        const latest = button(__rmT("dwFma6mAFZDdu3uJ3Re06eV4"), node => confirmTwice(node, __rmT("_3.GVVeyEwMxfZF7HkSCBQo_xmnw7xMG.xobZh"), () => run(__rmT("in.SnEyvfhxqFLVC7Ek"), () => module.returnToLatestRabbitMirror({ channel: 'main', install: info }))));
+        latest.dataset.rmRollbackLatest = 'main';
+        body.append(latest);
+        if (info.hasTest) {
+            const test = button(__rmT("in.SnEyvfhxb86iT7Ek"), node => confirmTwice(node, __rmT("_3.GVVeyEwMxfZF70kFX.Qo_xmnw7xMG.xobZh"), () => run(__rmT("in.SnEyvfhxb86iT7Ek"), () => module.returnToLatestRabbitMirror({ channel: 'test', install: info }))));
+            test.dataset.rmRollbackLatest = 'test';
+            body.append(test);
+        }
+    }
+    body.append(para(__rmT("Bo4qvE34ETp9cYBwtiwDuQhymiyI_iG33X59YiZUfZxoSkGrSYi8XU_IHx8sA55CSbUqLvnPTakEivMOXmcfuJnIzjg1mspVA.gJ_Srlkp_W1HsDET3OIVN4UJlLtFW3MmiF.sHmRWD7q5PPCpYepiMHJVeOGr9_GTU5BRW.mFWxxQAqrcEHBfTkB20OtPI0r.grcLmSXI.O21THLLEo.2jCVpTkOFFCvzotTZ4XwPMgdcZA7Fg27U41WxfSieW.rmvWqSH.dR.Y3q.pzEUy2i8AX4pFPAwTSGegB0y0NmtAXS0Hky8"), onChannel ? '' : 'margin-top:12px;'));
+    const shown = info.versions.slice(0, ROLLBACK_LIST_MAX);
+    const pinnedItem = info.versions.find(item => item.version === info.pinned);
+    if (pinnedItem && !shown.includes(pinnedItem))
+        shown.push(pinnedItem);
+    if (!shown.length)
+        body.append(para(__rmT("yN0NjwgEeaQg1xZ2DXX4WttRj9gQbzauAWS0v4ng6CS.bh")));
+    const snapNow = getRabbitMirrorUpdateSnapshot();
+    const readmeBranch = ['main', 'test'].includes(String(snapNow.remoteBranch || '')) ? snapNow.remoteBranch : 'main';
+    let readmePromise = null;
+    const readmeSections = () => (readmePromise ||= loadRabbitMirrorReadme({ remoteUrl: snapNow.remoteUrl, remoteBranch: readmeBranch }).catch(() => ({ ok: false, sections: [] })));
+    const notesFor = item => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'margin:2px 0 10px;';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.textContent = `${__rmT("pzuXhaFy1yraBFkq")}${item.version}${__rmT("N_.NK9DZS2T")}`;
+        toggle.setAttribute('data-rm-rollback-notes', item.version);
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.style.cssText = `${buttonStyle}min-height:38px;margin-top:4px;padding:6px 12px;font-size:13px;opacity:.85;`;
+        const box = document.createElement('div');
+        box.hidden = true;
+        box.setAttribute('data-rm-rollback-notes-box', item.version);
+        box.style.cssText = 'margin:8px 0 0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,currentColor 7%,transparent);font-size:13px;line-height:1.5;overflow-wrap:anywhere;';
+        toggle.addEventListener('click', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const open = box.hidden;
+            box.hidden = !open;
+            toggle.setAttribute('aria-expanded', String(open));
+            toggle.textContent = open ? `${__rmT("bMMH4jNus3G")}${item.version}${__rmT("N_.NK9DZS2T")}` : `${__rmT("pzuXhaFy1yraBFkq")}${item.version}${__rmT("N_.NK9DZS2T")}`;
+            if (!open || box.dataset.loaded)
+                return;
+            box.textContent = __rmT("kBZhOu_HP8eFX6MmGR4hOT");
+            const result = await readmeSections();
+            if (!box.isConnected)
+                return;
+            box.dataset.loaded = 'true';
+            box.replaceChildren();
+            const own = (result.sections || []).find(section => section.version === item.version);
+            if (own)
+                box.append(sectionBlock(own));
+            else
+                box.append(para(result.ok ? `${__rmT("afeyTZDQMbezGJLjmZRMGufp0jtUUrEP")}${item.version}${__rmT("UqLfzO3JS9OMsh")}` : __rmT("KQYWh3GHKrF5I_Qv0WxJCmWFMHtgezR3acKFA5wNOcr.bh")));
+            if (!result.ok) {
+                delete box.dataset.loaded;
+                return;
+            }
+            const later = (result.sections || []).filter(section => section.version && compareRabbitMirrorVersions(section.version, item.version) > 0
+                && compareRabbitMirrorVersions(section.version, running || section.version) <= 0);
+            if (later.length) {
+                box.append(para(`${__rmT("NZRQVZ3L1slyTh")}${item.version}${__rmT("i8HzvqLnFCxBTh")}${later.length}${__rmT("tMtBk_R9PE.K.xHzmhB42oMvQuw4o9Mml7oCqh")}`, 'margin:6px 0 4px;font-weight:600;'));
+                const list = document.createElement('ul');
+                list.style.cssText = 'margin:0;padding-left:1.2em;';
+                for (const section of later) {
+                    const li = document.createElement('li');
+                    li.textContent = section.title ? `v${section.version} · ${section.title}` : `v${section.version}`;
+                    list.append(li);
+                }
+                box.append(list);
+            }
+        });
+        wrap.append(toggle, box);
+        return wrap;
+    };
+    const versionRow = item => {
+        const using = item.version === running;
+        const label = `v${item.version}${using ? __rmT("w8G960KnV6uxtf") : ''}`;
+        const ask = item.beforeRollback ? `${__rmT("z7jD7xa4swCCqp86ogD")}${item.version}${__rmT("ZhBpeAnV72LwXFMVIIGy07wlaBs7okQEe4FRsGgCHWZyQf")}` : `${__rmT("z7jD7xa4swCCqp86ogD")}${item.version}${__rmT("9DPpcJFAt8cu9f")}`;
+        const node = button(label, target => confirmTwice(target, ask, () => run(`${__rmT("Ez_PFS3L1slyTh")}${item.version}`, () => module.switchRabbitMirrorBranch({ branch: item.branch, install: info }))));
+        node.dataset.rmRollbackVersion = item.version;
+        if (using || item.version === info.pinned) {
+            node.disabled = true;
+            node.dataset.rmKeepDisabled = 'true';
+        }
+        const row = document.createElement('div');
+        row.append(node, notesFor(item));
+        return row;
+    };
+    const withPanel = shown.filter(item => !item.beforeRollback);
+    const older = shown.filter(item => item.beforeRollback);
+    for (const item of withPanel)
+        body.append(versionRow(item));
+    if (older.length) {
+        const group = document.createElement('details');
+        group.setAttribute('data-rm-rollback-older', 'true');
+        group.open = !withPanel.length;
+        group.style.cssText = 'margin:8px 0 0;';
+        const summary = document.createElement('summary');
+        summary.textContent = `${__rmT("auOnyEG8jXZMIy6D")}${older.length}${__rmT("6Rx6H8WxYZTiyXLSg6Z_vac.kocaRN6prEteyQVhaL9j1MgsazkRSh")}`;
+        summary.style.cssText = 'cursor:pointer;min-height:38px;display:flex;align-items:center;font-weight:600;';
+        group.append(summary, para(`${module.ROLLBACK_SINCE}${__rmT("SIeCp1VxWs1tOwv1tFA2QhRHkotG8MbQ9NgFQ7zxsoJHmwYaqmFnuGo6lcZ5NyYerDRHRgxl1cpKaY8lVED5TsMGwfsT6kaaCiP3BTkodsm95RScmmsK5uNq1oJvWd2Bj.4jHnCVRo300o61aWwJYaHsJ3cYVJ5A8vr3C1Ki_2oNTdIO.VIhEEq7")}${module.ROLLBACK_SINCE}${__rmT("3Irm25WOrt6xQKbgvlzh4NWWvI_2wGhUrdQQ3hndEi.G30YGkzHGCq5X")}`, 'margin:6px 0 10px;font-size:13px;opacity:.85;'));
+        for (const item of older)
+            group.append(versionRow(item));
+        body.append(group);
+    }
+    if (rollbackButton)
+        rollbackButton.disabled = false;
+}
+export async function openRabbitMirrorRollback() {
+    await openRabbitMirrorChangelog({ mode: 'view', skipReadme: true });
+    if (sheet?.isConnected)
+        await showRollbackPanel(sheet);
+}
+async function openRabbitMirrorChangelog({ mode = 'view', skipReadme = false } = {}) {
     const overlay = ensureSheet();
     const body = overlay.querySelector('[data-rm-update-sheet-body]');
     const title = overlay.querySelector('[data-rm-update-sheet-title]');
@@ -216,16 +490,25 @@ async function openRabbitMirrorChangelog({ mode = 'view' } = {}) {
     const updateMode = mode === 'update';
     apply.hidden = !updateMode;
     apply.style.setProperty('display', updateMode ? 'block' : 'none', 'important');
+    const rollback = overlay.querySelector('[data-rm-update-sheet-rollback]');
+    if (rollback) {
+        rollback.hidden = updateMode;
+        rollback.disabled = false;
+        rollback.style.setProperty('display', updateMode ? 'none' : 'block', 'important');
+    }
     const snap = getRabbitMirrorUpdateSnapshot();
     title.textContent = updateMode
         ? (snap.remoteVersion ? `${__rmT("mJAJgt8PjXZMIlBq")}${snap.remoteVersion}` : __rmT("uS2FK93O36VYHf"))
         : __rmT("wNciF2tsYDY");
+    delete body.dataset.rmRollbackPanel;
+    if (skipReadme)
+        return;
     body.textContent = __rmT("Mr80UHSzoMBwGgJjdztql1VGv7ZkU4Eg");
     delete apply.dataset.rmReadyAt;
     if (!applying)
         apply.disabled = true;
     const readme = await loadRabbitMirrorReadme({ remoteUrl: snap.remoteUrl, remoteBranch: snap.remoteBranch });
-    if (!overlay.isConnected)
+    if (!overlay.isConnected || body.dataset.rmRollbackPanel)
         return;
     fillReadme(body, readme, { full: !updateMode });
     apply.dataset.rmReadyAt = String(Date.now() + 600);
@@ -238,10 +521,20 @@ function paintSettingsChrome(row, snap) {
     const badge = row.querySelector('[data-rm-settings-badge]');
     const action = row.querySelector('[data-rm-settings-update]');
     const version = runningRabbitMirrorVersion();
-    if (badge)
-        badge.textContent = version ? `v${version}` : __rmT("k2WvFq5XB9A");
+    const pinned = pinnedVersionOf(snap);
+    if (badge) {
+        badge.textContent = version ? `v${version}${pinned ? __rmT("QfVkz3fejXZMIymD") : ''}` : __rmT("k2WvFq5XB9A");
+        badge.title = pinned ? __rmT("RQzXc09gib_1DKiJqHXcNq0Sm.sLm9ELpBqHEvooc_yYWPM32Ol8MyPqrAb7jXRovfwUXmk4jI_eoR6M3HSJr516EozkN65jmeyogG.679s") : '';
+    }
     if (!action)
         return;
+    if (pinned && snap.status !== 'checking' && !applying) {
+        action.disabled = false;
+        action.textContent = __rmT("UFqiAU2XR6s");
+        action.title = __rmT("OioF9j0RYHAJ4GtCr.c7Fi0SUiyOFLwyRdYY7E5E5.SmkAwKokCIyI3PFift9UfkJMpOM5jaP0pct9tw0TpFrh");
+        action.dataset.rmSettingsMode = 'pinned';
+        return;
+    }
     const checking = snap.status === 'checking' || applying;
     action.disabled = checking || snap.status === 'latest';
     if (snap.status === 'available') {
@@ -308,6 +601,10 @@ export function mountSettingsUpdateChrome(row) {
             void openRabbitMirrorChangelog({ mode: 'update' });
             return;
         }
+        if (action.dataset.rmSettingsMode === 'pinned') {
+            void openRabbitMirrorRollback();
+            return;
+        }
         if (action.dataset.rmSettingsMode !== 'check')
             return;
         void (async () => {
@@ -362,6 +659,10 @@ function mountMirrorUpdateRow(panel) {
         event.stopPropagation();
         if (check.dataset.rmUpdateMode === 'update') {
             void openRabbitMirrorChangelog({ mode: 'update' });
+            return;
+        }
+        if (check.dataset.rmUpdateMode === 'pinned') {
+            void openRabbitMirrorRollback();
             return;
         }
         void (async () => {

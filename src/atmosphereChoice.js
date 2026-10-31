@@ -1,6 +1,6 @@
-import { stripAtmosphereThinkMarkup } from './atmosphereMarkup.js?rmv=2.3.3';
-import { generationPaletteFields } from './paletteRecipes.js?rmv=2.3.3';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.3.3';
+import { stripAtmosphereThinkMarkup } from './atmosphereMarkup.js?rmv=2.3.4';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=2.3.4';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.3.4';
 const ATMOSPHERE_REASON_LIMIT = 300;
 export function parseAtmosphereTicketIndex(html, menuLength) {
     const count = Number(menuLength);
@@ -145,4 +145,14 @@ export function atmosphereChoicesFromFaces(faces, menus) {
         const face = list.find(item => item?.index === index) || list[index];
         return parseAtmosphereTicketIndex(face?.html || '', menu.length);
     });
+}
+export function stampSelfInventThink(html, reason) {
+    const text = String(reason || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, ATMOSPHERE_REASON_LIMIT);
+    const source = String(html || '');
+    if (!text || /\sdata-rm-self-think\s*=/i.test(source))
+        return source;
+    const value = text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const withSelf = /<details\b(?=[^>]*\sdata-rm-self\s*=)[^>]*>/i;
+    const target = withSelf.test(source) ? withSelf : /<details\b[^>]*>/i;
+    return source.replace(target, tag => tag.replace(/^<details\b/i, `<details data-rm-self-think="${value}"`));
 }
