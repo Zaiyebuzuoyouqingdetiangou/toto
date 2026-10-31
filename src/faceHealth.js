@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.1";
-import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.5.1';
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.5.1';
-import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.5.1';
-import { parseSelfInvented } from './interactionMethodLedger.js?rmv=2.5.1';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.2";
+import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.5.2';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.5.2';
+import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.5.2';
+import { parseSelfInvented } from './interactionMethodLedger.js?rmv=2.5.2';
 export const HUE_NAMES = Object.freeze({ red: __rmT("mr8"), orange: __rmT("IqG"), yellow: __rmT("dG8"), green: __rmT("GL8"), cyan: __rmT("4D_"), blue: __rmT("hFf"), purple: __rmT("3LA"), pink: __rmT("caT"), neutral: __rmT("Pgv.uk") });
 export const BRIGHTNESS_NAMES = Object.freeze({ light: __rmT("z2Zaif"), mid: __rmT("AsAr7j6q"), dark: __rmT("w2Zaif") });
 export const RISK_NAMES = Object.freeze({
@@ -88,20 +88,50 @@ export function splitStoredFaces(html) {
         .filter(face => Number.isInteger(face.faceIndex) && face.faceIndex >= 0 && !/data-rabbit-mirror-face-failure/i.test(face.html) && /<details\b/i.test(face.html));
 }
 const labelTitle = label => String(label || '').split(__rmT("7ys"))[0].replace(/^\S+\s+(?=\S)/, '').replace(/\s+/g, ' ').trim();
+const OUTER_DETAILS_TAG = /<details\b(?:[^>"']|"[^"]*"|'[^']*')*>/i;
+function decodeAttributeEntities(value) {
+    return String(value || '').replace(/&(?:#(\d{1,7})|#x([0-9a-f]{1,6})|(quot|apos|lt|gt|amp));/gi, (match, dec, hex, name) => {
+        if (name)
+            return { quot: '"', apos: "'", lt: '<', gt: '>', amp: '&' }[name.toLowerCase()] || match;
+        const code = dec ? Number(dec) : parseInt(hex, 16);
+        try {
+            return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+        }
+        catch {
+            return match;
+        }
+    });
+}
+function outerDetailsAttribute(html, name) {
+    const tag = String(html || '').match(OUTER_DETAILS_TAG)?.[0] || '';
+    const match = tag.match(new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i'));
+    return match ? decodeAttributeEntities(match[1] ?? match[2] ?? '') : null;
+}
+export function faceHasSelfInvent(html) { return outerDetailsAttribute(html, 'data-rm-self') !== null; }
 function selfFormOf(html) {
-    const tag = String(html || '').match(/<details\b[^>]*>/i)?.[0] || '';
-    const raw = tag.match(/\sdata-rm-self\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];
-    if (raw == null)
+    const value = outerDetailsAttribute(html, 'data-rm-self');
+    if (value == null)
         return null;
-    const value = raw.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     return parseSelfInvented(value)?.form || '';
+}
+function stampedFaceMode(html) {
+    try {
+        const recipe = JSON.parse(outerDetailsAttribute(html, 'data-rm-face-recipe') || 'null');
+        return recipe && typeof recipe.samplingMode === 'string' ? recipe.samplingMode : '';
+    }
+    catch {
+        return '';
+    }
 }
 export function formatNameOf(recipe, html = '') {
     const self = selfFormOf(html);
     if (self)
         return `${self}${__rmT("w890Iyuu5JRxtf")}`;
-    if (self === '' || recipe?.samplingMode === 'self_invent')
+    const stamped = stampedFaceMode(html);
+    if (self === '' || stamped === 'self_invent' || (!stamped && recipe?.samplingMode === 'self_invent'))
         return __rmT("2FQ53CSzry0UAFc2IAA");
+    if (stamped && recipe?.samplingMode === 'self_invent')
+        return '';
     if (!recipe || typeof recipe !== 'object')
         return '';
     const menu = Array.isArray(recipe.atmosphereMenu) ? recipe.atmosphereMenu : [];

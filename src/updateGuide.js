@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
-import { getSettings, updateSettings } from './settings.js?rmv=2.5.1';
-import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.5.1';
-import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.2";
+import { getSettings, updateSettings } from './settings.js?rmv=2.5.2';
+import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.5.2';
+import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.2';
 export const UPDATE_GUIDE_TIPS = Object.freeze([
     { id: 'ready-notice', since: '2.5.0', title: __rmT("vDfth4AqvkK2LXIOxKqXDTOn"), text: __rmT("53Foz3Xj8iwr2PzZGA3tnoLL4p1GB8c5W7RuCwW_4O.XcbQbvFvTdfuQDgCCtyHWkpzZFoWsZJkodsPWN_idg_ZNh8XIqg0r3MGAcUxbs5HuP_3qrVpm7sEIu4oX17kyInTaG..J8qOLycZGC6vwzFvIbxXlqps0"), page: 'display', target: 'rh_ready_notice_enabled' },
     { id: 'lag-check', since: '2.4.0', title: __rmT("JQSOrgTBBPA"), text: __rmT("ZzyN70o0r3Utk1ZzTr2wX_205ANfmYgJ43FfSeZX4rmaqER6rKHofL1DNMbOoY2VDKvXfSEbjO2BhQ75dF6l4rg2S0YWrdpX0RMZptaiu6e3TS1XXDD0if"), page: 'diagnosis', target: 'rh_lag_check_start' },
@@ -11,6 +11,7 @@ export const UPDATE_GUIDE_TIPS = Object.freeze([
     { id: 'rollback', since: '2.2.0', title: __rmT("UFqopI6P96A"), text: __rmT("qM7KpackmUnkYcG80LEzJ3HEAGZZlVwQnsNfIo6CwF38mKNi4W8RNgJUAk7yasI7T2JG0OvrXf5QAkSXCfGxMTAHvAjx_bFYb9kpqOcs2VIUF1vCiemLuVmgAe.h8217eKBkVzSzERovYjmbWv3rZM5JyapZcz3K7h7_f7AXM1Nubr5GoHBEmBXticka4.rB3ACnESDzYafZbOQhSI.w8sbd7H.fFO52kMTT_BONTu_4wxI5pgAs692fGm5hd7en"), action: 'rollback' },
     { id: 'desktop-width', since: '2.1.4', title: __rmT("9NIyLdwEhZVaLn9MCsOgMxu."), text: __rmT("WevGsCtuVHOZICadd4MpJFhU27H57mdzGqxThQP14Yae0pcORARnfGt.zBG"), page: 'display', target: 'rh_desktop_face_zoom_width' },
 ]);
+const PRE_GUIDE_VERSION = '2.1.9';
 export function pendingUpdateTips(seen, current, tips = UPDATE_GUIDE_TIPS) {
     return tips.filter(tip => (!seen || compareRabbitMirrorVersions(tip.since, seen) > 0)
         && (!current || compareRabbitMirrorVersions(tip.since, current) <= 0)
@@ -68,21 +69,21 @@ function watchForReturn() {
     }, 900);
 }
 export async function goToUpdateTip(tip) {
+    if (tip.action !== 'rollback' && !settingsRoot()?.__rabbitMirrorWorkbench) {
+        globalThis.toastr?.info?.(__rmT("3NnMF1jw3ubBNI3bqS3MPln1h5dHd1bOdcRaESgBbLwU01Krq8_"));
+        return false;
+    }
     closeUpdateGuide();
     if (session)
         session.remaining = session.remaining.filter(item => item.id !== tip.id);
     if (tip.action === 'rollback') {
-        const menu = await import('./mirrorUpdateMenu.js?rmv=2.5.1');
+        const menu = await import('./mirrorUpdateMenu.js?rmv=2.5.2');
         await menu.openRabbitMirrorRollback();
         watchForReturn();
         return true;
     }
     const root = settingsRoot();
     const workbench = root?.__rabbitMirrorWorkbench;
-    if (!workbench) {
-        globalThis.toastr?.info?.(__rmT("3NnMF1jw3ubBNI3bqS3MPln1h5dHd1bOdcRaESgBbLwU01Krq8_"));
-        return false;
-    }
     workbench.open();
     if (tip.page)
         workbench.navigate(tip.page);
@@ -217,7 +218,7 @@ export function maybeShowUpdateGuide({ delayMs = 5000, tries = 12 } = {}) {
         const current = runningRabbitMirrorVersion();
         if (!current)
             return;
-        const seen = String(settings?.updateGuideSeenVersion || '');
+        const seen = String(settings?.updateGuideSeenVersion || '') || PRE_GUIDE_VERSION;
         if (seen === 'fresh') {
             markSeen(current);
             return;

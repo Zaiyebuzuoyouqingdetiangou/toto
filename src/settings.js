@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.5.1";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.5.1';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.5.1';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.5.1';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.5.2";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.5.2';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.5.2';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.5.2';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.5.1';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.5.1';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.5.1';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.5.1';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.5.2';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.5.2';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.5.2';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.5.2';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -227,6 +227,7 @@ export const defaultSettings = Object.freeze({
     readyNoticeVibrate: false,
     faceHealthInMenu: false,
     repairSampleUpload: false,
+    repairSampleUploadSince: 0,
     updateGuideEnabled: true,
     selfInventMode: false,
     updateGuideSeenVersion: '',
@@ -303,12 +304,19 @@ export function backupSettingsBeforeVersionSwitch() {
         if (!SECRET_SETTING.test(key))
             copy[key] = value;
     const payload = JSON.stringify({ at: Date.now(), settings: copy });
-    globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY, payload);
+    let saved = false;
+    try {
+        globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY, payload);
+        saved = !!globalThis.localStorage;
+    }
+    catch { }
     try {
         const kept = JSON.parse(globalThis.localStorage?.getItem(VERSION_SWITCH_BACKUP_KEY_V2) || 'null')?.settings || {};
         globalThis.localStorage?.setItem(VERSION_SWITCH_BACKUP_KEY_V2, JSON.stringify({ at: Date.now(), settings: { ...kept, ...copy } }));
+        saved = saved || !!globalThis.localStorage;
     }
     catch { }
+    return saved;
 }
 function restoreSettingsDroppedByOtherVersion(settings) {
     if (versionSwitchBackupChecked)
@@ -512,6 +520,10 @@ export function getSettings() {
     }
     settings.faceHealthInMenu = settings.faceHealthInMenu === true;
     settings.repairSampleUpload = settings.repairSampleUpload === true;
+    {
+        const since = Math.round(Number(settings.repairSampleUploadSince));
+        settings.repairSampleUploadSince = settings.repairSampleUpload && Number.isFinite(since) && since > 0 ? since : 0;
+    }
     settings.updateGuideEnabled = settings.updateGuideEnabled !== false;
     settings.selfInventMode = settings.selfInventMode === true;
     settings.updateGuideSeenVersion = /^(?:fresh|\d{1,3}\.\d{1,4}\.\d{1,4})$/.test(String(settings.updateGuideSeenVersion || '')) ? String(settings.updateGuideSeenVersion) : '';
@@ -741,6 +753,10 @@ export function updateSettings(patch) {
         safePatch.faceHealthInMenu = safePatch.faceHealthInMenu === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'repairSampleUpload'))
         safePatch.repairSampleUpload = safePatch.repairSampleUpload === true;
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'repairSampleUploadSince')) {
+        const since = Math.round(Number(safePatch.repairSampleUploadSince));
+        safePatch.repairSampleUploadSince = Number.isFinite(since) && since > 0 ? since : 0;
+    }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'updateGuideEnabled'))
         safePatch.updateGuideEnabled = safePatch.updateGuideEnabled !== false;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'selfInventMode'))

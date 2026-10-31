@@ -1,12 +1,12 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.1";
-import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.1';
-import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, compareRabbitMirrorVersions, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.5.1';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.2";
+import { paintToolMenuUpdateIcon, themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.5.2';
+import { applyRabbitMirrorUpdateAndReload, checkRabbitMirrorUpdate, getRabbitMirrorUpdateSnapshot, isNewerRabbitMirrorVersion, loadRabbitMirrorReadme, compareRabbitMirrorVersions, runningRabbitMirrorVersion, setupRabbitMirrorExtensionReloadWatch, subscribeRabbitMirrorUpdate, } from './extensionUpdater.js?rmv=2.5.2';
 const buttonStyle = 'display:block;width:100%;min-height:44px;margin-top:8px;padding:10px 12px;text-align:left;white-space:normal;border:1px solid var(--SmartThemeBorderColor,#bbb);border-radius:10px;background-color:#243044;background-image:linear-gradient(var(--SmartThemeBlurTintColor,#243044),var(--SmartThemeBlurTintColor,#243044));color:inherit;font:inherit;cursor:pointer;box-sizing:border-box;';
 let sheet = null;
 let applying = false;
 let sheetKeyInstalled = false;
 export function pinnedVersionOf(snap = getRabbitMirrorUpdateSnapshot()) {
-    if (snap?.remoteBranchKnown !== true)
+    if (snap?.remoteBranchKnown !== true && snap?.remoteBranchSource !== 'cache')
         return '';
     return String(snap.remoteBranch || '').match(/^v(\d{1,3}\.\d{1,4}\.\d{1,4})$/)?.[1] || '';
 }
@@ -87,13 +87,14 @@ function fillReadme(body, result, { full = false } = {}) {
             event.stopPropagation();
             sheet?.remove();
             sheet = null;
-            void import('./updateGuide.js?rmv=2.5.1').then(module => module.showAllUpdateTips()).catch(() => { });
+            void import('./updateGuide.js?rmv=2.5.2').then(module => module.showAllUpdateTips()).catch(() => { });
         });
         body.append(guide);
     }
     const current = runningRabbitMirrorVersion();
     const newer = result.sections.filter(section => section.version && isNewerRabbitMirrorVersion(section.version, current));
-    const show = full ? result.sections : (newer.length ? newer : result.sections.slice(0, 1)).slice(0, 12);
+    const NEWER_LIMIT = 40;
+    const show = full ? result.sections : (newer.length ? newer : result.sections.slice(0, 1)).slice(0, NEWER_LIMIT);
     if (full && result.sections.length > 1) {
         const hint = document.createElement('p');
         hint.textContent = `${__rmT("tB0CyT")}${result.sections.length}${__rmT("xBwPDuv85.v59zUfsXebIl8U3g0Pa0MO39l8MCAS")}`;
@@ -103,6 +104,11 @@ function fillReadme(body, result, { full = false } = {}) {
         const note = document.createElement('p');
         note.textContent = __rmT("UM_GcAMXKsXwYlhBCsRA3poNu5ifuV8srpwx7ejG82_4uAz7NYf0oxQrPWk5aBNGghLYTkdDQg4wHMpBHIsOi3q9iNkcxf");
         body.append(note);
+    }
+    else if (!full && newer.length > 1) {
+        const hint = document.createElement('p');
+        hint.textContent = `${__rmT("ETBvYqyda08sXXHRgPD")}${current || __rmT("IJwGjk")}${__rmT("UqjF8QRvR97BTh")}${newer.length}${__rmT("9TYO0v.6huD4jv6u2YNrB.DRIpwyaOu_")}${newer.length > NEWER_LIMIT ? `${__rmT("NOI7jNk52GfgtPzXeqmdHT")}${NEWER_LIMIT}${__rmT("RN3E1RrIXg66Et2UtRK5riyp8R61AW5S1R40M67yQYp")}` : ''}${__rmT("jzk")}`;
+        body.append(hint);
     }
     for (const section of show)
         body.append(sectionBlock(section));
@@ -265,7 +271,7 @@ async function showRollbackPanel(overlay, { lead = '' } = {}) {
     let module = null;
     let info = null;
     try {
-        module = await import('./versionRollback.js?rmv=2.5.1');
+        module = await import('./versionRollback.js?rmv=2.5.2');
         info = await module.listRollbackVersions();
     }
     catch (error) {
@@ -307,16 +313,25 @@ async function showRollbackPanel(overlay, { lead = '' } = {}) {
         catch { } }, 6000);
         setTimeout(() => { switching = false; lockAll(false); }, 12000);
     };
+    let backupWarned = false;
     const run = async (label, task) => {
         if (switching)
             return;
+        let saved = false;
+        try {
+            saved = module.backupSettingsBeforeVersionSwitch() !== false;
+        }
+        catch {
+            saved = false;
+        }
+        if (!saved && !backupWarned && __rmR("_mMK4ZT.QsZaBFkq", "").test(label)) {
+            backupWarned = true;
+            say(__rmT("MiwG2yjx2A9yg26MTIfch4mmzsZjfvTX32U9kUjqv9RG6LvtIIUta0qIgLpdXFaZKwhbPAa0kMzkufs__4H8jysFl2eg14xqBG8nVv3n3U6WF43zCxJSnXNyL7B_isvLAInCqquaUepDlUam29gS66CwQBLPVeEXda1GEn91zlfdw4XM7lG"));
+            return;
+        }
         switching = true;
         lockAll(true);
         say(`${__rmT("g6gE2k")}${label}……`);
-        try {
-            module.backupSettingsBeforeVersionSwitch();
-        }
-        catch { }
         try {
             await task();
             say(`${__rmT("wGfg7f")}${label.replace(__rmR("VswuA0nM.8h", ""), __rmT("Z8wANf"))}${__rmT("CzGsEpWc8SJLuxyq3ZUJC0s7")}`);
@@ -511,6 +526,12 @@ async function openRabbitMirrorChangelog({ mode = 'view', skipReadme = false } =
     if (!overlay.isConnected || body.dataset.rmRollbackPanel)
         return;
     fillReadme(body, readme, { full: !updateMode });
+    if (updateMode && snap.remoteBranchSource === 'inferred') {
+        const note = document.createElement('p');
+        note.setAttribute('data-rm-update-branch-guess', 'true');
+        note.textContent = __rmT("gzQ1GwUjgy6p34ESHCmnKQji0FVBvRpaNn9aQIsOQDnWUcWchU.ImrS6w6TOIZB4cBQ8SSSAgTmC6DTN3WEznXMYrNg9.OLnaCZzcL25xAO0uIXnUC0s3Z0d8Uvaj8_iQzO_KRKxFxUhZg9k9.Sfo7Z.G71UwzwEaPqNKcEx9NxWRj.0ndkRuCDzLh3k2EWiM4DW7lrpnum9PaJZvI46BshT");
+        body.prepend(note);
+    }
     apply.dataset.rmReadyAt = String(Date.now() + 600);
     if (!applying)
         setTimeout(() => { if (apply.isConnected && !applying)

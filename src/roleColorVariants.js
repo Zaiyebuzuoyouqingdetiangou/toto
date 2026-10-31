@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
-import { GENERATION_PALETTE_INDEX } from '../data/structured/generationPaletteIndex.js?rmv=2.5.1';
-import { composeGenerationPalette } from './generationPalettes.js?rmv=2.5.1';
-import { preserveIndependentFaceStyles } from './independentApi/faceStyles.js?rmv=2.5.1';
-import { paletteRecipeFor } from './paletteRecipes.js?rmv=2.5.1';
-import { atmosphereNoteFromHtml } from './atmosphereChoice.js?rmv=2.5.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.2";
+import { GENERATION_PALETTE_INDEX } from '../data/structured/generationPaletteIndex.js?rmv=2.5.2';
+import { composeGenerationPalette } from './generationPalettes.js?rmv=2.5.2';
+import { preserveIndependentFaceStyles } from './independentApi/faceStyles.js?rmv=2.5.2';
+import { paletteRecipeFor } from './paletteRecipes.js?rmv=2.5.2';
+import { atmosphereNoteFromHtml } from './atmosphereChoice.js?rmv=2.5.2';
 const BY_CODE = new Map(GENERATION_PALETTE_INDEX.map(p => [p.code, p]));
 const ROLE = '(?:on-accent|on-companion|on-object|highlight|companion|surface|shadow|accent|object|border|muted|ink|bg)';
 const TOKEN = `--rmc-${ROLE}(?:-\\d+)?(?:-rgb)?`;

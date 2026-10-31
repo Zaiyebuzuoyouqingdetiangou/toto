@@ -2284,7 +2284,8 @@ dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
 }
 .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"][hidden]{display:none !important;}
 
-details:has(> :is(.details-collapse-btn,[data-collapse-btn])) ~ .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"]{display:none !important;}
+details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"],
+details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] + .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"]{display:none !important;}
 .rabbit-mirror-bottom-collapse-arrow{
   width:0 !important; height:0 !important; border-style:solid !important; border-width:0 .4em .55em .4em !important;
   border-color:transparent transparent currentColor transparent !important; display:inline-block !important;
@@ -2300,7 +2301,8 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) ~ .rabbit-mirror-b
   left:50% !important;
   bottom:84px;
   transform:translateX(-50%);
-  z-index:10030 !important;
+
+  z-index:1000 !important;
   display:flex !important;
   align-items:center !important;
   gap:8px !important;

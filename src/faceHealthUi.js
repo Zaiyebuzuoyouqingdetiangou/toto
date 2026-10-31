@@ -1,13 +1,13 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
-import { getContext, RUNTIME_VERSION } from './independentApi/runtime.js?rmv=2.5.1';
-import { chatKey, swipeId } from './independentApi/connection.js?rmv=2.5.1';
-import { chatPersistedOwnerKeys, persistedOwnerForMessage } from './independentApi/persistence.js?rmv=2.5.1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.5.1';
-import { messageStampSeconds } from './messageStamp.js?rmv=2.5.1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=2.5.1';
-import { readGenerationStamp } from './generationStamp.js?rmv=2.5.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.5.1';
-import { analyzeStoredFace, splitStoredFaces, formatNameOf, summarizeFaceHealth, buildFaceHealthText, uiName, HUE_NAMES, BRIGHTNESS_NAMES, healthDay } from './faceHealth.js?rmv=2.5.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.2";
+import { getContext, RUNTIME_VERSION } from './independentApi/runtime.js?rmv=2.5.2';
+import { chatKey, swipeId } from './independentApi/connection.js?rmv=2.5.2';
+import { chatPersistedOwnerKeys, persistedOwnerForMessage } from './independentApi/persistence.js?rmv=2.5.2';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.5.2';
+import { messageStampSeconds } from './messageStamp.js?rmv=2.5.2';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=2.5.2';
+import { readGenerationStamp } from './generationStamp.js?rmv=2.5.2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.5.2';
+import { analyzeStoredFace, splitStoredFaces, formatNameOf, faceHasSelfInvent, summarizeFaceHealth, buildFaceHealthText, uiName, HUE_NAMES, BRIGHTNESS_NAMES, healthDay } from './faceHealth.js?rmv=2.5.2';
 const PANEL_ATTR = 'data-rabbit-mirror-face-health';
 const HUE_DOTS = { red: '#d9534f', orange: '#e8914a', yellow: '#e2c044', green: '#5fae6e', cyan: '#4fb7b7', blue: '#5b84d6', purple: '#9b6cd1', pink: '#e08ab3', neutral: '#9a9a9a' };
 let builtinFormatIds = null;
@@ -146,7 +146,7 @@ export async function collectChatFaces(ctx = getContext(), { limit = 0, onProgre
         faces.push({
             source: item.source, index: item.index, swipe: item.swipe, faceIndex: item.faceIndex, faceCount: item.faceCount,
             ts: item.ts, version: item.version, versionApprox: item.versionApprox,
-            format: formatNameOf(item.recipe, item.html), formatBuiltin: !/<details\b[^>]*\sdata-rm-self\s*=/i.test(String(item.html || '')) && recipeFormatBuiltin(item.recipe), analysis: analyzeStoredFace(item.html),
+            format: formatNameOf(item.recipe, item.html), formatBuiltin: !faceHasSelfInvent(item.html) && recipeFormatBuiltin(item.recipe), analysis: analyzeStoredFace(item.html),
             repaired: item.repaired, timing: item.timing, probe: probeOf(details), risks: risksOf(item.html),
         });
         if (position % 4 === 3) {

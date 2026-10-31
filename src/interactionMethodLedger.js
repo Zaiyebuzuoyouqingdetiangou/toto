@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.1";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.5.2";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -111,16 +111,27 @@ function readSelfForms() {
     }
 }
 const cleanSelfText = (value, max) => String(value || '').replace(/[\u0000-\u001f\u007f<>"]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+const SELF_LABEL_RE = __rmR("y13RjBgLdGPK5B_qDkltkI4ZpUX_EaFrXs5r0dYSdkWDmvhx3jlpgZePbeVdl4FiN7JYFai9ct2ec6HL8NjnknYH", "g");
+const SELF_SEPARATORS = __rmR("vnCGXcaI8JbPw22Uv4VlsqA2F6qqQ06Y4jIgHtNDol3B6Ye7kOqJsMs_cswIBh5oirE", "g");
 export function parseSelfInvented(raw) {
-    const text = cleanSelfText(raw, 600);
+    const text = cleanSelfText(raw, 2000);
     if (!text)
         return null;
-    const LABEL = __rmT("hzdr_qyjoBoNxLA5XhBagKHk0s1tfQnoEiRTjUNQisTjA2p4wZAoMPHOePG");
-    const field = name => text.match(new RegExp(`${name}${__rmT("S0tEc_IfuGZccp32ha5VYh2utIg3Scr9kdG0HcFrPzngDTglq3aJi1XfGFFU.4vIpqRaLqRWTB8anh")}${LABEL}${__rmT("1imnAW33f.2f_l5uGw4wHT")}`))?.[1] || '';
-    const first = text.split(__rmR("pEwVbaaua.G", ""))[0];
-    const form = field(__rmT("gG2guk")) || (!new RegExp(LABEL).test(first) ? first : '');
-    const thought = text.match(__rmR("ZQCc01aS.5v.0H_Yd1vTXAroFXxCJh_Qbh6iGxzY059gnh", ""))?.[1] || '';
-    const result = { theme: cleanSelfText(field(__rmT("3F3_GT")), 80), form: cleanSelfText(form, 60), angle: cleanSelfText(field(__rmT("WUISuf")), 200), thought: cleanSelfText(thought, 300) };
+    const marks = [];
+    const seen = new Set();
+    for (const match of text.matchAll(SELF_LABEL_RE)) {
+        if (seen.has(match[2]))
+            continue;
+        seen.add(match[2]);
+        marks.push({ name: match[2], start: match.index + match[1].length, valueStart: match.index + match[0].length });
+    }
+    const values = {};
+    marks.forEach((mark, index) => {
+        values[mark.name] = text.slice(mark.valueStart, index + 1 < marks.length ? marks[index + 1].start : text.length).replace(SELF_SEPARATORS, '');
+    });
+    const lead = marks.length ? text.slice(0, marks[0].start) : text;
+    const form = values[__rmT("gG2guk")] ?? lead.split(__rmR("pEwVbaaua.G", ""))[0].replace(SELF_SEPARATORS, '');
+    const result = { theme: cleanSelfText(values[__rmT("3F3_GT")], 80), form: cleanSelfText(form, 60), angle: cleanSelfText(values[__rmT("WUISuf")], 200), thought: cleanSelfText(values[__rmT("Y2CP.h")], 300) };
     return result.form ? result : null;
 }
 export function selfInventedOf(details) {
@@ -131,21 +142,25 @@ export function selfInventedOf(details) {
     const think = cleanSelfText(details.getAttribute('data-rm-self-think') || '', 300);
     if (result && think)
         result.thought = think;
+    if (!result && think)
+        return { theme: '', form: '', angle: '', thought: think };
     return result;
 }
-export function recordSelfInventedForm(details) {
+export function recordSelfInventedForm(details, { fallbackAt = 0 } = {}) {
     const self = selfInventedOf(details);
-    if (!self)
+    if (!self?.form)
         return;
     const key = `${details.getAttribute('data-rabbit-mirror-owner-key') || ''}#${self.form}#${self.angle}`;
-    let at = Date.now();
+    let at = 0;
     try {
         const stamp = JSON.parse(details.getAttribute('data-rm-generated') || 'null');
-        if (Number.isFinite(Number(stamp?.t)))
+        if (Number.isFinite(Number(stamp?.t)) && Number(stamp.t) > 0)
             at = Number(stamp.t);
     }
     catch { }
-    if (Date.now() - at > SELF_FORM_FRESH_MS)
+    if (!at && Number.isFinite(Number(fallbackAt)) && Number(fallbackAt) > 0)
+        at = Number(fallbackAt);
+    if (!at || Date.now() - at > SELF_FORM_FRESH_MS)
         return;
     const list = readSelfForms();
     if (list.some(item => item.key === key))

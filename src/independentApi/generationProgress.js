@@ -1,7 +1,7 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.1";
-import { spritePaths } from '../pixelSprites.js?rmv=2.5.1';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.5.1';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.5.1';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.5.2";
+import { spritePaths } from '../pixelSprites.js?rmv=2.5.2';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.5.2';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.5.2';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -9,6 +9,21 @@ const MINI_CLASS = 'rabbit-mirror-generation-progress-mini';
 const PLACEHOLDER_SELECTOR = ':scope > details.rabbit-mirror-external-placeholder';
 const RESAY_STATUS_SELECTOR = ':scope > [data-rabbit-mirror-resay-status="true"]';
 const MAX_LINES = 5;
+const isPinnedLine = line => line.key === 'self' || line.key === 'ticket' || (line.key === 'think' && line.state === 'note');
+function progressPicks(face, state, menuIndex) {
+    const picks = [];
+    if (!face)
+        return picks;
+    if (face.self?.form)
+        picks.push(`${__rmT("7hbuZvUYk5ZycoOckGD")}${shortText(face.self.form, 24)}${__rmT("Yvk")}${face.self.theme ? `${__rmT("4bF.jaFygRhyXXG1")}${shortText(face.self.theme, 24)}${__rmT("Yvk")}` : ''}`);
+    if (face.ticket) {
+        const label = (state.faceMenuLabels?.[menuIndex] || [])[face.ticket - 1];
+        picks.push(`${__rmT("LJ055WPSHKG")}${face.ticket}${__rmT("qGtZ0Tlk")}${label ? `${__rmT("YSk")}${shortText(label, 12)}${__rmT("Yvk")}` : ''}`);
+    }
+    if (face.think)
+        picks.push(`${__rmT("8Xl3jLop")}${face.think}`);
+    return picks;
+}
 const DEFAULT_FACE_CHARS = 12000;
 const MIN_FACE_CHARS = 4000;
 const MAX_FACE_CHARS = 40000;
@@ -556,13 +571,16 @@ export function progressView(state, now = Date.now()) {
     }
     const thread = current.palette?.thread || current.threadHint
         || parse.faces.find(face => face.palette?.thread)?.palette.thread || parse.faces.find(face => face.threadHint)?.threadHint || '';
+    const pinned = lines.filter(isPinnedLine).slice(-2);
+    const rolling = lines.filter(line => !isPinnedLine(line));
     return {
         percent: Math.round(state.shown * 100),
         fraction: state.shown,
         elapsed: elapsedLabel(now - state.startedAt),
         phase,
         thread,
-        lines: lines.slice(-MAX_LINES),
+        lines: [...pinned, ...rolling.slice(-(MAX_LINES - pinned.length))],
+        picks: progressPicks(current, state, serial ? serial.index : faceNo - 1),
     };
 }
 const recentFaceChars = [];
@@ -766,7 +784,8 @@ export function renderProgressMini(status, view, doc = status?.ownerDocument, ow
         bar.setAttribute('aria-valuenow', String(view.percent));
     const last = view.lines[view.lines.length - 1];
     setText(mini.querySelector('.rm-gp-mini-text'), `${view.percent}% · ${last?.text || ''}`);
-    const picks = view.lines.filter(line => line.key === 'self' || line.key === 'ticket' || line.key === 'think').map(line => line.text);
+    const picks = Array.isArray(view.picks) ? view.picks
+        : view.lines.filter(isPinnedLine).map(line => line.text);
     let note = mini.querySelector(':scope > .rm-gp-mini-note');
     if (!note && picks.length) {
         note = makeElement(doc, 'span', 'rm-gp-mini-note');

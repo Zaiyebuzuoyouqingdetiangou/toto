@@ -1,6 +1,6 @@
-import { stripAtmosphereThinkMarkup } from './atmosphereMarkup.js?rmv=2.5.1';
-import { generationPaletteFields } from './paletteRecipes.js?rmv=2.5.1';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.5.1';
+import { stripAtmosphereThinkMarkup } from './atmosphereMarkup.js?rmv=2.5.2';
+import { generationPaletteFields } from './paletteRecipes.js?rmv=2.5.2';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.5.2';
 const ATMOSPHERE_REASON_LIMIT = 300;
 export function parseAtmosphereTicketIndex(html, menuLength) {
     const count = Number(menuLength);
@@ -152,7 +152,8 @@ export function stampSelfInventThink(html, reason) {
     if (!text || /\sdata-rm-self-think\s*=/i.test(source))
         return source;
     const value = text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const withSelf = /<details\b(?=[^>]*\sdata-rm-self\s*=)[^>]*>/i;
-    const target = withSelf.test(source) ? withSelf : /<details\b[^>]*>/i;
+    const attrs = `(?:[^>"']|"[^"]*"|'[^']*')*`;
+    const withSelf = new RegExp(`<details\\b(?=${attrs}\\sdata-rm-self\\s*=)${attrs}>`, 'i');
+    const target = withSelf.test(source) ? withSelf : new RegExp(`<details\\b${attrs}>`, 'i');
     return source.replace(target, tag => tag.replace(/^<details\b/i, `<details data-rm-self-think="${value}"`));
 }

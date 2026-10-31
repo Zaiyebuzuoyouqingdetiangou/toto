@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.5.1";
+import { rmT as __rmT } from "./textTable.js?rmv=2.5.2";
 const DEFAULT_SECONDS = 60;
 const SAVE_RE = /\/api\/chats\/(?:group\/)?save\b/i;
 const ownSaves = [];
 export function noteRabbitMirrorChatSave(reason = '') {
-    ownSaves.push({ at: Date.now(), reason: String(reason || '').slice(0, 40) });
+    ownSaves.push({ at: Date.now(), reason: String(reason || '').slice(0, 80) });
     if (ownSaves.length > 200)
         ownSaves.splice(0, ownSaves.length - 200);
     try {
@@ -103,7 +103,7 @@ export function startLagCheck({ seconds = DEFAULT_SECONDS, onTick, ownFolder = '
             }
             const own = rabbitMirrorChatSavesSince(started);
             result.saves.fromRabbitMirror = own.length;
-            result.saves.reasons = [...new Set(own.map(item => item.reason).filter(Boolean))];
+            result.saves.reasons = [...new Set(own.flatMap(item => String(item.reason || '').split(__rmT("jvk"))).filter(Boolean))];
             result.owners = [...owners.values()].sort((a, b) => b.ms - a.ms);
             result.endedAt = Date.now();
             running = null;
@@ -137,13 +137,17 @@ export function describeLagCheck(result) {
     lines.push(result.longFrames
         ? `${__rmT("N0ifayHg5oyFa7iFkyvgtXPiMk.zVCv5uZzqqh")}${result.longFrames}${__rmT("4bM2RpJx1sDqMlBq")}${ms(result.longMs)}${__rmT("nhNEYk5EaAwCFocq5_T5SXbti.xpZ1HZAWhaxEsIkpZtnh")}${ms(result.blockingMs)}${__rmT("jzk")}` : __rmT("JsZf0.XiSZ_z9pQlK71VBLi_Tnr3C0JblG2l3LikwEPhzXwGuxKGnpPgrb_qU8f5uiPIoHGP"));
     if (result.perPlugin && result.owners.length) {
-        lines.push(__rmT("ORSyDVzsVRMdI5n6mtXwQD6WU8AxDpvQOuXQTio8"));
+        lines.push(__rmT("CxO999aKSK3iBzTCYzWdZyQbSzvgCgTiS2ykjy2v_zB073XfderSrQ6xvKV8i4n.0hWIoGgC"));
         for (const row of result.owners.slice(0, 12)) {
             const own = result.ownFolder && row.plugin === result.ownFolder;
             lines.push(`  ${own ? `${__rmT("1u9yaTGl0vY")}${row.label}${__rmT("eXs")}` : row.label}${__rmT("7ys")}${ms(row.ms)}${__rmT("eis")}${row.count}${__rmT("qGR1iqZp")}`);
         }
         if (!result.owners.some(row => result.ownFolder && row.plugin === result.ownFolder))
-            lines.push(__rmT("tMtZnKKQAwb.E8nguhXSLzLmN1OJf_NgvlVvEk"));
+            lines.push(__rmT("9TYPTn3BmNFnRbHGbpXmeak6Nruc1vcF"));
+        if (result.owners.some(row => row.key === 'host')) {
+            lines.push(__rmT("0fl9QNTj61uaKHDQ3I21gtQjV.63iN9jpBwcK.rLkleUPKjEGJoPEnNHngyrrjOhjW_LJf4CkXAk45xaJHvtLkVb02Q9DB42dJnAVOcvEcwGbsn6njlso.N4jazD5HBWRdSi2hhLzAFIvGljTDsR9AdSzyiLnCCmUirrO81P.PPcJJEN0F.srT"));
+            lines.push(__rmT("Z9s96TFHBEv7CmoFli0S2aSfW9TwWXgoLWSO8_PpiAN4jphSqD7nVr_vNp287Nhk0cu9Z5o4O0ZdAOJfNkFEpIH4Hfwhoii45WRnKOcB7caa_Xredn3PHyilx.6ZTC4yf2w4F0KF1FT"));
+        }
     }
     else if (!result.perPlugin && result.longFrames) {
         lines.push(__rmT("6rpas51DtPKPQzE7mj0syYaBs5Fffxop1A9joFgTjenH1JavN12TmIoMV0op3e0AP7SMg3FuQYK1T.6jLBKE.fvw_ZfO0DjE0VIaX9jdpNu4F5EWIa4mv60tZSAjyOZsjv0PWdES4d_TlrfF"));
@@ -198,7 +202,7 @@ export function mountLagCheck(block, { ownFolder = ownFolderFromUrl(import.meta.
         if (copy)
             copy.hidden = false;
         const own = result.owners.find(row => row.plugin && row.plugin === ownFolder);
-        globalThis.toastr?.success?.(`${__rmT("bwzRcaruusEKbBFLqu5oH6cFieh.LNXlV.JoDf")}${ms(result.longMs)}${result.perPlugin ? `${__rmT("Df1i4O8eZTtallBq")}${ms(own?.ms || 0)}` : ''}${__rmT("s1w42iXcPE5PeTSl31cv0LZTPW6DtIHh3Povfs8RManhzxMkEW0qVFPix_I.2Ck4KX3f1uGP")}`, __rmT("9.JSSv1i"), { timeOut: 12000 });
+        globalThis.toastr?.success?.(`${__rmT("bwzRcaruusEKbBFLqu5oH6cFieh.LNXlV.JoDf")}${ms(result.longMs)}${result.perPlugin ? `${__rmT("Cdq5SSR9AAyCaW8xik6.YV0DjFs")}${ms(own?.ms || 0)}` : ''}${__rmT("s1w42iXcPE5PeTSl31cv0LZTPW6DtIHh3Povfs8RManhzxMkEW0qVFPix_I.2Ck4KX3f1uGP")}`, __rmT("9.JSSv1i"), { timeOut: 12000 });
     });
     copy?.addEventListener('click', async (event) => {
         event.preventDefault();
