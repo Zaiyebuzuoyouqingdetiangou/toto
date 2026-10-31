@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.0";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.1";
 const NOTIFIED = new WeakMap();
 const STATUS_CODE = /\b(?:400|401|403|408|413|429|500|502|503|504|520|521|522|523|524|529)\b/;
 const ERROR_EN = /(?:\berror\b|too many requests|rate.?limit|quota|resource.?exhausted|service unavailable|bad gateway|gateway time-?out|timed? ?out|upstream|internal server error|overloaded|unauthorized|forbidden|cloudflare)/i;
@@ -48,6 +48,48 @@ function unfinishedProseReason(raw) {
     if (tail.length < 24 || (tail.match(/[\u3400-\u9fff]/g) || []).length < 16)
         return '';
     return __rmT("fH8.ahD3KYkWBwybDxiY9S2RAvMHdJGv3CxuZs1xBQkjWs3sYoT");
+}
+const PLAN_LABEL = __rmR("axtn2lIjf31POgvxOLZ.S.jNDAtC7t7IWAFwzaDqash8HmNSC_QU99GXKhT7Ij6qD3dDYMO0jXq09cXuR2cbyN6L4.Wn8I1tOIKoASY5n2qoFBNMPcror9R9lpqgRINQNIo922tq.TlVQ.GC2OAuw4fHHF4jLZ19Ufr3n.MpIZivtm5ual9W7zyzJ8OOK7c7NnbphtqQ9OtUt4llQc9xCswPfJTO5nbUtb2r5v20NVaGEq1iN8tnSStCk8a62_DdYaWoeeMu.QJo0yiqoZPqIs2IEyOYq54hTRp2PlA8K8Fur67pwGKWNjo7Ki7uisw_nlXP3oFtjEG2LXFLmJV_3mD1SgkUmj6Pt2HnxilU5p1uiXjkV8vLxwNsTP9bvKcbUE7DCMS9heV2Adwg0_ApzaVp57TLdxq90ZKUx33F6mGehDRqgx77Xr157V3R5FteLIpRrRtYxlIJ8cyj3.0XTNglhup", "");
+const PLAN_STEP = __rmR("9lp1iEqMwYfRg4aRXX8OiUHtyrMaM8AFz_9mHOHyQgpnSLhyZAoKX0AaKUQi4ABNHPaSeoU0kryg1tGT2U8j3l63JXlrAntPCDN5w7q8SJ63TwvnswnMl2XbJyTaXhptsfL.jkV4CuqGHDq.Ygs.DYx66EsC1GWhO5SCtMOS6bHLduy9wotiu3y7Bmpip5X7", "");
+const PLAN_PHRASE = __rmR("twyaRI0mXVUEHs0agSHLRJULDa97CupCmwcT_f96bDUYvSUt70fO9UjLAU1V1Fv.o9lwK0BYfZJeA7V2luMGGXOhKn3ePyOiAtkzLhspQXcCGNaUbJwHqvwodxL3q3KuhgcAl.pKbBgqT8kVAz02uxm7VWM8gDiXWzlNcyJLri3_KbFiqbCkryx7fptiqNSuX61npwfJ4I.Qr5d6GvzhItqwX6vjAUQq7QEskSbb_GyPm6iV", "");
+const PLAN_BULLET = __rmR("Pp.FFePge6QblIm22WajISbtH1Fx17OkQy9BpHDRQYLCzmjG4IKdnDShvP6i8_xh7jJ6O2D2", "");
+function planningLeakReason(source) {
+    const lines = String(source || '').replace(/<[^>]+>/g, ' ').split(/\r?\n/);
+    let planChars = 0, storyChars = 0, inPlan = false, steps = 0, phrases = 0;
+    const labels = new Set();
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) {
+            inPlan = false;
+            continue;
+        }
+        const size = line.replace(/\s+/g, '').length;
+        const label = line.match(PLAN_LABEL);
+        const step = PLAN_STEP.test(line);
+        const phraseBullet = PLAN_BULLET.test(line) && PLAN_PHRASE.test(line);
+        if (label)
+            labels.add(label[0].replace(__rmR("gYjdlqEOsvVFGQhOeNpjb_IsGadih8IHnf4PZuSTMnvN5I3idIZtGHNXSRNE1V6jU4bU_I5mQrCaQKj5oBZ4vGIY767mc1tlkp6n4L40AtdT61Z6Tukt267m", ""), '').replace(__rmR("tim6ACNSD.Nj08Puam4SHT", ""), ''));
+        if (step)
+            steps += 1;
+        if (PLAN_PHRASE.test(line))
+            phrases += 1;
+        const continuation = inPlan && !__rmR("yLAQ1lmU6CCa0dkgY6D", "").test(line);
+        if (label || step || phraseBullet || continuation) {
+            planChars += size;
+            inPlan = true;
+        }
+        else {
+            storyChars += size;
+            inPlan = false;
+        }
+    }
+    const total = planChars + storyChars;
+    if (total < 60)
+        return '';
+    const evidence = labels.size >= 2 || (labels.size >= 1 && (steps >= 1 || phrases >= 2));
+    if (!evidence || planChars < total * 0.6 || storyChars > 600)
+        return '';
+    return __rmT("vADXVG212Ns0RFHC1zXhDbGtmlR6ntMs7fQbiqRahQMOEnHw6A9371GT2.A");
 }
 function jsonApiError(raw) {
     const trimmed = String(raw || '').trim();
@@ -275,6 +317,9 @@ export function mainReplyAbnormalReason(message, { partial = false, bodyTags = [
         return __rmT("fH8.aiB9F1Gn3zv4aSdUNl.Ob4dVu87iZfJ3v8zQs7wjTdG.cph");
     if (text.length < 400 && REFUSAL_START.test(text) && REFUSAL_WORDS.test(text))
         return __rmT("mbCOwyIXf9DbqmhzwzMWH8siRwf");
+    const planReason = planningLeakReason(visibleSource);
+    if (planReason)
+        return planReason;
     return partial ? '' : structuralReason || (completion.bodyEnd ? '' : unfinishedProseReason(visibleSource));
 }
 export function notifySafetyValve(message, reason) {

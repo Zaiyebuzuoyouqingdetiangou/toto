@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.0";
-import { getSettings, updateSettings } from './settings.js?rmv=2.3.0';
-import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.3.0';
-import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.1";
+import { getSettings, updateSettings } from './settings.js?rmv=2.3.1';
+import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.3.1';
+import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.1';
 export const UPDATE_GUIDE_TIPS = Object.freeze([
     { id: 'self-invent', since: '2.3.0', title: __rmT("OZRqydFrGFtotFLDVmNKErqZmG5g3T"), text: __rmT("2oltqlCmf4OegxitoigaDFGiXdx2HOlbRCZ8V70keiG51bneP28wv8lki7InJQrJ6FnUwP9awS4ZVYWmlnfamN0GGywmvMNBDBo0qCw9"), page: 'draw', target: 'rh_self_invent' },
     { id: 'face-health', since: '2.3.0', title: __rmT("guUPAJ8b3f1Vgzub"), text: __rmT("YjvHt9WAfXBcLNRkNMWTUOtkLwQ3oDh_WDRKzxfQ1wPA.jZUlKzRA2bJtwFiWABr3YeUgjZkIO.hw66w4pQehGJ.WAT"), page: 'health', target: 'rh_face_health_block' },
@@ -69,7 +69,7 @@ export async function goToUpdateTip(tip) {
     if (session)
         session.remaining = session.remaining.filter(item => item.id !== tip.id);
     if (tip.action === 'rollback') {
-        const menu = await import('./mirrorUpdateMenu.js?rmv=2.3.0');
+        const menu = await import('./mirrorUpdateMenu.js?rmv=2.3.1');
         await menu.openRabbitMirrorRollback();
         watchForReturn();
         return true;
