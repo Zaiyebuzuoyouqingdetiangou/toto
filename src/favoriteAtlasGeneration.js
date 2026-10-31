@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.1";
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.2";
 const text = value => typeof value === 'string' ? value.trim() : '';
 const normalized = value => value.normalize('NFKC').toLocaleLowerCase();
 const cancelled = () => Object.assign(new Error(__rmT("CgQohontu9y3pwUNiBPpUT")), { code: 'ABORTED' });
@@ -88,8 +88,8 @@ export function parseAtlasDraftResponse(value, catalog) {
 }
 async function currentCatalog() {
     const [{ getSettings }, { loadFaceDrawCatalog }] = await Promise.all([
-        import('./settings.js?rmv=2.3.1'),
-        import('./faceDrawCatalog.js?rmv=2.3.1'),
+        import('./settings.js?rmv=2.3.2'),
+        import('./faceDrawCatalog.js?rmv=2.3.2'),
     ]);
     return loadFaceDrawCatalog(getSettings());
 }
