@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.10";
-import { getSettings } from './settings.js?rmv=2.1.10';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.11";
+import { getSettings } from './settings.js?rmv=2.1.11';
 export const WEB_FONTS = Object.freeze([
     { family: 'Ma Shan Zheng', note: __rmT("C94JX5jvsgl"), css: ['@fontsource/ma-shan-zheng@5/400.css'] },
     { family: 'Zhi Mang Xing', note: __rmT("kVrS3f"), css: ['@fontsource/zhi-mang-xing@5/400.css'] },
@@ -9,7 +9,6 @@ export const WEB_FONTS = Object.freeze([
     { family: 'Noto Serif SC', note: __rmT("YNN36NDOdVyMMtwfnAilmoyoWfESkPVofhJYvFXQFI.vwUUV7Zs"), css: ['@fontsource/noto-serif-sc@5/400.css', '@fontsource/noto-serif-sc@5/900.css'], weight: 400 },
     { family: 'ZCOOL XiaoWei', note: __rmT("nJYoXu4W4Dp"), css: ['@fontsource/zcool-xiaowei@5/400.css'] },
     { family: 'ZCOOL KuaiLe', note: __rmT("nFTDkgWJ.9h"), css: ['@fontsource/zcool-kuaile@5/400.css'] },
-    { family: 'ZCOOL QingKe HuangYou', note: __rmT("iSv.cGI8FJpAEk"), css: ['@fontsource/zcool-qingke-huangyou@5/400.css'] },
 ]);
 const SOURCES = Object.freeze({
     cn: 'https://s4.zstatic.net/npm/',
@@ -197,7 +196,7 @@ export function webFontRule(settings = getSettings(), { follow = false } = {}) {
         return '';
     const menu = WEB_FONTS.map(font => `'${font.family}${__rmT("NKWlxk")}${font.note}${__rmT("eXs")}`).join(__rmT("jvk"));
     const recent = recentWebFonts();
-    return `${__rmT("fABLtyAp07juyvgPRSMHicBipxdqx7djFcMy1rZ0JlrYwoYcZl.X.wXv2LBEQU7EvnCQrCoRl.9HlHRMmXG_xKPXswdQ4wvfm8vtKVZ3deosOk")}${menu}${__rmT("DV3BIDorUHscsCM3oXRau6qjzBqrrk")}` + (follow ? __rmT("QQqwkm8K3_dutt3Y") : __rmT("1lnDgbDu.2A4hLtT113oguMrebfMcFW2Z_uLMqokQYp")) + __rmT("NiFWU9DoGGyXcjS_hVLhO0gFgXtNod_grKbtkVVYIGKUjkGxXZtgge_JSPP79jupP6ia3KLDcVTH.2fj3SwuOjql3G2w091VoRmFiXqWu3ud6_6UKE._DWaJOiXnYKSPcIhIxNV3InvEWdJlm.FjufV2sBrFx.aUT9X0xAThv8n1G_fJTMcER_NfTGkPHBax9J6CXdwXGiWYhd5Ol7gFVBXVj6085UhQkUUlsjIJl0k3IFoDO3trUNgARhqDJA4n_CIM3W.ZQnoyYh")
+    return `${__rmT("fABLtyAp07juyvgPRSMHicBipxdqx7djFcMy1rZ0JlrYwoYcZl.X.wXv2LBEQU7EvnCQrCoRl.9HlHRMmXG_xKPXswdQ4wvfm8vtKVZ3deosOk")}${menu}${__rmT("DV3BIDorUHscsCM3oXRau6qjzBqrrk")}` + (follow ? __rmT("QQqwkm8K3_dutt3Y") : __rmT("1lnDgbDu.2A4hLtT113oguMrebfMcFW2Z_uLMqokQYp")) + __rmT("fm5UzClBDviC2hlETR8OONLYe6WUrxXjmD0SRc9HVQOpToC.5hpDSqRkCStHXL2FAKSoiXeoietE9OOqiB1vPwJt6k9hNfEHzWDWa72A0CCI0FKu3A85BWEwjx07PK4fRR2k5U.LwWBhfViNym_jVP9WgXlpI3tZTDINKa19vHy_WkjOlH6qKUjwFa2b9DI2utNseElvzwA4MWLcc.Fgmu9.1hYUlLZ6B0SGROCksd6PcGNqpG.55qMh7rPsL1EEyIUifh")
         + (recent.length ? `${__rmT("m1VN4S5utXR76lBq")}${recent.map(name => `'${name}'`).join(__rmT("jvk"))}${__rmT("CzPX.abLFkYjjh7lVmzOvxEI")}` : '');
 }
 export function webFontDiagnostic(root, settings = getSettings()) {

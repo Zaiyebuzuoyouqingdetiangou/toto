@@ -2263,6 +2263,8 @@ dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
   opacity:.78 !important; cursor:pointer !important; touch-action:manipulation !important; -webkit-tap-highlight-color:transparent !important;
 }
 .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"][hidden]{display:none !important;}
+
+details:has(> :is(.details-collapse-btn,[data-collapse-btn])) ~ .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"]{display:none !important;}
 .rabbit-mirror-bottom-collapse-arrow{
   width:0 !important; height:0 !important; border-style:solid !important; border-width:0 .4em .55em .4em !important;
   border-color:transparent transparent currentColor transparent !important; display:inline-block !important;

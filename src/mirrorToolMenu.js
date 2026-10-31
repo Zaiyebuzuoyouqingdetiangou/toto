@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.1.10";
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.1.10';
+import { rmT as __rmT } from "./textTable.js?rmv=2.1.11";
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.1.11';
 export function themeMirrorToolPanel(panel) {
     if (!panel?.style)
         return;
@@ -154,7 +154,7 @@ export function installMirrorToolMenu(root, host, actions, beforeOpen) {
             const title = document.createElement('strong');
             title.textContent = __rmT("ia497n05JBq7FnZwBMaxKh");
             panel.append(title);
-            const items = [...state.actions, { id: 'close', label: __rmT("GeQro5_pnQJeeT"), run: () => button.focus() }];
+            const items = [...state.actions.filter(action => !action.hidden), { id: 'close', label: __rmT("GeQro5_pnQJeeT"), run: () => button.focus() }];
             for (const action of items) {
                 const item = document.createElement('button');
                 item.type = 'button';

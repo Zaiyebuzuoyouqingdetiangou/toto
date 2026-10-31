@@ -1,15 +1,15 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.1.10";
-import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=2.1.10';
-import { getSettings, updateSettings } from '../settings.js?rmv=2.1.10';
-import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=2.1.10';
-import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=2.1.10';
-import { EXTERNAL_WORLD_BOOK_SELECTION_MODE, createEmptySelection, createFilteredSelection, createWholeBookSelection, entryIdentity, toggleEntrySelection, } from './selectionState.js?rmv=2.1.10';
-import { EXTERNAL_WORLD_BOOK_CLASSIFICATION, applyExternalWorldBookBulkClassification, createExternalWorldBookClassificationDraft, externalWorldBookClassificationCounts, updateExternalWorldBookDraftItem, } from './classifier.js?rmv=2.1.10';
-import { deleteExternalLibrary, listExternalLibraries, prepareExternalLibrarySnapshot, saveExternalLibrarySnapshot, setExternalLibraryEnabled, listExternalLibraryEntryChoices, setExternalLibraryEntryEnabled, hydrateExternalPoolMetadata, getExternalPoolHydrationStatus, rebuildExternalPoolMetadata, } from './store.js?rmv=2.1.10';
-import { applyAppearanceTheme } from '../appearanceTheme.js?rmv=2.1.10';
-import { getExternalPoolSnapshot } from './externalPool.js?rmv=2.1.10';
-import { externalCandidateCounts } from './candidateCounts.js?rmv=2.1.10';
-import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=2.1.10';
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.11";
+import { readLocalExternalImportFile, readPlainTextWorldBook } from './fileReader.js?rmv=2.1.11';
+import { getSettings, updateSettings } from '../settings.js?rmv=2.1.11';
+import { listHostWorldBooks, readHostWorldBook } from './hostReader.js?rmv=2.1.11';
+import { searchNormalizedWorldBookEntries } from './normalize.js?rmv=2.1.11';
+import { EXTERNAL_WORLD_BOOK_SELECTION_MODE, createEmptySelection, createFilteredSelection, createWholeBookSelection, entryIdentity, toggleEntrySelection, } from './selectionState.js?rmv=2.1.11';
+import { EXTERNAL_WORLD_BOOK_CLASSIFICATION, applyExternalWorldBookBulkClassification, createExternalWorldBookClassificationDraft, externalWorldBookClassificationCounts, updateExternalWorldBookDraftItem, } from './classifier.js?rmv=2.1.11';
+import { deleteExternalLibrary, listExternalLibraries, prepareExternalLibrarySnapshot, saveExternalLibrarySnapshot, setExternalLibraryEnabled, listExternalLibraryEntryChoices, setExternalLibraryEntryEnabled, hydrateExternalPoolMetadata, getExternalPoolHydrationStatus, rebuildExternalPoolMetadata, } from './store.js?rmv=2.1.11';
+import { applyAppearanceTheme } from '../appearanceTheme.js?rmv=2.1.11';
+import { getExternalPoolSnapshot } from './externalPool.js?rmv=2.1.11';
+import { externalCandidateCounts } from './candidateCounts.js?rmv=2.1.11';
+import { openExternalReclassificationPanel } from './reclassificationPanel.js?rmv=2.1.11';
 const MODAL_ID = 'rh_external_worldbook_import_modal';
 const PAGE_SIZE = 50;
 const CLASSIFICATION_PAGE_SIZE = 40;
@@ -465,7 +465,7 @@ async function renderSavedLibraries() {
     state.savedLibrariesPanel.style.display = '';
     if (!libraries.length) {
         state.savedLibrariesList.append(el('div', { text: __rmT("Y899PLHi_gHjXanOvqHoGzldvrr0aOs2"), style: { opacity: '.65', fontSize: '11px', padding: '8px 2px' } }));
-        void import('./serverBackup.js?rmv=2.1.10').then(module => module.findRestorableMotherLibraryBackup()).then(found => {
+        void import('./serverBackup.js?rmv=2.1.11').then(module => module.findRestorableMotherLibraryBackup()).then(found => {
             if (!found || state !== owner || !owner.overlay.isConnected || renderSequence !== owner.savedLibrariesSequence)
                 return;
             const box = el('div', { style: { padding: '8px 2px', fontSize: '12px', lineHeight: '1.6', overflowWrap: 'anywhere' } });
@@ -474,7 +474,7 @@ async function renderSavedLibraries() {
             const restore = button(__rmT("ZBjTVnnFSGl"), async () => {
                 restore.disabled = true;
                 try {
-                    const module = await import('./serverBackup.js?rmv=2.1.10');
+                    const module = await import('./serverBackup.js?rmv=2.1.11');
                     const result = await module.restoreMotherLibrariesFromServerBackup();
                     setStatus(`${__rmT("2GS7Unl5YXCOLF.O33FOM5Cx")}${result.importedLibraries}${__rmT("qGto.qxg")}${result.importedEntries}${__rmT("9Te9HdpFpQ3xaKwqqj5VBufp0jtss7s2")}`);
                     await renderSavedLibraries();
@@ -743,7 +743,7 @@ function createLibraryTransferControls() {
         lock(true);
         feedback(__rmT("RqPh.YB_O.mxQaLmp_mHk64vGxJqWsgAGJqw_xnJoz9SYAmRJ4DPcV0i"));
         try {
-            const module = await import('./backup.js?rmv=2.1.10');
+            const module = await import('./backup.js?rmv=2.1.11');
             if (!current(owner))
                 return;
             const result = await module.exportExternalLibraryBackup();
@@ -779,7 +779,7 @@ function createLibraryTransferControls() {
         lock(true);
         feedback(__rmT("RqPh.ZgpkR_k48RwcxWhQ55l9zkGV9BOeQYrBKWW8RkKf2ATwyEPcV0i"));
         try {
-            const module = await import('./backup.js?rmv=2.1.10');
+            const module = await import('./backup.js?rmv=2.1.11');
             if (!current(owner))
                 return;
             const result = await module.importExternalLibraryBackup(backup);
@@ -814,7 +814,7 @@ function createLibraryTransferControls() {
         lock(true);
         feedback(__rmT("Oi4HytLS2SVXalRKbsF5Qr9DS8tJvUyLXHb9PR.W"));
         try {
-            const module = await import('./backup.js?rmv=2.1.10');
+            const module = await import('./backup.js?rmv=2.1.11');
             if (!current(owner))
                 return;
             const backup = await module.readExternalLibraryBackupFile(selected);
@@ -860,7 +860,7 @@ function createServerBackupSection(isCurrent, afterRestore) {
         return `${__rmT("WgJyer1EKIi12dKDnXedmkty")}${status.message || __rmT("cHhXcUwjS2T")}${status.savedAt ? `${__rmT("uecBYEy2ATDp6tVHVpA")}${backupTimeText(status.savedAt)}` : ''}`;
     };
     const refresh = async () => {
-        const module = await import('./serverBackup.js?rmv=2.1.10');
+        const module = await import('./serverBackup.js?rmv=2.1.11');
         if (section.isConnected)
             line.textContent = describe(module.getMotherLibraryServerBackupStatus());
     };
@@ -871,7 +871,7 @@ function createServerBackupSection(isCurrent, afterRestore) {
         lock(true);
         line.textContent = __rmT("kBZhOnnFGUWb8nukGR4hOT");
         try {
-            const module = await import('./serverBackup.js?rmv=2.1.10');
+            const module = await import('./serverBackup.js?rmv=2.1.11');
             const status = await module.saveMotherLibraryServerBackup();
             if (section.isConnected)
                 line.textContent = describe(status);
@@ -891,7 +891,7 @@ function createServerBackupSection(isCurrent, afterRestore) {
         lock(true);
         line.textContent = __rmT("Mr80UHSzoMu3lLByp2Dv70DxoeP0.4Eg");
         try {
-            const module = await import('./serverBackup.js?rmv=2.1.10');
+            const module = await import('./serverBackup.js?rmv=2.1.11');
             const result = await module.restoreMotherLibrariesFromServerBackup();
             if (!section.isConnected)
                 return;

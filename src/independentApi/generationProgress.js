@@ -1,6 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.10";
-import { spritePaths } from '../pixelSprites.js?rmv=2.1.10';
-import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.10';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.1.11";
+import { spritePaths } from '../pixelSprites.js?rmv=2.1.11';
+import { DRIVER_METHODS } from '../interactionMethods.js?rmv=2.1.11';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -78,7 +78,7 @@ export function buildSewingSprite(doc, scale = 2) {
     return svg;
 }
 function newFace(startAt = 0) {
-    return { startAt, summaryAt: -1, title: '', styleAt: -1, palette: null, keyframes: 0, uis: [], details: 0, ticket: 0, closed: false };
+    return { startAt, summaryAt: -1, title: '', styleAt: -1, palette: null, threadHint: '', keyframes: 0, uis: [], details: 0, ticket: 0, closed: false };
 }
 function newRequest() {
     return { sentAt: 0, headersAt: 0, firstTextAt: 0, completeAt: 0, chars: 0, text: '', frames: 0, textBase: null, parse: { pos: 0, faces: [newFace(0)] } };
@@ -352,6 +352,8 @@ export function parseRequestText(request) {
         else if (token.startsWith('</summary')) {
             if (!face.title && face.summaryAt >= 0)
                 face.title = titleFromSummary(text.slice(face.summaryAt, match.index));
+            if (!face.palette && !face.threadHint)
+                face.threadHint = paletteFromSource(text.slice(face.startAt, match.index)).thread;
         }
         else if (token.startsWith('<style'))
             face.styleAt = match.index;
@@ -377,6 +379,11 @@ export function parseRequestText(request) {
                 face.ticket = Number(match[2]);
         }
         else if (token.startsWith('</toto')) {
+            if (!face.palette) {
+                const whole = paletteFromSource(text.slice(face.startAt, match.index));
+                if (whole.count)
+                    face.palette = whole;
+            }
             face.closed = true;
             if (parse.faces.length < 13) {
                 face = newFace(re.lastIndex);
@@ -384,6 +391,9 @@ export function parseRequestText(request) {
             }
         }
         parse.pos = re.lastIndex;
+    }
+    if (face && !face.palette && !face.threadHint && text.length - face.startAt > 3000) {
+        face.threadHint = paletteFromSource(text.slice(face.startAt, face.startAt + 6000)).thread;
     }
     parse.pos = Math.max(parse.pos, text.length - 96);
     return parse;
@@ -509,7 +519,8 @@ export function progressView(state, now = Date.now()) {
         phase = 'finishing';
         lines.push(activeLine('finish', __rmT("AX6mls8cD.RNl4CAVinh8d31eV_6DGI1.Hm9PR.W")));
     }
-    const thread = current.palette?.thread || parse.faces.find(face => face.palette?.thread)?.palette.thread || '';
+    const thread = current.palette?.thread || current.threadHint
+        || parse.faces.find(face => face.palette?.thread)?.palette.thread || parse.faces.find(face => face.threadHint)?.threadHint || '';
     return {
         percent: Math.round(state.shown * 100),
         fraction: state.shown,

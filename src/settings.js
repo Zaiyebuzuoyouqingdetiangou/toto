@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.1.10";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.1.10';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.1.10';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.1.10';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.1.11";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.1.11';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.1.11';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.1.11';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.1.10';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.1.10';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.1.10';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.1.10';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.1.11';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.1.11';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.1.11';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.1.11';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -221,6 +221,7 @@ export const defaultSettings = Object.freeze({
     animationIdlePause: 'auto',
     desktopFaceZoom: true,
     desktopFaceZoomWidth: 520,
+    faceHealthInMenu: false,
     writingStyle: '',
     independentReadCharacterWorldBook: false,
     richFormatBias: false,
@@ -436,6 +437,7 @@ export function getSettings() {
         const width = Math.round(Number(settings.desktopFaceZoomWidth));
         settings.desktopFaceZoomWidth = Number.isFinite(width) ? Math.min(900, Math.max(400, width)) : 520;
     }
+    settings.faceHealthInMenu = settings.faceHealthInMenu === true;
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
     for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel'])
@@ -653,6 +655,8 @@ export function updateSettings(patch) {
         const width = Math.round(Number(safePatch.desktopFaceZoomWidth));
         safePatch.desktopFaceZoomWidth = Number.isFinite(width) ? Math.min(900, Math.max(400, width)) : 520;
     }
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'faceHealthInMenu'))
+        safePatch.faceHealthInMenu = safePatch.faceHealthInMenu === true;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'collectionTasteEnabled'))
         safePatch.collectionTasteEnabled = safePatch.collectionTasteEnabled !== false;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'longTextSource'))

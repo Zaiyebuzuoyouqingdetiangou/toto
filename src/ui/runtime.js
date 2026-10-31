@@ -1,5 +1,5 @@
-export const SETTINGS_UI_VERSION = '2.1.10';
-export const RUNTIME_VERSION = '2.1.10';
+export const SETTINGS_UI_VERSION = '2.1.11';
+export const RUNTIME_VERSION = '2.1.11';
 export function isCurrentRuntime() {
     return globalThis.__rabbitMirrorRuntimeVersion === RUNTIME_VERSION;
 }

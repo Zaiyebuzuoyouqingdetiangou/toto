@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.1.10";
-import { ExternalWorldBookError } from './errors.js?rmv=2.1.10';
-import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=2.1.10';
-import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=2.1.10';
+import { rmT as __rmT } from "../textTable.js?rmv=2.1.11";
+import { ExternalWorldBookError } from './errors.js?rmv=2.1.11';
+import { externalEntryId, externalEntryStableIdentity, externalLibraryIdForBook, openExternalLibraryDatabase } from './store.js?rmv=2.1.11';
+import { EXTERNAL_POOL_METADATA_VERSION, externalPoolMetadataForLibrary, upsertExternalPoolLibraries } from './externalPool.js?rmv=2.1.11';
 export const EXTERNAL_BACKUP_FORMAT = 'RabbitMirror.ExternalLibraries';
 export const EXTERNAL_BACKUP_VERSION = 1;
 export const EXTERNAL_BACKUP_MAX_BYTES = 32 * 1024 * 1024;
@@ -241,7 +241,7 @@ export async function importExternalLibraryBackup(raw, options = {}) {
             throw failure;
         upsertExternalPoolLibraries(imported);
         if (imported.length && !options.indexedDBFactory && options.skipServerBackup !== true) {
-            void import('./serverBackup.js?rmv=2.1.10').then(module => module.scheduleMotherLibraryServerBackup()).catch(() => { });
+            void import('./serverBackup.js?rmv=2.1.11').then(module => module.scheduleMotherLibraryServerBackup()).catch(() => { });
         }
         return { importedLibraries: imported.length, importedEntries: imported.reduce((sum, item) => sum + item.entries.length, 0), skippedLibraries: skipped.length };
     }

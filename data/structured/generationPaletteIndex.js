@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.1.10";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.1.11";
 const family = (id, title, mood, fit, neutral, companions) => Object.freeze({
     id, title, mood, fit: Object.freeze(fit.split('|').filter(Boolean)), neutral,
     companions: Object.freeze(companions.split('|')),

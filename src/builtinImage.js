@@ -1,14 +1,14 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.10";
-import { getSettings } from './settings.js?rmv=2.1.10';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.1.10';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.1.10';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=2.1.10';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.1.10';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.1.10';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=2.1.10';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.1.10';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.1.10';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.1.10';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.1.11";
+import { getSettings } from './settings.js?rmv=2.1.11';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.1.11';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.1.11';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=2.1.11';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.1.11';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.1.11';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=2.1.11';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.1.11';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.1.11';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.1.11';
 const inflight = new Map();
 const waiters = new Map();
 const progress = new Map();
@@ -1154,7 +1154,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
     }
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.1.10');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.1.11');
     const merged = people.map(person => ({ ...person }));
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
     for (const name of pending) {
@@ -1251,7 +1251,7 @@ function readWorldCast(names) {
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000)
         return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.1.10'), import('./independentApi/connection.js?rmv=2.1.10')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.1.11'), import('./independentApi/connection.js?rmv=2.1.11')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1269,7 +1269,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
         throw Object.assign(new Error(__rmT("lG.pz2TnT_Yo4if1")), { name: 'AbortError', code: 'aborted' });
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.1.10');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.1.11');
     const merged = people.map(person => ({ ...person }));
     let others = names;
     try {
@@ -1406,7 +1406,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         let cleanRef = value => value;
         try {
-            cleanRef = (await import('./independentApi/connection.js?rmv=2.1.10')).stripExcludedTagsFromReference;
+            cleanRef = (await import('./independentApi/connection.js?rmv=2.1.11')).stripExcludedTagsFromReference;
         }
         catch { }
         for (const person of myriad) {
