@@ -1,8 +1,8 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.3.6";
-import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=2.3.6';
-import { getRabbitMirrorHostCompatibilityStatus } from '../hostCompatibility.js?rmv=2.3.6';
-import { RUNTIME_VERSION, isCurrentRuntime } from './runtime.js?rmv=2.3.6';
-import { rabbitMirrorChatTapTarget } from '../outputSanitizer/ttTapTarget.js?rmv=2.3.6';
+import { rmT as __rmT } from "../textTable.js?rmv=2.3.7";
+import { startTtSurfaceDiagnostics, stopTtSurfaceDiagnostics, isTtSurfaceDiagnosticsActive, buildTtSurfaceReport, recordTtSurface, registerTtSurfaceCleanup, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=2.3.7';
+import { getRabbitMirrorHostCompatibilityStatus } from '../hostCompatibility.js?rmv=2.3.7';
+import { RUNTIME_VERSION, isCurrentRuntime } from './runtime.js?rmv=2.3.7';
+import { rabbitMirrorChatTapTarget } from '../outputSanitizer/ttTapTarget.js?rmv=2.3.7';
 let retainedTtDiagnosticReport = '';
 function captureTtDiagnosticInputs(chatRoot, session) {
     if (!chatRoot?.addEventListener)

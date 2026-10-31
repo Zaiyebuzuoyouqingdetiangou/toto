@@ -1,13 +1,13 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.6";
-import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.3.6';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=2.3.6';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=2.3.6';
-import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=2.3.6';
-import { getSettings, updateSettings } from './settings.js?rmv=2.3.6';
-import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=2.3.6';
-import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=2.3.6';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.6';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.6';
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.7";
+import { applyAtmosphereNotes, compactAtmosphereMenu } from './atmosphereChoice.js?rmv=2.3.7';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=2.3.7';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=2.3.7';
+import { compactFormatDescriptors, isExternalSelectionId } from './selectionImageMetadata.js?rmv=2.3.7';
+import { getSettings, updateSettings } from './settings.js?rmv=2.3.7';
+import { getCurrentChatKey, resetFormatEligibleMisses } from './storage.js?rmv=2.3.7';
+import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=2.3.7';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.3.7';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.3.7';
 export const BLACKLIST_CHANGED_EVENT = 'rabbitmirror:blacklist-changed';
 export const RECIPE_RECORDED_EVENT = 'rabbitmirror:recipe-recorded';
 const RECIPE_STORAGE_KEY = 'rabbit_mirror_theater:selection_recipes:v1';
@@ -427,8 +427,9 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
     const atmosphereMenu = compactAtmosphereMenu(metadata?.atmosphereMenu);
     const atmosphereReason = String(metadata?.atmosphereReason || '').replace(/\s+/g, ' ').trim().slice(0, 300);
     const atmosphereChoice = atmosphereChoiceValue(metadata?.atmosphereChoice, atmosphereMenu?.length || 0);
+    const unDrawn = metadata?.samplingMode === 'self_invent' || metadata?.pureOrderFace === true || metadata?.userDirectiveApplied === true;
     if (!themeIds.length && !formatIds.length && !hasExternalReferences && !metadata?.textIds?.length
-        && !isBlankLongTextSelection(metadata) && !metadata?.worldBookEntryId && !faces?.some(Boolean))
+        && !isBlankLongTextSelection(metadata) && !metadata?.worldBookEntryId && !faces?.some(Boolean) && !unDrawn)
         return null;
     return {
         themeIds,
@@ -444,6 +445,8 @@ function compactSelectionMetadata(metadata = {}, allowFaces = true) {
         ...faceDrawMetadataFields(metadata),
         ...compactDirectiveCounts(metadata),
         samplingMode: String(metadata?.samplingMode || 'classic'),
+        ...(metadata?.samplingMode === 'self_invent' && ['classic', 'pair', 'format'].includes(metadata?.selfInventScope) ? { selfInventScope: metadata.selfInventScope } : {}),
+        ...(metadata?.pureOrderFace === true ? { pureOrderFace: true } : {}),
         userDirectiveApplied: !!metadata?.userDirectiveApplied,
         forcedVisualScenery: !!metadata?.forcedVisualScenery || !!metadata?.visualSceneryMode,
         ...(faces ? { faces } : {}),

@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.3.6";
-import { getSettings } from '../settings.js?rmv=2.3.6';
-import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=2.3.6';
-import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=2.3.6';
-import { escapeHtml } from './runtime.js?rmv=2.3.6';
-import { formatGenerationElapsed } from '../generationTiming.js?rmv=2.3.6';
+import { rmT as __rmT } from "../textTable.js?rmv=2.3.7";
+import { getSettings } from '../settings.js?rmv=2.3.7';
+import { getLastRabbitMirrorTokenRecordForSource, TOKEN_METER_EVENT } from '../tokenMeter.js?rmv=2.3.7';
+import { API_REQUEST_DIAGNOSTIC_EVENT, getLastIndependentApiRequestDiagnostic } from '../independentApi.js?rmv=2.3.7';
+import { escapeHtml } from './runtime.js?rmv=2.3.7';
+import { formatGenerationElapsed } from '../generationTiming.js?rmv=2.3.7';
 function independentApiProfileLabel(diagnostic) {
     if (!diagnostic?.profile)
         return __rmT("vMAXFoBZAGY");

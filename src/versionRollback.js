@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.6";
-import { compareRabbitMirrorVersions, fetchWithTimeout, hostRequestHeaders, ownExtensionFolder, reloadTavernPage, } from './extensionUpdater.js?rmv=2.3.6';
-export { backupSettingsBeforeVersionSwitch } from './settings.js?rmv=2.3.6';
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.7";
+import { compareRabbitMirrorVersions, fetchWithTimeout, hostRequestHeaders, ownExtensionFolder, reloadTavernPage, } from './extensionUpdater.js?rmv=2.3.7';
+export { backupSettingsBeforeVersionSwitch } from './settings.js?rmv=2.3.7';
 const UPDATER_URL = new URL('./extensionUpdater.js', import.meta.url).href;
 const VERSION_BRANCH = /^(?:remotes\/)?(?:origin\/)?v(\d{1,3}\.\d{1,4}\.\d{1,4})$/;
 export const ROLLBACK_SINCE = '2.2.0';

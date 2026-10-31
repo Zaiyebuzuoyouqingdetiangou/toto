@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.3.6";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.3.7";
 export const THEMATIC_CATEGORIES = [
     {
         "id": "A.0",

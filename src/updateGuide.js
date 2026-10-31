@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.3.6";
-import { getSettings, updateSettings } from './settings.js?rmv=2.3.6';
-import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.3.6';
-import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.6';
+import { rmT as __rmT } from "./textTable.js?rmv=2.3.7";
+import { getSettings, updateSettings } from './settings.js?rmv=2.3.7';
+import { compareRabbitMirrorVersions, runningRabbitMirrorVersion } from './extensionUpdater.js?rmv=2.3.7';
+import { themeMirrorToolPanel } from './mirrorToolMenu.js?rmv=2.3.7';
 export const UPDATE_GUIDE_TIPS = Object.freeze([
     { id: 'sample-upload', since: '2.3.5', title: __rmT("xSWXkdK55pqIgerkkRmAo508TQ5I9k"), text: __rmT("1uM.uHLsSsLHjhAa_ZWLIQJsZ4kTBq2gAaDQypnARLxacCCweg3u6836rq9k6TCQqxz67rBQg0m4uo6CStrqk.kX6KYPMjgfY24iCbWyP_IBHP8MxzymLwlsQQJLq4WwK9THCeAc"), page: 'mirror', target: 'rh_repair_upload' },
     { id: 'self-invent', since: '2.3.0', title: __rmT("OZRqydFrGFtotFLDVmNKErqZmG5g3T"), text: __rmT("RNkKcHnaMYlnplpl7HpxtgN5l_CSxTEHla6dbbj1nDihybSArC6HGIzlpMisUcmWLz9RWgVJnCUZvEFdrPVeWna0R7djwKlnzh8FI7eHoodc.9xa8nwTPudwDdyOLwnJyOOLkyXH3qh6JdfF"), page: 'draw', target: 'rh_self_invent' },
@@ -70,7 +70,7 @@ export async function goToUpdateTip(tip) {
     if (session)
         session.remaining = session.remaining.filter(item => item.id !== tip.id);
     if (tip.action === 'rollback') {
-        const menu = await import('./mirrorUpdateMenu.js?rmv=2.3.6');
+        const menu = await import('./mirrorUpdateMenu.js?rmv=2.3.7');
         await menu.openRabbitMirrorRollback();
         watchForReturn();
         return true;

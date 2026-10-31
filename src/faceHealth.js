@@ -1,7 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.6";
-import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.3.6';
-import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.3.6';
-import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.3.6';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.3.7";
+import { paletteFromSource } from './independentApi/generationProgress.js?rmv=2.3.7';
+import { classifyPaletteSamples } from './paletteObservation.js?rmv=2.3.7';
+import { DRIVER_METHODS } from './interactionMethods.js?rmv=2.3.7';
+import { parseSelfInvented } from './interactionMethodLedger.js?rmv=2.3.7';
 export const HUE_NAMES = Object.freeze({ red: __rmT("mr8"), orange: __rmT("IqG"), yellow: __rmT("dG8"), green: __rmT("GL8"), cyan: __rmT("4D_"), blue: __rmT("hFf"), purple: __rmT("3LA"), pink: __rmT("caT"), neutral: __rmT("Pgv.uk") });
 export const BRIGHTNESS_NAMES = Object.freeze({ light: __rmT("z2Zaif"), mid: __rmT("AsAr7j6q"), dark: __rmT("w2Zaif") });
 export const RISK_NAMES = Object.freeze({
@@ -87,7 +88,20 @@ export function splitStoredFaces(html) {
         .filter(face => Number.isInteger(face.faceIndex) && face.faceIndex >= 0 && !/data-rabbit-mirror-face-failure/i.test(face.html) && /<details\b/i.test(face.html));
 }
 const labelTitle = label => String(label || '').split(__rmT("7ys"))[0].replace(/^\S+\s+(?=\S)/, '').replace(/\s+/g, ' ').trim();
-export function formatNameOf(recipe) {
+function selfFormOf(html) {
+    const tag = String(html || '').match(/<details\b[^>]*>/i)?.[0] || '';
+    const raw = tag.match(/\sdata-rm-self\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];
+    if (raw == null)
+        return null;
+    const value = raw.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    return parseSelfInvented(value)?.form || '';
+}
+export function formatNameOf(recipe, html = '') {
+    const self = selfFormOf(html);
+    if (self)
+        return `${self}${__rmT("w890Iyuu5JRxtf")}`;
+    if (self === '' || recipe?.samplingMode === 'self_invent')
+        return __rmT("2FQ53CSzry0UAFc2IAA");
     if (!recipe || typeof recipe !== 'object')
         return '';
     const menu = Array.isArray(recipe.atmosphereMenu) ? recipe.atmosphereMenu : [];
