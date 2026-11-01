@@ -1,19 +1,19 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.8.2";
-import { usesModelOriginalColors } from './visualDesign.js?rmv=2.8.2';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.8.2';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.8.2';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.8.2';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.8.2';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.8.2';
-import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.8.2';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.8.2';
-import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.8.2';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.8.2';
-import { isDocumentFormat } from './documentFormats.js?rmv=2.8.2';
-import { DEFAULT_COOLDOWN_FACES, NEAR_COOLDOWN_FACES, cooldownForPool, isThemeClusterKey, randomSkipIds, reportLikeFactor, sameClusterThemeIds, themeClusterKey, themeClusterMembers } from './drawBalance.js?rmv=2.8.2';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.8.2';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.8.2';
-import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.8.2';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.8.3";
+import { usesModelOriginalColors } from './visualDesign.js?rmv=2.8.3';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.8.3';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.8.3';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.8.3';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.8.3';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.8.3';
+import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.8.3';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.8.3';
+import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.8.3';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.8.3';
+import { isDocumentFormat } from './documentFormats.js?rmv=2.8.3';
+import { DEFAULT_COOLDOWN_FACES, NEAR_COOLDOWN_FACES, cooldownForPool, isThemeClusterKey, randomSkipIds, reportLikeFactor, sameClusterThemeIds, themeClusterKey, themeClusterMembers } from './drawBalance.js?rmv=2.8.3';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.8.3';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.8.3';
+import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.8.3';
 function randomUnit() {
     try {
         const cryptoApi = globalThis.crypto;
@@ -224,8 +224,37 @@ function immediateFamilySet(values) {
     return new Set((Array.isArray(values) ? values : []).map(value => String(value || '')).filter(Boolean));
 }
 const HIERARCHY_EXPONENT = 0.8;
+const THEME_GROUP_EXPONENT = 0.55;
+const THEME_ITEM_CAP = 1.5;
 const PARENT_ITEM_FACTOR = 0.35;
 const SAME_GROUP_IN_DRAW_FACTOR = 0.3;
+function capItemWeights(itemWeights, cap) {
+    const total = [...itemWeights.values()].reduce((sum, weight) => sum + weight, 0);
+    if (!(total > 0) || itemWeights.size < 2 || !(cap >= 1))
+        return itemWeights;
+    const limit = cap * total / itemWeights.size;
+    const capped = new Map(itemWeights);
+    for (let round = 0; round < 64; round += 1) {
+        let excess = 0;
+        const open = [];
+        for (const [id, weight] of capped) {
+            if (weight > limit) {
+                excess += weight - limit;
+                capped.set(id, limit);
+            }
+            else if (weight < limit)
+                open.push(id);
+        }
+        if (excess <= total * 1e-12)
+            break;
+        const openTotal = open.reduce((sum, id) => sum + capped.get(id), 0);
+        if (!(openTotal > 0))
+            break;
+        for (const id of open)
+            capped.set(id, capped.get(id) + excess * capped.get(id) / openTotal);
+    }
+    return capped;
+}
 function hierarchyBaseWeights(items, familyKey) {
     const list = Array.isArray(items) ? items : [];
     const ids = list.map(item => String(item?.id || ''));
@@ -246,21 +275,25 @@ function hierarchyBaseWeights(items, familyKey) {
             families.set(family, []);
         families.get(family).push(item);
     }
-    const itemWeights = new Map();
-    const familyWeights = new Map();
+    let itemWeights = new Map();
     for (const families of groups.values()) {
         const groupSize = [...families.values()].reduce((sum, members) => sum + members.length, 0);
-        const groupWeight = Math.pow(Math.max(1, groupSize), HIERARCHY_EXPONENT);
+        const groupWeight = Math.pow(Math.max(1, groupSize), THEME_GROUP_EXPONENT);
         const familyRaw = [...families.entries()].map(([key, members]) => [key, members, Math.pow(Math.max(1, members.length), HIERARCHY_EXPONENT)]);
         const familyTotal = familyRaw.reduce((sum, entry) => sum + entry[2], 0) || 1;
-        for (const [key, members, raw] of familyRaw) {
+        for (const [, members, raw] of familyRaw) {
             const familyWeight = groupWeight * raw / familyTotal;
-            familyWeights.set(key, familyWeight);
             const leafRaw = members.map(item => [item, parentIds.has(String(item?.id || '')) ? PARENT_ITEM_FACTOR : 1]);
             const leafTotal = leafRaw.reduce((sum, entry) => sum + entry[1], 0) || 1;
             for (const [item, leaf] of leafRaw)
                 itemWeights.set(item.id, familyWeight * leaf / leafTotal);
         }
+    }
+    itemWeights = capItemWeights(itemWeights, THEME_ITEM_CAP);
+    const familyWeights = new Map();
+    for (const item of list) {
+        const key = familyKey(item);
+        familyWeights.set(key, (familyWeights.get(key) || 0) + (Number(itemWeights.get(item.id)) || 0));
     }
     return { itemWeights, familyWeights };
 }
