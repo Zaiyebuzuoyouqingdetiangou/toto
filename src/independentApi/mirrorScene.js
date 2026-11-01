@@ -1,4 +1,4 @@
-import { spritePaths } from '../pixelSprites.js?rmv=2.8.4';
+import { spritePaths } from '../pixelSprites.js?rmv=2.9.0';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const SCENE_H = 30;
 const BASE_W = 42;

@@ -1,13 +1,14 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.8.4";
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=2.8.4';
-import { getSettings } from './settings.js?rmv=2.8.4';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=2.8.4';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft, mirrorImagePromptCleanupRevision, MIRROR_IMAGE_PROMPTS_CLEARED_EVENT } from './imageStore.js?rmv=2.8.4';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.8.4';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.8.4';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.8.4';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=2.8.4';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=2.8.4';
+import { rmT as __rmT } from "./textTable.js?rmv=2.9.0";
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=2.9.0';
+import { getSettings } from './settings.js?rmv=2.9.0';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=2.9.0';
+import { imageBackendName } from './imageBackendName.js?rmv=2.9.0';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft, mirrorImagePromptCleanupRevision, MIRROR_IMAGE_PROMPTS_CLEARED_EVENT } from './imageStore.js?rmv=2.9.0';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.9.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.9.0';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.0';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=2.9.0';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=2.9.0';
 const jobs = new Set();
 const pendingSaves = new Set();
 const sessionDrafts = new Set();
@@ -290,7 +291,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     heading.append(title, close);
     const status = el(doc, 'p', state.error || (!target ? __rmT("GVZEgQQtm7c6MpqL5HZixZTM2peNjP.LRi2dncLcVOXUBj6QivUWdZ4GLwOzfulutfny6CWwW0pSwnHhvGY3VYcayv0f8f4bZjkFdPt.FMX8.i_z") : __rmT("nzMTU28qNgVBhvwCzAQ_F.tr_QapFdjFoVBLyVnqVL3U6ffCZLwCyJxFz3w3iCfH2.ADscP2PblqI_PqJ4pFrh")), { role: 'status', 'aria-live': 'polite' });
     const planningLabel = () => imageLlmConfigured(getSettings()) ? __rmT("lG.pzLFyLF2NBMEq") : __rmT("az3HOeBp2slxTh");
-    const drawingLabel = () => getSettings().imageBackend === 'chatu8' ? __rmT("OyY9PHpS") : __rmT("lo7wSMYV");
+    const drawingLabel = () => imageBackendName(getSettings().imageBackend);
     const notice = el(doc, 'p', `${__rmT("YTlLwp.mb9Sy3XsiMKduER5Tjwf")}${planningLabel()}${__rmT("F6wD4DoePXUwRkQKRZI3VVkUSvkU8sUg.6tlT.TE")}${drawingLabel()}${__rmT("jzk")}`);
     const preview = el(doc, 'div');
     const fields = el(doc, 'div');
@@ -397,7 +398,7 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
         const draft = readDraft();
         const supports = backend?.supportsCharacters === true;
         const singlePrompt = buildSingleImagePrompt(draft);
-        const chatu = getSettings().imageBackend === 'chatu8';
+        const chatu = getSettings().imageBackend === 'chatu8' || getSettings().imageBackend === 'iphonie';
         sendPreview.textContent = JSON.stringify({ prompt: supports ? draft.prompt : singlePrompt,
             ...(!chatu ? { nl: draft.promptFormat === 'nai45-tags' ? '' : supports ? draft.nl : singlePrompt } : {}),
             ...(supports && draft.characters.length ? { characters: draft.characters.map(person => draft.promptFormat === 'nai45-tags' ? { ...person, nl: '' } : person) } : {}), ...(size.value ? { size: size.value } : {}) }, null, 2);
@@ -756,7 +757,7 @@ function buildBuiltinSection(doc, root, initial) {
     editLabel.append(editBox);
     editor.append(editLabel, editGo);
     section.append(head, tabs, view, nav, statusLine, row, hint, sourceLine, editor);
-    const provider = () => getSettings().imageBackend === 'chatu8' ? __rmT("OyY9PHpS") : __rmT("lo7wSMYV");
+    const provider = () => imageBackendName(getSettings().imageBackend);
     const currentFrame = () => frames[Math.min(selected, frames.length - 1)];
     const frameJob = item => current(sectionTarget) && item ? ownedForTarget(builtinJobs, { key: item.key }) : null;
     const refresh = () => { frames = listBuiltinImageFrames(root); if (!frames.length)
@@ -848,7 +849,7 @@ function buildBuiltinSection(doc, root, initial) {
                     catch { }
                 } } });
             message = saveError
-                ? `${__rmT("xbNtSbEc")}${painted ? __rmT("7QeST865Wt_OmBFixnCuCKU7ie7eHz8hnlf") : ''}${__rmT("DV_f1A7K.QQqy2cWkRsbn6W3m6wlcT")}${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? __rmT("kudkyIBewsuq4LIF") : String(saveError?.message || __rmT("AQ96ALbkGU_")).slice(0, 60)}${__rmT("7os")}${describeLocalStorageUsage()}${__rmT("qsvnJ9GvalHaHg1JIiyaRQJsCdfeaUmcJVPWa1GD.1up7ErNSSJdVbncGnYLXSnXUSzj4_hznRhobh")}${provider() === __rmT("lo7wSMYV") ? __rmT("YbY6hO3dWu81ci2x8nQGZw5ObNs") : __rmT("7eHmOQmA3I52h0FA1tkQc7EI")}` : painted ? __rmT("2GvWLJbEvlt2rMM4Slc8H.thaBs1ZQcE2j.pcoD2OdL.bh") : __rmT("KY9lVngg.MkQG8F9KDHlcMX1xVp9HxobYy.LugjmPnTGZSh_9JUZ7wBq9WfKmKza7vdXG77KY3Y");
+                ? `${__rmT("xbNtSbEc")}${painted ? __rmT("7QeST865Wt_OmBFixnCuCKU7ie7eHz8hnlf") : ''}${__rmT("DV_f1A7K.QQqy2cWkRsbn6W3m6wlcT")}${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? __rmT("kudkyIBewsuq4LIF") : String(saveError?.message || __rmT("AQ96ALbkGU_")).slice(0, 60)}${__rmT("7os")}${describeLocalStorageUsage()}${__rmT("qsvnJ9GvalHaHg1JIiyaRQJsCdfeaUmcJVPWa1GD.1up7ErNSSJdVbncGnYLXSnXUSzj4_hznRhobh")}${provider() === __rmT("lo7wSMYV") ? __rmT("YbY6hO3dWu81ci2x8nQGZw5ObNs") : provider() === __rmT("s3XFEC__") ? __rmT("C_6.imemd68Bao2x8nQGZw5ObNs") : __rmT("7eHmOQmA3I52h0FA1tkQc7EI")}` : painted ? __rmT("2GvWLJbEvlt2rMM4Slc8H.thaBs1ZQcE2j.pcoD2OdL.bh") : __rmT("KY9lVngg.MkQG8F9KDHlcMX1xVp9HxobYy.LugjmPnTGZSh_9JUZ7wBq9WfKmKza7vdXG77KY3Y");
         }
         catch (error) {
             message = controller.signal.aborted ? __rmT("qwLkkacs7oaTlfyt9l62bC49RD1rrk") : `${__rmT("WzGbtYADP_xF5i4vZh0Miiczb13TwUmK29E")}${String(error?.message || '').slice(0, 120)}`;
