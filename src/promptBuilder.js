@@ -1,42 +1,42 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.10.1";
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=2.10.1';
-import { isDocumentFormat, looksLikeDocument } from './documentFormats.js?rmv=2.10.1';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer, isObjectDriver, OFFER_LIMITS_187 } from './interactionMethods.js?rmv=2.10.1';
-import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo, signatureUsageForCombo } from './interactionUsageOffer.js?rmv=2.10.1';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=2.10.1';
-import { recentInteractionMethods, recentDesignPicks, recentFollowPicks, rememberFollowPicks, recentArtDirections, recentSelfInventedForms } from './interactionMethodLedger.js?rmv=2.10.1';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=2.10.1';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=2.10.1';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=2.10.1';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=2.10.1';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=2.10.1';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=2.10.1';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=2.10.1';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=2.10.1';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=2.10.1';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=2.10.1';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=2.10.1';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE, VISUAL_SCENERY_SUBJECT_BY_PICK } from '../data/raw/visualSceneryRules.js?rmv=2.10.1';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=2.10.1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay, pickSelfInventSelection } from './picker.js?rmv=2.10.1';
-import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=2.10.1';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=2.10.1';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=2.10.1';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=2.10.1';
-import { materialTextureRule } from './materialTexture.js?rmv=2.10.1';
-import { webFontRule } from './webFonts.js?rmv=2.10.1';
-import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=2.10.1';
-import { assignFaceHueFamilies, hueFamilyInstruction, userDirectsColor, HUE_FAMILY_NAMES } from './paletteAssignment.js?rmv=2.10.1';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=2.10.1';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=2.10.1';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=2.10.1';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=2.10.1';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=2.10.1';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=2.10.1';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=2.10.1';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.10.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.10.1';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=2.10.1';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.11.0";
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=2.11.0';
+import { isDocumentFormat, looksLikeDocument } from './documentFormats.js?rmv=2.11.0';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer, isObjectDriver, OFFER_LIMITS_187 } from './interactionMethods.js?rmv=2.11.0';
+import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo, signatureUsageForCombo } from './interactionUsageOffer.js?rmv=2.11.0';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=2.11.0';
+import { recentInteractionMethods, recentDesignPicks, recentFollowPicks, rememberFollowPicks, recentArtDirections, recentSelfInventedForms } from './interactionMethodLedger.js?rmv=2.11.0';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=2.11.0';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=2.11.0';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=2.11.0';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=2.11.0';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=2.11.0';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=2.11.0';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=2.11.0';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=2.11.0';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=2.11.0';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=2.11.0';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=2.11.0';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE, VISUAL_SCENERY_SUBJECT_BY_PICK } from '../data/raw/visualSceneryRules.js?rmv=2.11.0';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=2.11.0';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay, pickSelfInventSelection } from './picker.js?rmv=2.11.0';
+import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=2.11.0';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=2.11.0';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=2.11.0';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=2.11.0';
+import { materialTextureRule } from './materialTexture.js?rmv=2.11.0';
+import { webFontRule } from './webFonts.js?rmv=2.11.0';
+import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=2.11.0';
+import { assignFaceHueFamilies, hueFamilyInstruction, userDirectsColor, HUE_FAMILY_NAMES } from './paletteAssignment.js?rmv=2.11.0';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=2.11.0';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=2.11.0';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=2.11.0';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=2.11.0';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=2.11.0';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=2.11.0';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=2.11.0';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.11.0';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.11.0';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=2.11.0';
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
 function hasAtmosphereMenu(combo) {
@@ -1325,6 +1325,10 @@ const NATIVE_BUTTON_ROW = __rmR("5FH_p5AWQVreLgMhfakI.pCm3E99BbLbkFfYZKyaZXVWUQ0
 function hasNativeButtonRow(combo) {
     return (combo?.formats || []).some(item => ['1', '6'].includes(String(item?.group || '')) || NATIVE_BUTTON_ROW.test(String(item?.title || '')));
 }
+function selfFacesWithoutButtonRow(faceContexts) {
+    return faceContexts.some(face => !face.textPresentation && !face.combo?.pureOrder && isSelfInventFace(face.combo))
+        && !faceContexts.some(face => hasNativeButtonRow(face.combo));
+}
 const TEMPLATE_MECHANISMS = new Set(['flip', 'expand', 'page', 'toggle', 'pick', 'pager', 'hold', 'popover', 'peek', 'spoiler']);
 const RICH_MECHANISMS = new Set(['drag', 'adjust', 'reveal', 'follow', 'reorder', 'accumulate', 'draw', 'motion', 'effect', 'view', 'scroll', 'input',
     'connect', 'turn', 'sequence']);
@@ -1440,7 +1444,7 @@ function createPromptPlan(selections, args, batchPlan = null, inactive = false) 
         const usageOffer = eligible && !menuFace && !selfFace ? normalizeUsageOffer(pinnedUsage) || drawUsageOffer(combo, { avoidFlip: flipRotation, avoidSlide: slideRotation }) : null;
         return { ...rest, combo, ...(eligible ? { designCandidatePick: designCandidatePick(pinnedPick) || ((PICK_ROTATION_184 || followPlan)
                     ? drawDesignCandidate({ slots: flipRotation || recentTextRevealRotation() ? 2 : 3, avoid: avoidPicks })
-                    : drawDesignCandidate({ slots: flipRotation ? 1 : recentTextRevealRotation() || (!hasNativeButtonRow(combo) && !selfFace) ? 2 : 3, avoid: recentWholeSwitch ? [2] : [] })),
+                    : drawDesignCandidate({ slots: flipRotation ? 1 : recentTextRevealRotation() || !hasNativeButtonRow(combo) ? 2 : 3, avoid: recentWholeSwitch ? [2] : [] })),
                 driverOffer: normalizeDriverOffer(pinnedOffer) || drawDriverOffer({ avoidSlide: slideRotation, avoidFlip: flipRotation, avoidTabs: tabRotation, avoidSwitchPopup: switchPopupRotation, usages: usageOffer?.usages || [], related: menuFace ? [] : relatedUsagesForCombo(combo),
                     nativeButtons: menuFace || hasNativeButtonRow(combo),
                     signature: (sig => sig && usageOffer?.usages?.includes(sig) ? sig : '')(menuFace ? '' : signatureUsageForCombo(combo)) }),
@@ -1697,7 +1701,8 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         const flip = recentFlipExpandRotation();
         followInteractionNotes = visualDiversityExecutionLock(settings, { textRevealRotation, flipRotation: flip,
             slideRotation: !flip && recentSlideDragRotation(), tabRotation: !flip && recentTabRowRotation(),
-            noButtonRow: !faceContexts.some(face => hasNativeButtonRow(face.combo) || isSelfInventFace(face.combo)) })
+            noButtonRow: !faceContexts.some(face => hasNativeButtonRow(face.combo) || isSelfInventFace(face.combo)),
+            selfButtonRow: selfFacesWithoutButtonRow(faceContexts) })
             .split('\n').filter(Boolean).map(line => `\n  - ${line}`).join('');
     }
     const constructionRules = htmlFacesPresent ? {
@@ -1766,7 +1771,8 @@ export function renderRabbitMirrorPromptPlan(plan, externalRawMap = null, appear
         tabRotation: htmlFacesPresent && !recentFlipExpandRotation() && recentTabRowRotation(), paleBan: htmlFacesPresent && lastPaleLock, softTone: settings.visualToneMode === 'soft',
         paletteReminder: generationType === 'independent' ? paletteReminder : '',
         paletteLock, previousVersion: [historyNotes.previousVersion, backfillNote].filter(Boolean).join('\n'),
-        noButtonRow: htmlFacesPresent && !faceContexts.some(face => hasNativeButtonRow(face.combo) || isSelfInventFace(face.combo)) });
+        noButtonRow: htmlFacesPresent && !faceContexts.some(face => hasNativeButtonRow(face.combo) || isSelfInventFace(face.combo)),
+        selfButtonRow: htmlFacesPresent && selfFacesWithoutButtonRow(faceContexts) });
     const nearOutputPolicy = htmlFacesPresent ? executionPolicy : '';
     const executionLockBody = hasTextPresentation ? buildTextAwareExecutionLock(faceContexts, settings, directive, nearOutputPolicy) : multiface
         ? buildMultiIndependentExecutionLock(faceContexts, settings, directive, nearOutputPolicy)

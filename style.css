@@ -88,7 +88,7 @@
 
 html:not([data-rabbit-mirror-boot]) #extensionsMenu::after,
 html:not([data-rabbit-mirror-boot]) #extensions_settings::before {
-    content: "兔子镜没有启动：安装文件不完整，或新旧版本的文件混在一起。到「管理扩展」里更新或重新安装一次兔子镜，再刷新网页；还不行就把浏览器控制台里的红字截图发给作者。";
+    content: "兔子镜没有启动：安装文件不完整，或新旧版本的文件混在一起。到「管理扩展」里更新或重新安装一次兔子镜，再刷新网页。重新安装时提示「Directory already exists」（目录已存在）的话，是上次没删干净：到酒馆的文件夹里手动删掉兔子镜的文件夹（只给自己装的在 data/你的用户名/extensions/ 下面，给所有用户装的在 public/scripts/extensions/third-party/ 下面），刷新后再装。还不行就把浏览器控制台里的红字截图发给作者。";
     display: block;
     padding: 8px 12px;
     font-size: 0.85em;
@@ -1253,11 +1253,36 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important;
 }
 .rabbit-mirror-external-error-art svg.rm-gp-scene{ display:block !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; }
+
+.rabbit-mirror-external-wait-art{
+  display:flex !important;
+  justify-content:center !important;
+  margin:6px 0 2px !important;
+  filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important;
+  pointer-events:none !important;
+}
+
+.rabbit-mirror-external-shell:not([data-rm-state="loading"]) > .rabbit-mirror-external-wait-art,
+.rabbit-mirror-external-shell > .rabbit-mirror-generation-progress ~ .rabbit-mirror-external-wait-art,
+.rabbit-mirror-external-shell > .rabbit-mirror-external-wait-art:has(~ .rabbit-mirror-generation-progress){ display:none !important; }
+.rabbit-mirror-external-wait-art svg.rm-gp-scene{ display:block !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; }
+.rm-gp-scene .rm-gp-wait-hand{ opacity:0; animation:rm-gp-quarter 2.4s steps(1,end) infinite; animation-delay:var(--rm-wait-phase, 0s); }
+.rm-gp-scene .rm-gp-wait-hand-1{ animation-delay:calc(var(--rm-wait-phase, 0s) - 1.8s); }
+.rm-gp-scene .rm-gp-wait-hand-2{ animation-delay:calc(var(--rm-wait-phase, 0s) - 1.2s); }
+.rm-gp-scene .rm-gp-wait-hand-3{ animation-delay:calc(var(--rm-wait-phase, 0s) - .6s); }
+.rm-gp-scene .rm-gp-wait-blink{ opacity:0; animation:rm-gp-wait-blink 3.6s steps(1,end) infinite; animation-delay:var(--rm-wait-phase, 0s); }
+
+.rabbit-mirror-external-wait-art .rm-gp-sprite .rm-gp-dot{ animation-delay:var(--rm-wait-phase, 0s); }
+.rabbit-mirror-external-wait-art .rm-gp-sprite .rm-gp-dot-2{ animation-delay:calc(var(--rm-wait-phase, 0s) + .4s); }
+.rabbit-mirror-external-wait-art .rm-gp-sprite .rm-gp-dot-3{ animation-delay:calc(var(--rm-wait-phase, 0s) + .8s); }
+@keyframes rm-gp-wait-blink{ 0%{opacity:0} 93%{opacity:1} 97%{opacity:0} 100%{opacity:0} }
 @media (prefers-reduced-motion: reduce){
-  .rabbit-mirror-external-error-art *{ animation:none !important; }
+  .rabbit-mirror-external-error-art *,
+  .rabbit-mirror-external-wait-art *{ animation:none !important; }
   .rm-gp-scene .rm-gp-fall-0,
   .rm-gp-scene .rm-gp-found-3,
-  .rm-gp-scene .rm-gp-fail-1{ opacity:1 !important; }
+  .rm-gp-scene .rm-gp-fail-1,
+  .rm-gp-scene .rm-gp-wait-hand-0{ opacity:1 !important; }
 }
 @keyframes rm-gp-frame-a{ 0%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
 @keyframes rm-gp-frame-b{ 0%{opacity:0} 50%{opacity:1} 100%{opacity:1} }

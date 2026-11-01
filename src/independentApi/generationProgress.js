@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.10.1";
-import { spritePaths } from '../pixelSprites.js?rmv=2.10.1';
-import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.10.1';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.10.1';
-import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX } from './mirrorScene.js?rmv=2.10.1';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.11.0";
+import { spritePaths } from '../pixelSprites.js?rmv=2.11.0';
+import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.11.0';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.11.0';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, WAIT_ART_CLASS } from './mirrorScene.js?rmv=2.11.0';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -838,6 +838,7 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
         card.removeAttribute('data-rm-gp-dark');
     if (card.previousElementSibling !== placeholder)
         placeholder.after(card);
+    host.querySelector(`:scope > .${WAIT_ART_CLASS}`)?.remove();
     if (view.phase !== 'preparing') {
         const label = placeholder.querySelector(':scope > summary [data-rabbit-mirror-external-summary-label]');
         if (label && __rmR("QE8LkZGcCoIaabxw9ewLHixP8YHL.qwAbtC", "").test(label.textContent || ''))

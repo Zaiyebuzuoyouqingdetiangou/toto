@@ -1,4 +1,4 @@
-import { rearmAttributeCycleButtons } from './attributeCycleWiring.js?rmv=2.10.1';
+import { rearmAttributeCycleButtons } from './attributeCycleWiring.js?rmv=2.11.0';
 export const ORPHAN_STATE_ATTR = 'data-rm-orphan-state-wired';
 const ORPHAN_STATE_WIRED = new WeakSet();
 export function isOrphanStateWired(target) {

@@ -1,4 +1,5 @@
-import { spritePaths } from '../pixelSprites.js?rmv=2.10.1';
+import { rmT as __rmT } from "../textTable.js?rmv=2.11.0";
+import { spritePaths } from '../pixelSprites.js?rmv=2.11.0';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const SCENE_H = 30;
 const BASE_W = 42;
@@ -11,6 +12,8 @@ const COLORS = Object.freeze({
     a: ['glass', '#b9d3df'], A: ['glass-dk', '#86a9bd'], h: ['glass-hi', '#eef6f9'],
     Y: ['glow', '#f3d27a'], y: ['glow-hi', '#fff3c4'], o: ['twinkle', '#ffffff'], q: ['mark', '#2b2628'],
     D: ['hole', '#343947'], d: ['hole-dk', '#1f222b'], n: ['streak', '#6e6878'], m: ['hole-mark', '#4d4855'],
+    v: ['grass', '#8fb573'], V: ['grass-dk', '#6c8f55'], u: ['soil', '#c7a07a'], U: ['soil-dk', '#8c6a4c'], z: ['pit', '#2a2530'],
+    l: ['bubble', '#eef6f9'],
 });
 const BIG = '.....kk...k/....kpRk.kR/....kprk.kprk/....kprk.kprk/....kprk.kprk/....kprkkkprk/...kkrrrrrrrkk/..krrrrrrrrrrrk/.krrrrrrrrrrrRRk/.kreerrrrrrrrRRk/krrekrrrrrrrrRRk/kprrrrrrrrrrrRRk/.kbbrrrrrrrrRRk/..kkrrrrrrrRRkk/...krrrrrrrRRRk/..krrrrrrrrRRRRk/.krrrrrrrrrRRRRk/.krrrrrrrrrRRRRRk/.krrrrrrrrRRRRRkk/..kkrrrrrRRRRRkrk/....kkkkkkkkkkkk';
 const SMALL = '...kk..kk/..kpk.kpRk/..kpk.kprk/..kprkkprk/.kkrrrrrrkk/krrrrrrrrrRk/kreerrrrrrRk/kreerrrrrRRk/kbbrrrrrrRRk/.kkrrrrrrRRRk/..krrrrrrRRRk/.krrrrrrRRRRk/.krrkrrRRRRkrk/..kkkkkkkkkk';
@@ -204,6 +207,70 @@ export function failFrame(frame) {
     }
     return cells;
 }
+const WATCH_AT = [23, 14];
+const WATCH_BIG = '...g.../..kkk../.kglgk./kglllgk/kglllgk/kglllgk/.kglgk./..kkk..';
+const WATCH_HANDS = Object.freeze([[3, 3], [4, 4], [3, 5], [2, 4]]);
+export const WAIT_DOTS = Object.freeze([[26, 3], [28, 3], [30, 3]]);
+const WAIT_EYES = Object.freeze([[16, 12], [17, 12], [16, 13], [17, 13]]);
+function waitGround(cells) {
+    const width = cells[0].length;
+    for (let x = 0; x < width; x += 1) {
+        put(cells, x, 24, 'v');
+        for (let y = 25; y < SCENE_H; y += 1)
+            put(cells, x, y, (x * 7 + y * 3) % 11 === 0 ? 'U' : 'u');
+        if (x % 3 === 0)
+            put(cells, x, 25, 'V');
+    }
+    for (const x of [1, 3, 10, 13, 24, 27, 39]) {
+        put(cells, x, 23, 'v');
+        put(cells, x + 1, 23, 'V');
+        if (x % 2)
+            put(cells, x, 22, 'V');
+    }
+    const hx = 35, hy = 25, rx = 5, ry = 3;
+    for (let y = 23; y <= hy + ry + 1; y += 1) {
+        for (let x = hx - rx - 2; x <= hx + rx + 2; x += 1) {
+            const inner = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2;
+            const lip = ((x - hx) / (rx + 1.2)) ** 2 + ((y - hy) / (ry + 1)) ** 2;
+            if (inner <= 1 && y >= 24)
+                put(cells, x, y, 'z');
+            else if (lip <= 1)
+                put(cells, x, y, 'U');
+        }
+    }
+}
+export function waitBase() {
+    const cells = grid(BASE_W);
+    waitGround(cells);
+    blit(cells, BIG, 4, 3, true);
+    const [wx, wy] = WATCH_AT;
+    blit(cells, WATCH_BIG, wx, wy);
+    put(cells, wx + 3, wy + 4, 'k');
+    for (const [x, y] of [[21, 16], [22, 15], [23, 15], [24, 14]])
+        put(cells, x, y, 'g');
+    for (let x = 19; x <= 22; x += 1) {
+        put(cells, x, 17, 'k');
+        put(cells, x, 18, x === 19 ? 'R' : 'r');
+        put(cells, x, 19, 'k');
+    }
+    put(cells, 23, 17, 'k');
+    put(cells, 23, 18, 'r');
+    put(cells, 23, 19, 'k');
+    blit(cells, '..kkkkkkkk../.kllllllllk./kllllllllllk/.kllllllllk./..kkkkkkkk../...kk......./..k.........', 23, 1);
+    return cells;
+}
+export function waitHand(index) {
+    const cells = grid(BASE_W);
+    const [hx, hy] = WATCH_HANDS[((Number(index) || 0) % 4 + 4) % 4];
+    put(cells, WATCH_AT[0] + hx, WATCH_AT[1] + hy, 'k');
+    return cells;
+}
+export function waitBlink() {
+    const cells = grid(BASE_W);
+    for (const [x, y] of WAIT_EYES)
+        put(cells, x, y, y === 13 ? 'k' : 'r');
+    return cells;
+}
 function svgOf(doc, width, className) {
     const svg = doc.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('class', `rm-gp-sprite ${className}`);
@@ -255,6 +322,43 @@ export function buildMirrorScene(doc, scene) {
         return svg;
     }
     return null;
+}
+export const WAITING_FOR_BODY_MESSAGE = __rmT("3E5IRTlGkBro0dgxr.5U4Wch5tGET35UPo7C6v7JgG8");
+export const WAIT_ART_CLASS = 'rabbit-mirror-external-wait-art';
+const WAIT_CYCLE_MS = 7200;
+const waitTemplates = new WeakMap();
+export function buildWaitingArt(doc, { dark = false, now = globalThis.performance?.now?.() ?? Date.now() } = {}) {
+    let template = waitTemplates.get(doc);
+    if (!template) {
+        template = buildWaitingRabbit(doc);
+        waitTemplates.set(doc, template);
+    }
+    const art = doc.createElement('div');
+    art.className = WAIT_ART_CLASS;
+    art.setAttribute('aria-hidden', 'true');
+    if (dark)
+        art.setAttribute('data-rm-gp-dark', 'true');
+    art.style.setProperty('--rm-wait-phase', `${-((Number(now) || 0) % WAIT_CYCLE_MS) / 1000}s`);
+    art.append(template.cloneNode(true));
+    return art;
+}
+export function buildWaitingRabbit(doc) {
+    const svg = svgOf(doc, BASE_W, 'rm-gp-scene rm-gp-scene-wait');
+    group(doc, svg, waitBase(), 'rm-gp-wait-base');
+    for (let index = 0; index < 4; index += 1)
+        group(doc, svg, waitHand(index), `rm-gp-wait-hand rm-gp-wait-hand-${index}`);
+    group(doc, svg, waitBlink(), 'rm-gp-wait-blink');
+    WAIT_DOTS.forEach(([x, y], index) => {
+        const dot = doc.createElementNS(SVG_NS, 'rect');
+        dot.setAttribute('class', `rm-gp-dot rm-gp-dot-${index + 1}`);
+        dot.setAttribute('x', String(x));
+        dot.setAttribute('y', String(y));
+        dot.setAttribute('width', '1');
+        dot.setAttribute('height', '1');
+        dot.setAttribute('fill', COLORS.k[1]);
+        svg.append(dot);
+    });
+    return svg;
 }
 export function buildFailedMirror(doc) {
     const svg = svgOf(doc, BASE_W, 'rm-gp-scene rm-gp-scene-fail');
