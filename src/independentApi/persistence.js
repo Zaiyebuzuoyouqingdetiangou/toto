@@ -1,17 +1,17 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.6.4";
-import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.6.4';
-import { presentationModeFields } from '../presentationMode.js?rmv=2.6.4';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.6.4';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.6.4';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.6.4';
-import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, } from '../swipeVersions.js?rmv=2.6.4';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.6.4';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.6.4';
-import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.6.4';
-import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, } from './connection.js?rmv=2.6.4';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.6.4';
-import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.6.4';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.6.4';
+import { rmT as __rmT } from "../textTable.js?rmv=2.6.5";
+import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.6.5';
+import { presentationModeFields } from '../presentationMode.js?rmv=2.6.5';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.6.5';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.6.5';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.6.5';
+import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, } from '../swipeVersions.js?rmv=2.6.5';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.6.5';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.6.5';
+import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.6.5';
+import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, } from './connection.js?rmv=2.6.5';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.6.5';
+import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.6.5';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.6.5';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 export const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 export const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -53,6 +53,9 @@ export function independentRecordWithinBudget(value) {
         return false;
     const html = String(value.html || '');
     const initial = String(value.initialHtml || '');
+    if (html.length * 3 <= INDEPENDENT_HTML_BUDGET_BYTES && initial.length * 3 <= INDEPENDENT_HTML_BUDGET_BYTES
+        && (html.length + initial.length) * 3 <= INDEPENDENT_RECORD_BUDGET_BYTES)
+        return true;
     return byteLength(html) <= INDEPENDENT_HTML_BUDGET_BYTES
         && byteLength(initial) <= INDEPENDENT_HTML_BUDGET_BYTES
         && byteLength(html) + byteLength(initial) <= INDEPENDENT_RECORD_BUDGET_BYTES;
@@ -1170,6 +1173,37 @@ export function savedInChatFile(ctx, index, msg, html, sourceHash = '') {
     if (chatOwnerPending(ctx, key))
         return false;
     return !sourceHash || String(raw.sourceHash || '') === String(sourceHash);
+}
+export function chatOwnerHasRecordVersion(ctx, index, msg, record) {
+    const key = chatOwnerKey(index, swipeId(msg));
+    if (!key || !record?.html)
+        return false;
+    const raw = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
+    if (!raw || raw.deleted === true)
+        return false;
+    const session = sessionOwners(ctx)?.[key];
+    if (session && session !== raw && (session.deleted === true || Number(session.ts || 0) > Number(raw.ts || 0)))
+        return false;
+    return sameIndependentRecordVersion(raw, record);
+}
+const ARCHIVE_RETRY_MS = 3 * 60 * 1000;
+const archiveRetryAt = new Map();
+export function persistedOwnerUpToDate(ctx, index, msg, record) {
+    if (!chatOwnerHasRecordVersion(ctx, index, msg, record))
+        return false;
+    if (!globalThis.indexedDB)
+        return true;
+    const base = messageBaseSlotKey(ctx, index, msg);
+    if (faceSwipeArchiveRecordStored(base, record) || faceSwipeArchiveWritePending(base))
+        return true;
+    const now = Date.now();
+    if (now - (archiveRetryAt.get(base) || 0) < ARCHIVE_RETRY_MS)
+        return true;
+    archiveRetryAt.delete(base);
+    archiveRetryAt.set(base, now);
+    while (archiveRetryAt.size > 400)
+        archiveRetryAt.delete(archiveRetryAt.keys().next().value);
+    return false;
 }
 export function writtenToChatMetadata(ctx, index, msg, html, sourceHash = '') {
     const key = chatOwnerKey(index, swipeId(msg));

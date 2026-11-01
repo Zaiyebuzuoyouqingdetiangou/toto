@@ -1,16 +1,16 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.6.4";
-import { clearFaceFrame } from './faceFrame.js?rmv=2.6.4';
-import { getSettings } from '../settings.js?rmv=2.6.4';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.6.4';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=2.6.4';
-import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=2.6.4';
-import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=2.6.4';
-import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION } from './runtime.js?rmv=2.6.4';
-import { independentRecordWithinBudget, readStore, requestSafeChatSave, savedInChatFile, writePersistedOwner, writeStore } from './persistence.js?rmv=2.6.4';
-import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=2.6.4';
-import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=2.6.4';
-import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=2.6.4';
-import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=2.6.4';
+import { rmT as __rmT } from "../textTable.js?rmv=2.6.5";
+import { clearFaceFrame } from './faceFrame.js?rmv=2.6.5';
+import { getSettings } from '../settings.js?rmv=2.6.5';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.6.5';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=2.6.5';
+import { configuredAutomaticRerollMax } from '../automaticReroll.js?rmv=2.6.5';
+import { seedSwipeState, appendSuccessfulSwipe, faceSwipeStorageSlot, readFaceSwipe, mutateFaceSwipe, restoreFaceSwipeSnapshot } from '../swipeVersions.js?rmv=2.6.5';
+import { EPHEMERAL_FAILURE_ATTR, EPHEMERAL_FAILURE_BODY_ATTR, RUNTIME_VERSION, hashText } from './runtime.js?rmv=2.6.5';
+import { independentRecordWithinBudget, readStore, requestSafeChatSave, savedInChatFile, writePersistedOwner, writeStore } from './persistence.js?rmv=2.6.5';
+import { chatKey, saveRecordForSlot, savedIndependentRecordForOwner, swipeId } from './connection.js?rmv=2.6.5';
+import { hasMultifaceMarkup, wrapIndependentFace } from './request.js?rmv=2.6.5';
+import { attachIndependentUnsavedNotices, externalFaceDetails, passiveObservedIdentity, showIndependentUnsavedOutput } from './mount.js?rmv=2.6.5';
+import { preserveIndependentFaceStyles } from './faceStyles.js?rmv=2.6.5';
 export function independentRerollMax() { return configuredAutomaticRerollMax(getSettings()); }
 export function independentSwipeFaceIndex(identity) { return identity?.faceIndex >= 0 ? identity.faceIndex : 0; }
 export function independentSwipeSlot(identity) {
@@ -61,11 +61,11 @@ export function mergeFaceDetailsIntoHtml(recordHtml, faceIndex, detailsHtml) {
     }
     return clean;
 }
-export function seedIndependentFaceSwipes(slot, html) {
+export function seedIndependentFaceSwipes(slot, html, { passive = false } = {}) {
     if (!slot)
         return;
     for (const face of faceDetailsListFromHtml(html)) {
-        mutateFaceSwipe(slot, face.index, state => seedSwipeState(state, { html: face.detailsHtml, initialHtml: face.detailsHtml, ts: Date.now() }));
+        mutateFaceSwipe(slot, face.index, state => seedSwipeState(state, { html: face.detailsHtml, initialHtml: face.detailsHtml, ts: Date.now() }), { deferSnapshot: passive });
     }
 }
 function restorableNeighborHtml(html = '') {
@@ -107,21 +107,30 @@ export function seedNeighborIndependentFaceSwipes(ctx, index, msg, currentSlot) 
     seedIndependentFaceSwipes(currentSlot, html);
     return true;
 }
+const seededFaceSwipeHosts = new WeakMap();
 export function seedIndependentFaceSwipesFromIdentity(identity) {
     const slot = independentSwipeSlot(identity);
     if (!slot)
         return;
+    const faceIndex = independentSwipeFaceIndex(identity);
+    const host = identity?.host || null;
+    const source = String(host?.__rabbitMirrorIndependentSource || '');
+    const signature = `${slot}\u0000${faceIndex}\u0000${String(identity?.sourceHash || '')}\u0000${source.length}:${source ? hashText(source) : ''}`;
+    if (host && seededFaceSwipeHosts.get(host) === signature && readFaceSwipe(slot, faceIndex).versions.length)
+        return;
     const saved = savedIndependentRecordForOwner(identity.ctx, identity.index, identity.msg, readStore());
     if (saved?.faceSwipes)
         restoreFaceSwipeSnapshot(slot, saved.faceSwipes);
-    const existing = readFaceSwipe(slot, independentSwipeFaceIndex(identity));
-    if (existing.versions.length)
-        return;
-    const html = saved?.html
-        || identity.host?.__rabbitMirrorIndependentSource
-        || '';
-    if (html)
-        seedIndependentFaceSwipes(slot, html);
+    const existing = readFaceSwipe(slot, faceIndex);
+    if (!existing.versions.length) {
+        const html = saved?.html
+            || identity.host?.__rabbitMirrorIndependentSource
+            || '';
+        if (html)
+            seedIndependentFaceSwipes(slot, html, { passive: true });
+    }
+    if (host && readFaceSwipe(slot, faceIndex).versions.length)
+        seededFaceSwipeHosts.set(host, signature);
 }
 export function appendIndependentFaceSwipe(slot, faceIndex, detailsHtml) {
     const html = scrubSwipeDetailsHtml(detailsHtml);

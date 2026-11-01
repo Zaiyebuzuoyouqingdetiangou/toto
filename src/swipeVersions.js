@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.6.4";
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.5";
 export const FACE_SWIPE_MAX = 5;
 export const FACE_SWIPE_FULL_MESSAGE = __rmT(".m0by1h9qE.UYxirWf9m0aUMvUR_h5GXdIk");
 const STORE_KEY = 'rabbit_mirror_face_swipes_v1';
@@ -206,8 +206,17 @@ function readStore() {
     return cloneStore(memoryStore);
 }
 export function resetFaceSwipeStoreForTests() {
+    cancelDeferredSnapshot();
     memoryStore = null;
     durableStacks.clear();
+}
+export function flushDeferredFaceSwipeSnapshotForTests() {
+    if (!deferredSnapshotTimer)
+        return false;
+    cancelDeferredSnapshot();
+    if (memoryStore)
+        writeStore(cloneStore(memoryStore));
+    return true;
 }
 export function compactSwipeState(value) {
     const state = normalizeSwipeState(value);
@@ -244,7 +253,29 @@ function writeLocalSnapshot(store) {
         return false;
     }
 }
+let deferredSnapshotTimer = 0;
+function cancelDeferredSnapshot() {
+    if (deferredSnapshotTimer) {
+        clearTimeout(deferredSnapshotTimer);
+        deferredSnapshotTimer = 0;
+    }
+}
+function deferSnapshotWrite(store) {
+    if (typeof setTimeout !== 'function') {
+        writeStore(store);
+        return;
+    }
+    memoryStore = cloneStore(store);
+    if (deferredSnapshotTimer)
+        return;
+    deferredSnapshotTimer = setTimeout(() => {
+        deferredSnapshotTimer = 0;
+        if (memoryStore)
+            writeStore(cloneStore(memoryStore));
+    }, 1500);
+}
 function writeStore(store) {
+    cancelDeferredSnapshot();
     const compacted = compactStore(store);
     memoryStore = cloneStore(store);
     if (writeLocalSnapshot(compacted))
@@ -387,7 +418,7 @@ export function readFaceSwipe(slot, faceIndex = 0) {
     }
     return best;
 }
-export function writeFaceSwipe(slot, faceIndex, state) {
+export function writeFaceSwipe(slot, faceIndex, state, { deferSnapshot = false } = {}) {
     const storageKey = faceSwipeKey(slot, faceIndex);
     const normalized = normalizeSwipeState(state);
     const store = readStore();
@@ -399,18 +430,22 @@ export function writeFaceSwipe(slot, faceIndex, state) {
         delete store.faces[storageKey];
     else
         store.faces[storageKey] = normalized;
-    writeStore(store);
+    if (deferSnapshot)
+        deferSnapshotWrite(store);
+    else
+        writeStore(store);
     return normalized;
 }
-export function mutateFaceSwipe(slot, faceIndex, mutator) {
+export function mutateFaceSwipe(slot, faceIndex, mutator, { deferSnapshot = false } = {}) {
     const current = readFaceSwipe(slot, faceIndex);
     const result = mutator(current);
     if (!result?.ok || !result.state)
         return result || { ok: false, reason: 'invalid', state: current };
     if (result.seeded === false)
-        return { ...result, state: current, persisted: faceSwipeSnapshotStored(slot, { [faceIndex]: current }) };
-    const state = writeFaceSwipe(slot, faceIndex, { ...result.state, touched: Math.max(Date.now(), current.touched + 1) });
-    return { ...result, state, persisted: faceSwipeSnapshotStored(slot, { [faceIndex]: state }) };
+        return deferSnapshot ? { ...result, state: current, persisted: false } : { ...result, state: current, persisted: faceSwipeSnapshotStored(slot, { [faceIndex]: current }) };
+    const defer = deferSnapshot && result.seeded === true;
+    const state = writeFaceSwipe(slot, faceIndex, { ...result.state, touched: Math.max(Date.now(), current.touched + 1) }, { deferSnapshot: defer });
+    return { ...result, state, persisted: defer ? false : faceSwipeSnapshotStored(slot, { [faceIndex]: state }) };
 }
 export function snapshotFaceSwipes(slot) {
     const states = {};
@@ -596,7 +631,8 @@ export function saveFaceSwipeArchive(slot, record) {
     const row = { schema: 1, slot: base, record: savedRecord, states: record?.deleted ? {} : snapshotFaceSwipes(base) };
     const prior = archiveWrites.get(base);
     const signature = JSON.stringify(row);
-    if (prior?.signature === signature)
+    const digest = archiveSignatureDigest(signature);
+    if (prior && (prior.signature === signature || (prior.signature === null && prior.digest === digest)))
         return prior.promise;
     const promise = archiveRemapGate.then(() => prior?.promise || loadFaceSwipeArchive(base)).then(async () => {
         if (JSON.stringify(archiveSaved.get(base)) === signature)
@@ -616,10 +652,23 @@ export function saveFaceSwipeArchive(slot, record) {
         }
         return { saved, row };
     });
-    const write = { signature, promise, pending: true };
+    const write = { signature, digest, promise, pending: true };
     archiveWrites.set(base, write);
-    void promise.then(() => { write.pending = false; }, () => { write.pending = false; });
+    const settle = () => { write.pending = false; write.signature = null; };
+    void promise.then(settle, settle);
     return promise;
+}
+function archiveSignatureDigest(text) {
+    let a = 2166136261, b = 5381;
+    for (let i = 0; i < text.length; i += 1) {
+        const c = text.charCodeAt(i);
+        a = Math.imul(a ^ c, 16777619);
+        b = (Math.imul(b, 33) ^ c) >>> 0;
+    }
+    return `${text.length}:${(a >>> 0).toString(36)}:${b.toString(36)}`;
+}
+export function faceSwipeArchiveWritePending(slot) {
+    return !!archiveWrites.get(faceSwipeStorageSlot(slot))?.pending;
 }
 export function remapFaceSwipeSlots(mapSlot) {
     if (typeof mapSlot !== 'function')
