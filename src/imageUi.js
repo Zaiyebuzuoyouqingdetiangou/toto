@@ -1,14 +1,15 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.0";
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=2.9.0';
-import { getSettings } from './settings.js?rmv=2.9.0';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=2.9.0';
-import { imageBackendName } from './imageBackendName.js?rmv=2.9.0';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft, mirrorImagePromptCleanupRevision, MIRROR_IMAGE_PROMPTS_CLEARED_EVENT } from './imageStore.js?rmv=2.9.0';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.9.0';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.9.0';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.0';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=2.9.0';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=2.9.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.9.1";
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=2.9.1';
+import { getSettings } from './settings.js?rmv=2.9.1';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=2.9.1';
+import { imageBackendName } from './imageBackendName.js?rmv=2.9.1';
+import { phoneScenePrompt } from './iphonieImage.js?rmv=2.9.1';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft, mirrorImagePromptCleanupRevision, MIRROR_IMAGE_PROMPTS_CLEARED_EVENT } from './imageStore.js?rmv=2.9.1';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.9.1';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.9.1';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.1';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=2.9.1';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=2.9.1';
 const jobs = new Set();
 const pendingSaves = new Set();
 const sessionDrafts = new Set();
@@ -397,11 +398,13 @@ export function openMirrorImagePanel(root, { opener = null, onClose = null } = {
     function updatePreview() {
         const draft = readDraft();
         const supports = backend?.supportsCharacters === true;
-        const singlePrompt = buildSingleImagePrompt(draft);
+        const phone = getSettings().imageBackend === 'iphonie';
+        const singlePrompt = phone ? phoneScenePrompt(draft) : buildSingleImagePrompt(draft);
         const chatu = getSettings().imageBackend === 'chatu8' || getSettings().imageBackend === 'iphonie';
         sendPreview.textContent = JSON.stringify({ prompt: supports ? draft.prompt : singlePrompt,
             ...(!chatu ? { nl: draft.promptFormat === 'nai45-tags' ? '' : supports ? draft.nl : singlePrompt } : {}),
-            ...(supports && draft.characters.length ? { characters: draft.characters.map(person => draft.promptFormat === 'nai45-tags' ? { ...person, nl: '' } : person) } : {}), ...(size.value ? { size: size.value } : {}) }, null, 2);
+            ...(supports && draft.characters.length ? { characters: draft.characters.map(person => draft.promptFormat === 'nai45-tags' ? { ...person, nl: '' } : person) } : {}),
+            ...(phone && draft.characters.length ? { characters: [...new Set(draft.characters.map(person => String(person?.name || '').trim()).filter(Boolean))] } : {}), ...(size.value ? { size: size.value } : {}) }, null, 2);
     }
     function showRecord(record) {
         preview.replaceChildren();

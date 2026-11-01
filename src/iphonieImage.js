@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.0";
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.0';
-import { persistImage } from './chatu8Image.js?rmv=2.9.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.9.1";
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.1';
+import { persistImage } from './chatu8Image.js?rmv=2.9.1';
 function failure(code, message, extra = {}) {
     return Object.assign(new Error(message), { code }, extra);
 }
@@ -38,6 +38,12 @@ function characterNames(plan) {
     }
     return names.slice(0, 8);
 }
+const clean = value => typeof value === 'string' ? value.trim() : '';
+export function phoneScenePrompt(plan = {}) {
+    const tags = clean(plan?.prompt), nl = clean(plan?.nl);
+    const scene = plan?.promptFormat === 'nai45-tags' ? tags || nl : [...new Set([tags, nl].filter(Boolean))].join('\n');
+    return scene || buildSingleImagePrompt({ ...plan, characters: [] });
+}
 function plainCharacters(list) {
     return (Array.isArray(list) ? list : []).filter(person => person && typeof person === 'object')
         .map(person => ({ name: String(person.name || ''), tag: String(person.tag || ''), nl: String(person.nl || '') }));
@@ -67,7 +73,7 @@ export async function generateViaIphonie(plan, { signal, size, assertCurrent, on
     if (!status.configured)
         throw failure('not_configured', status.reason);
     const api = phoneApi();
-    const prompt = buildSingleImagePrompt(plan);
+    const prompt = phoneScenePrompt(plan);
     if (!prompt)
         throw failure('invalid_args', __rmT("_9PW67Dt9BEjosNqPvSrOk8eFuKZ6JB7MGav9LDB31FOHYRRq8_"));
     if (signal?.aborted)
