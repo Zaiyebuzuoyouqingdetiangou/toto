@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.7.0";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.7.0';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.7.0';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.7.0';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.7.1";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.7.1';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.7.1';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.7.1';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.7.0';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.7.0';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.7.0';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.7.0';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.7.1';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.7.1';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.7.1';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.7.1';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -195,6 +195,7 @@ export const defaultSettings = Object.freeze({
     postGenerationRecolor: false,
     visualDesignMode: 'guided1553',
     cooldownRounds: 10,
+    drawCooldownFaces: 30,
     stripOldMirrorsBeforeSend: true,
     noSendRegexAutoConfigured: false,
     blacklistEnabled: true,
@@ -488,6 +489,7 @@ export function getSettings() {
     settings.postGenerationRecolor = false;
     settings.visualDesignMode = 'guided1553';
     settings.cooldownRounds = Math.max(1, Number(settings.cooldownRounds) || defaultSettings.cooldownRounds);
+    settings.drawCooldownFaces = Math.max(1, Math.floor(Number(settings.drawCooldownFaces)) || defaultSettings.drawCooldownFaces);
     settings.blacklistEnabled = settings.blacklistEnabled !== false;
     const normalizeSelectionIds = (value, mapId = id => id) => [...new Set((Array.isArray(value) ? value : []).map(id => mapId(String(id || '').trim())).filter(Boolean))].slice(0, 512);
     settings.blacklistedThemeIds = normalizeSelectionIds(settings.blacklistedThemeIds);

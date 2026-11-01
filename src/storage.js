@@ -1,15 +1,19 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.7.0";
-import { generationPaletteFields } from './paletteRecipes.js?rmv=2.7.0';
-import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.7.0';
-import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=2.7.0';
-import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=2.7.0';
-import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=2.7.0';
-import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=2.7.0';
-import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=2.7.0';
-import { slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=2.7.0';
+import { rmT as __rmT } from "./textTable.js?rmv=2.7.1";
+import { generationPaletteFields } from './paletteRecipes.js?rmv=2.7.1';
+import { interactionRecipeFields } from './interactionRecipes.js?rmv=2.7.1';
+import { COMPOSITION_LABELS, VISUAL_SKELETON_MAX_CHARS, recentDiversityRecords, observedOperationFamiliesFor } from './compositionFingerprint.js?rmv=2.7.1';
+import { presentationModeFields, isBlankLongTextSelection } from './presentationMode.js?rmv=2.7.1';
+import { parseAtmosphereTicketIndex } from './atmosphereChoice.js?rmv=2.7.1';
+import { packBatchPlanText, unpackBatchPlanText } from './batchPlanCodec.js?rmv=2.7.1';
+import { compactFaceSwipeStoreForQuota } from './swipeVersions.js?rmv=2.7.1';
+import { slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=2.7.1';
+import { NEAR_COOLDOWN_FACES } from './drawBalance.js?rmv=2.7.1';
 const STORAGE_KEY = 'rabbit_mirror_theater:last_combo:v11';
 const PENDING_KEY = 'rabbit_mirror_theater:pending_combo:v11';
 const MAX_STORED = 25;
+const MAX_HISTORY_FACES = 40;
+const ID_ONLY_HISTORY_FIELDS = ['themeIds', 'formatIds', 'textIds', 'themeGroups', 'formatGroups', 'presentationMode', 'requestedPresentationMode',
+    'pureOrder', 'ts', 'historyId', 'batchId', 'faceIndex', 'diversityRound'];
 const FACE_DRAW_CURSOR_KEY = 'rabbit_mirror_theater:face_draw_cursors:v1';
 const ATTEMPT_STORAGE_KEY = 'rabbit_mirror_theater:generation_attempts:v1';
 try {
@@ -340,18 +344,23 @@ export function getRecentGenerationAttemptIds(chatKey, limit = 10) {
     const formatIdHits = new Map();
     const themeGroupHits = new Map();
     const formatGroupHits = new Map();
-    for (const item of recent) {
+    const themeIdAges = new Map(), formatIdAges = new Map(), textIdAges = new Map();
+    for (const [index, item] of recent.entries()) {
+        const age = recent.length - index;
         for (const id of new Set(item.themeIds || [])) {
             themeIds.add(id);
             incrementRecentHit(themeIdHits, id);
+            themeIdAges.set(id, age);
         }
         for (const id of new Set(item.formatIds || [])) {
             formatIds.add(id);
             incrementRecentHit(formatIdHits, id);
+            formatIdAges.set(id, age);
         }
         for (const id of new Set(item.textIds || [])) {
             textIds.add(id);
             incrementRecentHit(textIdHits, id);
+            textIdAges.set(id, age);
         }
         for (const id of new Set(item.themeGroups || [])) {
             themeGroups.add(id);
@@ -369,7 +378,9 @@ export function getRecentGenerationAttemptIds(chatKey, limit = 10) {
         formatGroups: [...formatGroups],
         themeIdHits: recentHitObject(themeIdHits),
         formatIdHits: recentHitObject(formatIdHits),
-        ...(textIds.size ? { textIds: [...textIds], textIdHits: recentHitObject(textIdHits) } : {}),
+        themeIdAges: Object.fromEntries(themeIdAges),
+        formatIdAges: Object.fromEntries(formatIdAges),
+        ...(textIds.size ? { textIds: [...textIds], textIdHits: recentHitObject(textIdHits), textIdAges: Object.fromEntries(textIdAges) } : {}),
         themeGroupHits: recentHitObject(themeGroupHits),
         formatGroupHits: recentHitObject(formatGroupHits),
     };
@@ -434,6 +445,20 @@ export function setDirectiveScopedPick(chatKey, directiveScopeKey, combo) {
     store[chat] = items.slice(-MAX_DIRECTIVE_PICKS_PER_CHAT);
     reclaimOneExpiredForeignBucket(store, chat, DIRECTIVE_PICK_TTL_MS);
     return writeScopedStore(DIRECTIVE_PICK_STORAGE_KEY, store, chat);
+}
+function idOnlyHistoryRecord(record) {
+    if (!record || typeof record !== 'object')
+        return record;
+    const compact = { idOnly: true };
+    for (const key of ID_ONLY_HISTORY_FIELDS)
+        if (record[key] !== undefined)
+            compact[key] = record[key];
+    return compact;
+}
+function trimStoredHistory(history) {
+    const kept = (Array.isArray(history) ? history : []).slice(-MAX_HISTORY_FACES);
+    const cut = kept.length - MAX_STORED;
+    return cut > 0 ? kept.map((record, index) => index < cut ? idOnlyHistoryRecord(record) : record) : kept;
 }
 function readHistory() {
     try {
@@ -503,7 +528,7 @@ export function getComboHistory(limit = 10) {
     return history.slice(-Math.max(0, Number(limit) || 10));
 }
 export function getRecentDiversityHistory(rounds = 5) {
-    return recentDiversityRecords(readEffectiveHistory(), rounds);
+    return recentDiversityRecords(readEffectiveHistory().filter(record => record?.idOnly !== true), rounds);
 }
 export function getLastCombo() {
     const history = readHistory();
@@ -521,19 +546,28 @@ export function getRecentIds(limit = 10) {
     const formatIdHits = new Map();
     const themeGroupHits = new Map();
     const formatGroupHits = new Map();
+    const nearFormatIdHits = new Map();
+    const nearFrom = history.length - NEAR_COOLDOWN_FACES;
+    const themeIdAges = new Map(), formatIdAges = new Map(), textIdAges = new Map();
     const uiReviewFocus = [];
-    for (const combo of history) {
+    for (const [index, combo] of history.entries()) {
+        const age = history.length - index;
         for (const id of new Set(combo?.themeIds || [])) {
             themeIds.add(id);
             incrementRecentHit(themeIdHits, id);
+            themeIdAges.set(id, age);
         }
         for (const id of new Set(combo?.formatIds || [])) {
             formatIds.add(id);
             incrementRecentHit(formatIdHits, id);
+            formatIdAges.set(id, age);
+            if (index >= nearFrom)
+                incrementRecentHit(nearFormatIdHits, id);
         }
         for (const id of new Set(combo?.textIds || [])) {
             textIds.add(id);
             incrementRecentHit(textIdHits, id);
+            textIdAges.set(id, age);
         }
         for (const id of new Set(combo?.themeGroups || [])) {
             themeGroups.add(id);
@@ -554,10 +588,13 @@ export function getRecentIds(limit = 10) {
         formatGroups: [...formatGroups],
         themeIdHits: recentHitObject(themeIdHits),
         formatIdHits: recentHitObject(formatIdHits),
-        ...(textIds.size ? { textIds: [...textIds], textIdHits: recentHitObject(textIdHits) } : {}),
+        themeIdAges: Object.fromEntries(themeIdAges),
+        formatIdAges: Object.fromEntries(formatIdAges),
+        ...(textIds.size ? { textIds: [...textIds], textIdHits: recentHitObject(textIdHits), textIdAges: Object.fromEntries(textIdAges) } : {}),
         themeGroupHits: recentHitObject(themeGroupHits),
         formatGroupHits: recentHitObject(formatGroupHits),
-        uiReviewFocus: uiReviewFocus.slice(-limit),
+        nearFormatIdHits: recentHitObject(nearFormatIdHits),
+        uiReviewFocus: uiReviewFocus.slice(-Math.min(limit, NEAR_COOLDOWN_FACES)),
     };
 }
 function historicalRiskFlags(item) {
@@ -1612,7 +1649,7 @@ function batchHistoryPayload(plan, scans, beforeRaw) {
             riskFlags: scan.riskFlags, paletteFingerprint: scan.paletteFingerprint || undefined,
             interactionFamily: scan.interactionFamily, visualSignatureTs: now });
     }
-    return JSON.stringify(history.slice(-MAX_STORED));
+    return JSON.stringify(trimStoredHistory(history));
 }
 function batchPityCommittedPayload(plan, beforeRaw, scans) {
     let state;
@@ -2104,7 +2141,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
                 last.interactionFamily = normalizedFamily;
             last.visualSignatureTs = now;
             const before = localStorage.getItem(STORAGE_KEY);
-            return writeOwnedTransaction([{ key: STORAGE_KEY, before, after: JSON.stringify(history.slice(-MAX_STORED)) }], { onRejected: code => { lastComboHistoryFailure = code; } }, true);
+            return writeOwnedTransaction([{ key: STORAGE_KEY, before, after: JSON.stringify(trimStoredHistory(history)) }], { onRejected: code => { lastComboHistoryFailure = code; } }, true);
         }
         history.push({
             ...combo,
@@ -2120,7 +2157,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             visualSignatureTs: visualSignature || visualSkeleton || (Array.isArray(riskFlags) && riskFlags.length) || paletteFingerprint || normalizeInteractionFamily(interactionFamily) ? now : undefined,
         });
         if (hasDrawCursor) {
-            historyPayload = JSON.stringify(history.slice(-MAX_STORED));
+            historyPayload = JSON.stringify(trimStoredHistory(history));
             const written = writeOwnedTransaction([
                 { key: STORAGE_KEY, before: previousHistoryRaw, after: historyPayload },
                 ...faceDrawCursorChanges([combo]),
@@ -2130,7 +2167,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
             return written;
         }
         else if (batchId || historyId) {
-            historyPayload = JSON.stringify(history.slice(-MAX_STORED));
+            historyPayload = JSON.stringify(trimStoredHistory(history));
             if (localStorage.getItem(STORAGE_KEY) !== previousHistoryRaw) {
                 lastComboHistoryFailure = 'BATCH_STORAGE_CHANGED';
                 return false;
@@ -2144,7 +2181,7 @@ function commitComboToHistory(combo, visual = {}, options = {}) {
         }
         else {
             const before = localStorage.getItem(STORAGE_KEY);
-            if (!writeOwnedTransaction([{ key: STORAGE_KEY, before, after: JSON.stringify(history.slice(-MAX_STORED)) }], { onRejected: code => { lastComboHistoryFailure = code; } }, true))
+            if (!writeOwnedTransaction([{ key: STORAGE_KEY, before, after: JSON.stringify(trimStoredHistory(history)) }], { onRejected: code => { lastComboHistoryFailure = code; } }, true))
                 return false;
         }
         lastComboHistoryFailure = '';
@@ -2299,7 +2336,7 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
         before = localStorage.getItem(STORAGE_KEY);
         const parsed = JSON.parse(before === null ? '[]' : before);
         const history = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : [];
-        const entry = history.find(item => ref.historyId ? item?.historyId === ref.historyId : item?.batchId === ref.batchId && item?.faceIndex === ref.faceIndex);
+        const entry = history.find(item => item?.idOnly !== true && (ref.historyId ? item?.historyId === ref.historyId : item?.batchId === ref.batchId && item?.faceIndex === ref.faceIndex));
         if (!entry)
             return false;
         if (visualSignature)
@@ -2312,7 +2349,7 @@ export function updateLatestVisualSignature(visualSignature, visualSkeleton = ''
             entry.paletteFingerprint = paletteFingerprint;
         entry.interactionFamily = normalizeInteractionFamily(interactionFamily);
         entry.visualSignatureTs = Date.now();
-        after = JSON.stringify(history.slice(-MAX_STORED));
+        after = JSON.stringify(trimStoredHistory(history));
         if (localStorage.getItem(STORAGE_KEY) !== before)
             return false;
         localStorage.setItem(STORAGE_KEY, after);
