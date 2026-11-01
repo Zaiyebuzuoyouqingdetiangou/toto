@@ -1,15 +1,15 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.6";
-import { layoutRect } from '../faceZoomMetrics.js?rmv=2.6.6';
-import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=2.6.6';
-import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.6.6';
-import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=2.6.6';
-import { capturePseudoStyleState, chooseMatchingRawRabbitMirrorRoot, getRawAssistantMessageForRenderedRoot, normalizeInteractionMatchText, resolveRenderedCounterpart, restorePseudoStyleState, } from './scriptedInteractionRescue.js?rmv=2.6.6';
-import { REVERSIBLE_RADIO_BASELINE_ATTR, applyCheckedVisualFallback, inputHasAssociatedLabel, setRescuedCheckedState, } from './fallbackRescue.js?rmv=2.6.6';
-import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=2.6.6';
-import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=2.6.6';
-import { checkedDeclarationCreatesContentReveal, checkedTargetCarriesResultContent, findMaintenanceElementByRawClass, isIndependentMaintenanceRoot, notifyIndependentRepairPersistence, resolveMaintenanceGeneratedClass, } from './maintenanceInspect.js?rmv=2.6.6';
-import { splitCssSelectorList } from './markup.js?rmv=2.6.6';
-import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutRect, maintenanceMobileLayoutTextLength, viewportLayoutHasAuthoredGridPlacement, } from './layoutRescue.js?rmv=2.6.6';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.7";
+import { layoutRect } from '../faceZoomMetrics.js?rmv=2.6.7';
+import { rememberRuntimeAnimationStyle } from '../runtimeAnimationState.js?rmv=2.6.7';
+import { escapeCssIdentifier, escapeRegExp, getRabbitMirrorLocalStyleElements } from './runtime.js?rmv=2.6.7';
+import { getClassTokens, isCollapsedDimensionValue, parseCssStateSiblingAssignments } from './renderedStateRescue.js?rmv=2.6.7';
+import { capturePseudoStyleState, chooseMatchingRawRabbitMirrorRoot, getRawAssistantMessageForRenderedRoot, normalizeInteractionMatchText, resolveRenderedCounterpart, restorePseudoStyleState, } from './scriptedInteractionRescue.js?rmv=2.6.7';
+import { REVERSIBLE_RADIO_BASELINE_ATTR, applyCheckedVisualFallback, inputHasAssociatedLabel, setRescuedCheckedState, } from './fallbackRescue.js?rmv=2.6.7';
+import { RADIO_GROUP_RESCUE_ATTR } from './idsAndRearm.js?rmv=2.6.7';
+import { diagnosticComputedStyle, maintenanceSafeComputedStyle } from './diagnostics.js?rmv=2.6.7';
+import { checkedDeclarationCreatesContentReveal, checkedTargetCarriesResultContent, findMaintenanceElementByRawClass, isIndependentMaintenanceRoot, notifyIndependentRepairPersistence, resolveMaintenanceGeneratedClass, } from './maintenanceInspect.js?rmv=2.6.7';
+import { splitCssSelectorList } from './markup.js?rmv=2.6.7';
+import { maintenanceMobileLayoutLengthPx, maintenanceMobileLayoutRect, maintenanceMobileLayoutTextLength, viewportLayoutHasAuthoredGridPlacement, } from './layoutRescue.js?rmv=2.6.7';
 const interactionInlineOverrideStates = new WeakMap();
 const FOCUS_TO_CHECKED_STYLE_ATTR = 'data-rabbit-mirror-focus-to-checked-rescue';
 export const FOCUS_TO_CHECKED_ROOT_ATTR = 'data-rabbit-mirror-focus-to-checked-rules';
@@ -3583,6 +3583,27 @@ function onCheckedControlChange(event) {
     if (root)
         queueCheckedSelectorMirrorRoot(root);
 }
+const BULK_CHECKED_SELECTOR_ROOTS = 6;
+function mirrorRootShown(root) {
+    try {
+        const details = root.matches?.('details') ? root : root.querySelector?.(':scope > details') || root.querySelector?.('details');
+        return !details || details.open === true;
+    }
+    catch {
+        return true;
+    }
+}
+const checkedSelectorWaitingForOpen = new WeakSet();
+function onMirrorDetailsToggle(event) {
+    const details = event?.target;
+    if (!details?.open)
+        return;
+    const root = mirrorRootFor(details);
+    if (!root || !checkedSelectorWaitingForOpen.has(root))
+        return;
+    checkedSelectorWaitingForOpen.delete(root);
+    queueCheckedSelectorMirrorRoot(root);
+}
 export function initRabbitMirrorCheckedSelectorRepair() {
     destroyRabbitMirrorCheckedSelectorRepair();
     const doc = globalThis.document;
@@ -3591,6 +3612,7 @@ export function initRabbitMirrorCheckedSelectorRepair() {
         return;
     initialCheckedSelectorScan(checkedSelectorObserverHost);
     checkedSelectorObserverHost.addEventListener?.('change', onCheckedControlChange, true);
+    checkedSelectorObserverHost.addEventListener?.('toggle', onMirrorDetailsToggle, true);
     if (typeof globalThis.MutationObserver !== 'function')
         return;
     checkedSelectorObserver = new globalThis.MutationObserver(mutations => {
@@ -3602,8 +3624,15 @@ export function initRabbitMirrorCheckedSelectorRepair() {
             for (const node of mutation?.addedNodes || [])
                 collectMirrorRootsFromNode(node, roots);
         }
-        for (const root of roots)
+        const bulk = roots.size > BULK_CHECKED_SELECTOR_ROOTS;
+        for (const root of roots) {
+            if (bulk && !mirrorRootShown(root)) {
+                checkedSelectorWaitingForOpen.add(root);
+                continue;
+            }
+            checkedSelectorWaitingForOpen.delete(root);
             queueCheckedSelectorMirrorRoot(root);
+        }
     });
     checkedSelectorObserver.observe(checkedSelectorObserverHost, { childList: true, subtree: true });
 }
@@ -3611,6 +3640,7 @@ export function destroyRabbitMirrorCheckedSelectorRepair() {
     checkedSelectorObserver?.disconnect?.();
     checkedSelectorObserver = null;
     checkedSelectorObserverHost?.removeEventListener?.('change', onCheckedControlChange, true);
+    checkedSelectorObserverHost?.removeEventListener?.('toggle', onMirrorDetailsToggle, true);
     checkedSelectorObserverHost = null;
     checkedSelectorFlushQueued = false;
     checkedSelectorPendingRoots.clear();

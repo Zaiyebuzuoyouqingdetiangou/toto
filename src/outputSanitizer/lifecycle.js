@@ -1,24 +1,24 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.6.6";
-import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=2.6.6';
-import { disposeReadabilityPolish, pruneReadabilityPolish, destroyReadabilityPolish } from './readabilityPolish.js?rmv=2.6.6';
-import { installDesktopFaceZoom, destroyDesktopFaceZoom } from '../desktopFaceZoom.js?rmv=2.6.6';
-import { rabbitMirrorChatTapTarget } from './ttTapTarget.js?rmv=2.6.6';
-import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=2.6.6';
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=2.6.6';
-import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=2.6.6';
-import { getSettings } from '../settings.js?rmv=2.6.6';
-import { getCurrentChatKey } from '../storage.js?rmv=2.6.6';
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=2.6.6';
-import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=2.6.6';
-import { EXTERNAL_REFERENCE_NOTE_ATTR, FEEDBACK_CAT_ATTR, FEEDBACK_CAT_RUNTIME_STYLE_ID, MAINTENANCE_RABBIT_ATTR, RECIPE_BUTTON_ATTR, RUNTIME_VERSION_ATTR, TOOL_ENTRY_HOST_ATTR, ensureFeedbackCatRuntimeStyle, getChatRoot, getRenderedRabbitMirrorInteractionRoots, hashInteractionSignature, isCurrentRuntime, isRabbitMirrorOuterChatDetails, } from './runtime.js?rmv=2.6.6';
-import { getAvailableHostChat, getExternalOwnerMessageIndex, getRabbitMirrorSummaryText, getRawAssistantMessageForRenderedRoot, } from './scriptedInteractionRescue.js?rmv=2.6.6';
-import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=2.6.6';
-import { FEEDBACK_CAT_MENU_ATTR, MAINTENANCE_AUTO_SAFE_ATTR, MAINTENANCE_AUTO_SAFE_RESULT_ATTR, MAINTENANCE_MENU_ATTR, MAINTENANCE_REASON_ATTR, MAINTENANCE_REPAIR_ATTR, MAINTENANCE_STATE_ATTR, RECIPE_MENU_ATTR, cancelCurrentHighConfidenceTextRepairs, failMaintenanceRabbit, maintenanceHighConfidenceTextRepairFrames, maintenancePreRepairSnapshots, rabbitMirrorInteractionResetSnapshots, removeAllInteractionDiagnosticPanels, scheduleCurrentHighConfidenceTextRepair, stripMaintenanceRabbitGlyphs, } from './diagnostics.js?rmv=2.6.6';
-import { destroyRabbitMirrorCheckedSelectorRepair } from './checkedStateRescue.js?rmv=2.6.6';
-import { cancelMaintenanceRepairRun, cancelMaintenanceRepairRuns, captureRabbitMirrorInteractionResetFromEventTarget, getRenderedMessageElement, maintenanceRepairRootBudget, rabbitMirrorInteractionRootFromTarget, rejectOversizedMaintenanceRepair, runMaintenanceSafeAutomaticRepairs, } from './maintenanceInspect.js?rmv=2.6.6';
-import { decodeHtmlEntities } from './markup.js?rmv=2.6.6';
-import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=2.6.6';
-import { cancelStartupMaintenanceHistoryInstall, closeFeedbackCatMenu, closeMaintenanceRabbitMenu, closeRecipeMenu, handleFeedbackCatClick, handleMaintenanceRabbitClick, handleRecipeClick, installMaintenanceRabbitsDeferredInChatDom, installMaintenanceRabbitsInScope, rabbitMirrorToolRootFromButton, removeFeedbackCatsInChatDom, removeMaintenanceRabbitsInChatDom, toolOutsideCloseOwners, } from './toolsChrome.js?rmv=2.6.6';
+import { rmT as __rmT } from "../textTable.js?rmv=2.6.7";
+import { untrackMirrorAnimations, pruneMirrorAnimationVisibility, destroyMirrorAnimationVisibility } from '../animationVisibility.js?rmv=2.6.7';
+import { disposeReadabilityPolish, pruneReadabilityPolish, destroyReadabilityPolish } from './readabilityPolish.js?rmv=2.6.7';
+import { installDesktopFaceZoom, destroyDesktopFaceZoom } from '../desktopFaceZoom.js?rmv=2.6.7';
+import { rabbitMirrorChatTapTarget } from './ttTapTarget.js?rmv=2.6.7';
+import { scheduleRabbitMirrorComposerClearance } from '../composerClearance.js?rmv=2.6.7';
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=2.6.7';
+import { recordTtSurface, ttSurfaceNow, nextTtSurfaceClickSeq } from '../ttSurfaceDiagnostics.js?rmv=2.6.7';
+import { getSettings } from '../settings.js?rmv=2.6.7';
+import { getCurrentChatKey } from '../storage.js?rmv=2.6.7';
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=2.6.7';
+import { RECIPE_RECORDED_EVENT } from '../blacklist.js?rmv=2.6.7';
+import { EXTERNAL_REFERENCE_NOTE_ATTR, FEEDBACK_CAT_ATTR, FEEDBACK_CAT_RUNTIME_STYLE_ID, MAINTENANCE_RABBIT_ATTR, RECIPE_BUTTON_ATTR, RUNTIME_VERSION_ATTR, TOOL_ENTRY_HOST_ATTR, ensureFeedbackCatRuntimeStyle, getChatRoot, getRenderedRabbitMirrorInteractionRoots, hashInteractionSignature, isCurrentRuntime, isRabbitMirrorOuterChatDetails, } from './runtime.js?rmv=2.6.7';
+import { getAvailableHostChat, getExternalOwnerMessageIndex, getRabbitMirrorSummaryText, getRawAssistantMessageForRenderedRoot, } from './scriptedInteractionRescue.js?rmv=2.6.7';
+import { firstUseInteractionBindings } from './idsAndRearm.js?rmv=2.6.7';
+import { FEEDBACK_CAT_MENU_ATTR, MAINTENANCE_AUTO_SAFE_ATTR, MAINTENANCE_AUTO_SAFE_RESULT_ATTR, MAINTENANCE_MENU_ATTR, MAINTENANCE_REASON_ATTR, MAINTENANCE_REPAIR_ATTR, MAINTENANCE_STATE_ATTR, RECIPE_MENU_ATTR, cancelCurrentHighConfidenceTextRepairs, failMaintenanceRabbit, maintenanceHighConfidenceTextRepairFrames, maintenancePreRepairSnapshots, rabbitMirrorInteractionResetSnapshots, removeAllInteractionDiagnosticPanels, scheduleCurrentHighConfidenceTextRepair, stripMaintenanceRabbitGlyphs, } from './diagnostics.js?rmv=2.6.7';
+import { destroyRabbitMirrorCheckedSelectorRepair } from './checkedStateRescue.js?rmv=2.6.7';
+import { cancelMaintenanceRepairRun, cancelMaintenanceRepairRuns, captureRabbitMirrorInteractionResetFromEventTarget, getRenderedMessageElement, maintenanceRepairRootBudget, rabbitMirrorInteractionRootFromTarget, rejectOversizedMaintenanceRepair, runMaintenanceSafeAutomaticRepairs, } from './maintenanceInspect.js?rmv=2.6.7';
+import { decodeHtmlEntities } from './markup.js?rmv=2.6.7';
+import { getRabbitMirrorFacePosition } from './layoutRescue.js?rmv=2.6.7';
+import { cancelStartupMaintenanceHistoryInstall, closeFeedbackCatMenu, closeMaintenanceRabbitMenu, closeRecipeMenu, handleFeedbackCatClick, handleMaintenanceRabbitClick, handleRecipeClick, installMaintenanceRabbitsDeferredInChatDom, installMaintenanceRabbitsInScope, rabbitMirrorToolRootFromButton, removeFeedbackCatsInChatDom, removeMaintenanceRabbitsInChatDom, toolOutsideCloseOwners, rabbitMirrorRootsToolsInstalledThisTask, } from './toolsChrome.js?rmv=2.6.7';
 export let hostScriptModule = null;
 let outputHostSubscriptions = [];
 let recipeRecordedHandler = null;
@@ -363,9 +363,9 @@ function scheduleMaintenanceRabbitInstall() {
         return;
     if (maintenanceInstallTimers.size)
         return;
-    const timer = setTimeout(() => {
+    const timer = setTimeout(function rabbitMirrorDeferredToolInstall() {
         maintenanceInstallTimers.delete(timer);
-        installMaintenanceRabbitsDeferredInChatDom();
+        installMaintenanceRabbitsDeferredInChatDom({ includeInView: true });
     }, 180);
     maintenanceInstallTimers.add(timer);
 }
@@ -377,7 +377,7 @@ function scheduleObservedChatInstall(messageRoots = []) {
             pendingObservedMessageRoots.add(root);
     if (chatInstallDebounceTimer)
         return;
-    chatInstallDebounceTimer = setTimeout(() => {
+    chatInstallDebounceTimer = setTimeout(function rabbitMirrorObservedToolInstall() {
         chatInstallDebounceTimer = 0;
         const roots = [...pendingObservedMessageRoots];
         pendingObservedMessageRoots.clear();
@@ -819,6 +819,10 @@ export function outputHostGenerationLooksActive() {
         return false;
     }
 }
+const managedToolMountInstalls = new WeakMap();
+function sameRoots(a, b) {
+    return a.length === b.length && a.every((root, index) => root === b[index] && root.isConnected);
+}
 export function installManagedRabbitMirrorTools() {
     if (managedRabbitMirrorToolsUnsubscribe)
         return;
@@ -834,7 +838,14 @@ export function installManagedRabbitMirrorTools() {
         } })();
         const messageTimerKey = `${timerChatKey}:${context.mesid}`;
         installToolEntryDelegation(getChatRoot());
-        installMaintenanceRabbitsInScope(owner, { historyRestoreLight: true });
+        const mounted = managedToolMountInstalls.get(owner);
+        managedToolMountInstalls.delete(owner);
+        const liveRoots = getRenderedRabbitMirrorInteractionRoots(owner);
+        const settled = (!wholeMessage && mounted && sameRoots(mounted, liveRoots)) || rabbitMirrorRootsToolsInstalledThisTask(liveRoots);
+        if (!settled)
+            installMaintenanceRabbitsInScope(owner, { historyRestoreLight: true });
+        if (wholeMessage)
+            managedToolMountInstalls.set(owner, getRenderedRabbitMirrorInteractionRoots(owner));
         const ownedScope = wholeMessage ? owner : context.content;
         const roots = getRenderedRabbitMirrorInteractionRoots(ownedScope);
         applyManagedOuterSummaryToggleIntents(owner, roots);
@@ -909,6 +920,7 @@ function installChatMutationObserver() {
             return;
         }
         const messageRoots = new Set();
+        const renderedRoots = new Set();
         for (const mutation of mutations) {
             if (mutation.type !== 'childList')
                 continue;
@@ -932,19 +944,36 @@ function installChatMutationObserver() {
                     continue;
                 if (node.matches?.('.mes, [mesid]')) {
                     messageRoots.add(node);
+                    renderedRoots.add(node);
                     continue;
                 }
                 if (targetElement === chatRoot) {
-                    for (const nested of node.querySelectorAll?.('.mes[mesid], [mesid].mes') || [])
+                    for (const nested of node.querySelectorAll?.('.mes[mesid], [mesid].mes') || []) {
                         messageRoots.add(nested);
+                        renderedRoots.add(nested);
+                    }
                 }
             }
+        }
+        let deferredRoots = 0;
+        if (renderedRoots.size > 6) {
+            let latest = null;
+            for (let node = chatRoot.lastElementChild; node && !latest; node = node.previousElementSibling) {
+                if (node.matches?.('.mes[mesid], [mesid].mes') && node.getAttribute('is_user') !== 'true' && node.getAttribute('is_system') !== 'true')
+                    latest = node;
+            }
+            for (const root of renderedRoots) {
+                if (root !== latest && messageRoots.delete(root))
+                    deferredRoots += 1;
+            }
+            scheduleMaintenanceRabbitInstall();
+            scheduleRabbitMirrorComposerClearance();
         }
         if (messageRoots.size) {
             scheduleObservedChatInstall(messageRoots);
             scheduleRabbitMirrorComposerClearance();
         }
-        perfEnd?.({ affectedMessages: messageRoots.size });
+        perfEnd?.({ affectedMessages: messageRoots.size, deferredMessages: deferredRoots });
     });
     chatInstallObserver.observe(chatRoot, { childList: true, subtree: true });
     return true;
@@ -999,7 +1028,7 @@ export async function initOutputSanitizer({ isActive = () => true } = {}) {
         console.debug('[RabbitMirror] desktop face zoom unavailable', error);
     }
     installChatMutationObserver();
-    installMaintenanceRabbitsDeferredInChatDom();
+    installMaintenanceRabbitsDeferredInChatDom({ includeInView: true });
     if (recipeRecordedHandler)
         globalThis.removeEventListener?.(RECIPE_RECORDED_EVENT, recipeRecordedHandler);
     recipeRecordedHandler = event => {

@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.6.6";
-import { getSettings } from './settings.js?rmv=2.6.6';
+import { rmT as __rmT } from "./textTable.js?rmv=2.6.7";
+import { getSettings } from './settings.js?rmv=2.6.7';
 export const WEB_FONTS = Object.freeze([
     { family: 'Ma Shan Zheng', note: __rmT("C94JX5jvsgl"), css: ['@fontsource/ma-shan-zheng@5/400.css'] },
     { family: 'Zhi Mang Xing', note: __rmT("kVrS3f"), css: ['@fontsource/zhi-mang-xing@5/400.css'] },
@@ -44,14 +44,17 @@ export function webFontsUsedIn(root) {
         return [];
     return WEB_FONTS.filter(font => PATTERNS.get(font.family).test(text)).map(font => font.family);
 }
+let timeZoneName = null;
 function sourceOrder() {
-    let zone = '';
-    try {
-        zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (timeZoneName === null) {
+        try {
+            timeZoneName = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        }
+        catch {
+            timeZoneName = '';
+        }
     }
-    catch {
-        zone = '';
-    }
+    const zone = timeZoneName;
     const mainland = /^Asia\/(?:Shanghai|Chongqing|Chungking|Harbin|Urumqi|Kashgar)$/.test(zone);
     const order = mainland ? [SOURCES.cn, SOURCES.jsdelivr, SOURCES.unpkg] : [SOURCES.jsdelivr, SOURCES.cn, SOURCES.unpkg];
     return workingSource ? [workingSource, ...order.filter(source => source !== workingSource)] : order;

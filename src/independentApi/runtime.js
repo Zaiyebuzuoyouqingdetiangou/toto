@@ -1,4 +1,4 @@
-export const RUNTIME_VERSION = '2.6.6';
+export const RUNTIME_VERSION = '2.6.7';
 export const SOURCE_ATTR = 'data-rabbit-mirror-external-source';
 export const EXTERNAL_SHELL_ATTR = 'data-rabbit-mirror-external-shell';
 export const INLINE_ANCHOR_ATTR = 'data-rabbit-mirror-independent-inline-anchor';
@@ -39,8 +39,15 @@ export function byteLength(value = '') { const text = String(value || ''); try {
 catch {
     return unescape(encodeURIComponent(text)).length;
 } }
+const recentLongHashes = [];
+const LONG_HASH_MIN_CHARS = 512;
 export function hashText(text = '') {
     const s = String(text);
+    const long = s.length >= LONG_HASH_MIN_CHARS;
+    if (long)
+        for (const entry of recentLongHashes)
+            if (entry.text === s)
+                return entry.hash;
     let h = 2166136261;
     for (let i = 0; i < s.length; i += 1) {
         const c = s.charCodeAt(i);
@@ -52,7 +59,13 @@ export function hashText(text = '') {
                 i += 1;
         }
     }
-    return (h >>> 0).toString(36);
+    const hash = (h >>> 0).toString(36);
+    if (long) {
+        recentLongHashes.unshift({ text: s, hash });
+        if (recentLongHashes.length > 8)
+            recentLongHashes.pop();
+    }
+    return hash;
 }
 export function getContext() { try {
     return globalThis.SillyTavern?.getContext?.() || {};
