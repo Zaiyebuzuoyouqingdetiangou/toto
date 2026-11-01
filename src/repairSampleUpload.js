@@ -1,12 +1,13 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.7";
-import { getSettings } from './settings.js?rmv=2.6.7';
-import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.6.7';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.7.0";
+import { getSettings, updateSettings } from './settings.js?rmv=2.7.0';
+import { RUNTIME_VERSION } from './outputSanitizer/runtime.js?rmv=2.7.0';
 const runningVersion = () => RUNTIME_VERSION;
 export const SAMPLE_RELAY_URL = 'https://samples.zaiyebuzuoyouqingdetiangou.com/';
 const SENT_KEY = 'rabbit_mirror_repair_samples_sent:v1';
 const REJECTED_KEY = 'rabbit_mirror_repair_samples_rejected:v1';
 const STATUS_KEY = 'rabbit_mirror_repair_samples_upload_status:v1';
 const OFF_KEY = 'rabbit_mirror_repair_samples_upload_off:v1';
+const ASKED_KEY = 'rabbit_mirror_repair_samples_upload_asked:v1';
 const MAX_SENT = 300;
 const TIMEOUT_MS = 20000;
 let running = null;
@@ -142,12 +143,12 @@ export function uploadPendingRepairSamples({ force = false, limit = 10, fetchImp
     if (!force && !sampleUploadEnabled(getSettings(), url))
         return Promise.resolve({ sent: 0, pending: 0, skipped: 'off' });
     running = (async () => {
-        const box = listSamples && removeSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.6.7');
+        const box = listSamples && removeSamples ? null : await import('./outputSanitizer/repairSamples.js?rmv=2.7.0');
         const list = listSamples ? await listSamples() : box.listRepairSamples();
         let reclean = resanitize;
         if (typeof reclean !== 'function') {
             try {
-                reclean = (await import('./outputSanitizer/writingSkeleton.js?rmv=2.6.7')).skeletonizeRabbitMirrorHtml;
+                reclean = (await import('./outputSanitizer/writingSkeleton.js?rmv=2.7.0')).skeletonizeRabbitMirrorHtml;
             }
             catch {
                 reclean = null;
@@ -224,8 +225,88 @@ export function watchRepairSampleUploads() {
             void uploadPendingRepairSamples(); }, ms);
     };
     try {
-        globalThis.addEventListener?.('rabbitmirror:repair-samples', () => later());
+        globalThis.addEventListener?.('rabbitmirror:repair-samples', event => {
+            if (sampleUploadEnabled()) {
+                later();
+                return;
+            }
+            if (Number(event?.detail?.count) > 0)
+                askToUploadOnce();
+        });
     }
     catch { }
     later(20000);
+}
+export function sampleUploadAskPending(settings = getSettings()) {
+    if (!sampleUploadAvailable() || settings?.repairSampleUpload === true)
+        return false;
+    try {
+        const storage = globalThis.localStorage;
+        if (storage?.getItem(ASKED_KEY) || storage?.getItem(OFF_KEY))
+            return false;
+    }
+    catch {
+        return false;
+    }
+    return true;
+}
+const ASK_ID = 'rabbit-mirror-sample-upload-ask';
+export function askToUploadOnce(doc = globalThis.document) {
+    if (!doc?.body || !sampleUploadAskPending() || doc.getElementById(ASK_ID))
+        return null;
+    const card = doc.createElement('div');
+    card.id = ASK_ID;
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-label', __rmT("zGTr0XJkQFoJmT6BMCiNeXf6jL9uaxSP"));
+    card.style.cssText = [
+        'position:fixed', 'left:50%', 'transform:translateX(-50%)', 'bottom:calc(env(safe-area-inset-bottom, 0px) + 96px)',
+        'z-index:2147483000', 'box-sizing:border-box', 'width:min(420px, calc(100vw - 24px))', 'max-height:calc(100vh - 140px)', 'overflow:auto',
+        'padding:14px 16px', 'border-radius:14px', 'border:1px solid var(--SmartThemeBorderColor, #cfd6de)',
+        'background:var(--SmartThemeBlurTintColor, #fff)', 'color:var(--SmartThemeBodyColor, #222)',
+        'box-shadow:0 8px 28px rgba(0,0,0,.22)', 'font-size:14px', 'line-height:1.6', 'backdrop-filter:blur(8px)',
+    ].join(';');
+    const title = doc.createElement('div');
+    title.style.cssText = 'font-weight:700;margin-bottom:6px;';
+    title.textContent = __rmT("ckPwW_2XMsNssMYM9UftfbXGHYwNm93pwT9wNEov2yoGK152");
+    const text = doc.createElement('div');
+    text.textContent = __rmT("RPqf2RX2lOCnKvo.a721flxbP4ed8D9P3WSO1vPIsovLI2ycPO8z9zTWXewGBdJLpewlHHa95qkR8jrz29gEyw6K6D3NGkiN3KQbBijEyE8PRQUkYZEFqZhRiyQSaGIhXHjv5cXUitGcsMV8evrffiz48mIy66Jp6.GJUMuPERZzNkHwBtWojD26ADzxKJjC_RgJy32xqvD.g._SWjNc4ord1DRmQueWYq5FVEOX");
+    const row = doc.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px;';
+    const button = (label, primary) => {
+        const node = doc.createElement('button');
+        node.type = 'button';
+        node.className = 'menu_button';
+        node.textContent = label;
+        node.style.cssText = `margin:0;padding:6px 14px;min-height:36px;${primary ? 'font-weight:700;' : ''}`;
+        return node;
+    };
+    const no = button(__rmT("ssqNHbEc"), false);
+    const yes = button(__rmT("dQh1mhPLhUG"), true);
+    const close = () => card.remove();
+    const remember = () => { try {
+        globalThis.localStorage?.setItem(ASKED_KEY, String(Date.now()));
+    }
+    catch { } };
+    no.addEventListener('click', () => { remember(); close(); });
+    yes.addEventListener('click', () => {
+        remember();
+        close();
+        updateSettings(sampleUploadSwitchPatch(true));
+        try {
+            const box = doc.getElementById('rh_repair_upload');
+            if (box)
+                box.checked = true;
+        }
+        catch { }
+        void uploadPendingRepairSamples({ force: true }).then(result => {
+            if (result?.ok === false)
+                globalThis.toastr?.warning?.(__rmT("4AovcJxb1KgDfVK4Zu4ncGmBXkeJEgRpbqMOzn_ixhMIEd6QDutebp4BE7RYZS9Nj3lqEL6ektKNm.cOqAk"));
+            else
+                globalThis.toastr?.success?.(__rmT("oe0pw5IPPNPUDY0V41zqG4djHH0WrI5Y"));
+        }).catch(() => { });
+    });
+    row.append(no, yes);
+    card.append(title, text, row);
+    doc.body.append(card);
+    return card;
 }
