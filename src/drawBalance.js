@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.8.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.8.1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.8.2';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.8.2';
 export const DEFAULT_COOLDOWN_FACES = 30;
 export const NEAR_COOLDOWN_FACES = 10;
 const CATCH_ALL_THEME_IDS = ['A.0', 'B.0', 'C.0', 'E.0', 'F.0', 'G.0'];
@@ -70,10 +70,9 @@ export function cooldownForPool(pool, need, recentIds = [], ages = {}, { skip = 
     return { blocked: new Set(), recent: new Set(), window: 0 };
 }
 export const REPORT_LIKE_FORMAT_IDS = new Set([
-    '1.1.3', '1.4.2', '1.6', '1.7', '1.8', '1.15', '3.6', '6.2.1.1.b',
-    '6.5.4', '6.5.4.1', '6.5.4.2', '6.5.4.3', '6.5.4.4', '6.9', '8.8', '2.13',
+    '1.6', '1.7', '1.8', '1.15',
+    '6.5.4.2', '6.5.4.3', '6.5.4.4', '8.8', '2.13',
     '1.16', '1.21', '1.3.4', '3.3', '3.3.2', '6.3.3', '6.2.7.a', '6.2.7.b', '1.23',
-    '5.3.1', '5.3.2', '5.3.2.1', '5.3.3',
 ]);
 export const REPORT_LIKE_WEIGHT = 0.5;
 export function reportLikeFactor(id, explicitFavoriteIds = null) {
