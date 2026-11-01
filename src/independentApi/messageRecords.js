@@ -13,9 +13,8 @@ export function readMessageRecord(msg, swipe = messageCurrentSwipe(msg)) {
     if (!Number.isInteger(index) || index < 0)
         return undefined;
     if (index === messageCurrentSwipe(msg)) {
-        const own = msg.extra && typeof msg.extra === 'object' ? msg.extra[MESSAGE_RECORD_KEY] : undefined;
-        if (own !== undefined)
-            return own;
+        if (msg.extra && typeof msg.extra === 'object')
+            return msg.extra[MESSAGE_RECORD_KEY];
     }
     const extra = extraOfSwipeInfo(msg, index);
     return extra ? extra[MESSAGE_RECORD_KEY] : undefined;
@@ -39,7 +38,11 @@ export function writeMessageRecord(msg, swipe, value) {
         put(msg.extra);
         const stale = extraOfSwipeInfo(msg, index);
         const copy = stale && stale !== msg.extra ? stale[MESSAGE_RECORD_KEY] : undefined;
-        if (copy !== undefined && sameCellBody(copy, value === null || value === undefined ? own : value, value === null || value === undefined))
+        const removing = value === null || value === undefined;
+        if (copy !== undefined && sameCellBody(copy, removing ? own : value, removing))
+            put(stale);
+        else if (copy === undefined && !removing && stale && stale !== msg.extra
+            && Array.isArray(msg.swipes) && msg.swipes.length > 1 && msg.swipes[index] === msg.mes)
             put(stale);
         return true;
     }

@@ -1,18 +1,18 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.10.0";
-import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.10.0';
-import { presentationModeFields } from '../presentationMode.js?rmv=2.10.0';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.10.0';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.10.0';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.10.0';
-import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, } from '../swipeVersions.js?rmv=2.10.0';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.10.0';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.10.0';
-import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.10.0';
-import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.10.0';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.10.0';
-import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.10.0';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.10.0';
-import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.10.0';
+import { rmT as __rmT } from "../textTable.js?rmv=2.10.1";
+import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.10.1';
+import { presentationModeFields } from '../presentationMode.js?rmv=2.10.1';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.10.1';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.10.1';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.10.1';
+import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, } from '../swipeVersions.js?rmv=2.10.1';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.10.1';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.10.1';
+import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.10.1';
+import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.10.1';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.10.1';
+import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.10.1';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.10.1';
+import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.10.1';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 export const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 export const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -215,9 +215,11 @@ function legacyOwnerRaw(ctx, index, swipe) {
 }
 function swipeBodyFingerprint(msg, swipe) {
     const current = swipeId(msg);
-    if (Number(swipe) !== current && Array.isArray(msg?.swipes) && typeof msg.swipes[swipe] === 'string')
+    if (Number(swipe) === current)
+        return messageSourceFingerprint(msg);
+    if (Array.isArray(msg?.swipes) && typeof msg.swipes[swipe] === 'string')
         return hashText(msg.swipes[swipe]);
-    return messageSourceFingerprint(msg);
+    return '';
 }
 function recordFitsMessage(record, msg, swipe = swipeId(msg), { cell = false } = {}) {
     if (!record || typeof record !== 'object' || !msg)
@@ -246,11 +248,58 @@ function inheritedCell(real, swipe, cell) {
     return messageRecordSwipes(real).some(other => other.swipe !== index && same(other.value)
         && (other.swipe < index || recordFitsMessage(other.value, real, other.swipe, { cell: true })));
 }
-function swipePending(real, swipe) {
+function swipeUnmaterialized(real, swipe) {
     if (!real || !Array.isArray(real.swipes) || !real.swipes.length)
         return false;
     const index = Number(swipe);
     return index === swipeId(real) && index > 0 && index >= real.swipes.length;
+}
+function swipePending(real, swipe) {
+    if (!swipeUnmaterialized(real, swipe))
+        return false;
+    try {
+        return hostGenerationLooksActive();
+    }
+    catch {
+        return true;
+    }
+}
+export function dropInheritedCellForNewSwipe(ctx, index) {
+    const real = Array.isArray(ctx?.chat) ? ctx.chat[Number(index)] : null;
+    if (!real || typeof real !== 'object' || real.is_user)
+        return false;
+    if (!swipeUnmaterialized(real, swipeId(real)))
+        return false;
+    const cell = real.extra?.rabbitMirror;
+    if (cell === undefined)
+        return false;
+    const previous = swipeId(real) - 1;
+    if (!Array.isArray(real.swipe_info))
+        real.swipe_info = real.swipes.map(() => ({ send_date: real.send_date, gen_started: real.gen_started, gen_finished: real.gen_finished, extra: {} }));
+    const info = real.swipe_info[previous];
+    if (!info || typeof info !== 'object') {
+        real.swipe_info[previous] = { send_date: real.send_date, gen_started: real.gen_started, gen_finished: real.gen_finished, extra: (() => { try {
+                return structuredClone(real.extra || {});
+            }
+            catch {
+                return JSON.parse(JSON.stringify(real.extra || {}));
+            } })() };
+    }
+    else {
+        if (!info.extra || typeof info.extra !== 'object')
+            info.extra = {};
+        if (info.extra.rabbitMirror === undefined)
+            info.extra.rabbitMirror = (() => { try {
+                return structuredClone(cell);
+            }
+            catch {
+                return JSON.parse(JSON.stringify(cell));
+            } })();
+    }
+    if (JSON.stringify(real.swipe_info[previous].extra?.rabbitMirror) !== JSON.stringify(cell))
+        return false;
+    delete real.extra.rabbitMirror;
+    return true;
 }
 function runtimeBefore(runtime, target) {
     const parse = value => String(value || '').trim().split('.').map(part => parseInt(part, 10));
@@ -302,8 +351,13 @@ function retargetCellLineage(ctx, real, index, swipe, cell) {
 }
 function ownerCell(ctx, index, swipe, msg = null) {
     const real = messageForOwner(ctx, index, msg);
-    if (swipePending(real, swipe))
+    if (swipePending(real, swipe)) {
+        try {
+            dropInheritedCellForNewSwipe(ctx, index);
+        }
+        catch { }
         return null;
+    }
     let cell = real ? readMessageRecord(real, swipe) : undefined;
     if (cell !== undefined && inheritedCell(real, swipe, cell)) {
         writeMessageRecord(real, swipe, null);
@@ -903,8 +957,25 @@ export function appendHistoryEntry(slot, value) {
             delete store.slots[key];
     }
     writeHistoryStore(store);
-    void saveHistoryArchive(slot, store.slots[slot] || [entry]).catch(() => { });
+    const kept = store.slots[slot] || [entry];
+    void Promise.resolve().then(() => saveHistoryArchive(slot, kept)).then(ok => { if (!ok)
+        persistHistoryFallback(slot, kept); }).catch(() => { persistHistoryFallback(slot, kept); });
     return entry;
+}
+function persistHistoryFallback(slot, entries) {
+    try {
+        const legacy = legacyHistoryStore();
+        const next = { version: 1, slots: { ...(legacy.slots || {}) } };
+        putOwn(next.slots, slot, (Array.isArray(entries) ? entries : []).map(copyStoredEntry));
+        const compacted = compactHistoryStore(next);
+        if (!compacted?.slots?.[slot]?.length)
+            return false;
+        localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(compacted));
+        return true;
+    }
+    catch {
+        return false;
+    }
 }
 export function historyEntriesForSlot(slot) {
     const list = readHistoryStore().slots?.[slot];
@@ -1310,10 +1381,11 @@ export async function migrateLocalStoresToArchive() {
             catch {
                 row = null;
             }
-            if (row?.record && (row.record.deleted === true || Number(row.record.ts || 0) >= Number(record.ts || 0)))
+            if (row || faceSwipeArchiveReadState(base) !== 'ready') {
+                if (!row && faceSwipeArchiveReadState(base) !== 'ready')
+                    complete = false;
                 continue;
-            if (row?.record && String(row.record.sourceHash || row.record.bodyHash || '') !== String(record.sourceHash || parsed.sourceHash || ''))
-                continue;
+            }
             let outcome = null;
             try {
                 outcome = await saveFaceSwipeArchive(base, { ...record, sourceHash: String(record.sourceHash || parsed.sourceHash || '') });
@@ -1615,8 +1687,9 @@ export function writePersistedOwner(ctx, index, msg, value, { overwrite = true, 
         return false;
     if (swipePending(real, ownerSwipe))
         return false;
-    const existingCell = readMessageRecord(real, ownerSwipe);
-    const existing = existingCell && typeof existingCell === 'object' ? existingCell : legacyOwnerRaw(ctx, index, ownerSwipe);
+    const current = ownerCell(ctx, index, ownerSwipe, real);
+    const existingCell = current?.source === 'message' ? current.value : undefined;
+    const existing = current?.value || null;
     if (!overwrite && existing)
         return false;
     const base = `${chatKey(ctx)}:${index}:${ownerSwipe}`;
@@ -1900,10 +1973,12 @@ function migrateLegacyLocalOutputsToChatMetadata(ctx, store) {
         const cell = ownerCell(ctx, i, swipeId(m), m);
         if (cell && cell.source !== 'legacy')
             continue;
+        if (swipePending(m, swipeId(m)))
+            continue;
         const observed = observeMessageSourceRevision(ctx, i, m);
         const base = messageBaseSlotKey(ctx, i, m);
         const locked = lockedIndependentRecordForBase(base, store);
-        let record = locked?.record || null;
+        let record = locked?.record?.html && savedRecordMatchesObserved(locked.record, observed) ? locked.record : null;
         if (!record?.html) {
             const recovered = recoverSavedRecord(store, observed.slot, observed);
             if (recovered.storeChanged)
@@ -1911,7 +1986,7 @@ function migrateLegacyLocalOutputsToChatMetadata(ctx, store) {
             record = recovered.saved || null;
         }
         const compact = compactChatPersistedRecord(record);
-        if (!compact?.html || !independentStoredHtmlRestorable(compact.html))
+        if (!compact?.html || !independentStoredHtmlRestorable(compact.html) || !savedRecordMatchesObserved(compact, observed))
             continue;
         if (writeMessageRecord(m, swipeId(m), compact)) {
             metadataChanged = true;
