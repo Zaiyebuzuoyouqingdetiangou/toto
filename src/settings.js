@@ -1,14 +1,14 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.12.3";
-import { normalizeImageBackend } from './imageBackendName.js?rmv=2.12.3';
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.12.3';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.12.3';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.12.3';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.13.0";
+import { normalizeImageBackend } from './imageBackendName.js?rmv=2.13.0';
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.13.0';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.13.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.13.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.12.3';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.12.3';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.12.3';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.12.3';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.13.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.13.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.13.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.13.0';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -266,6 +266,7 @@ export const defaultSettings = Object.freeze({
     imageLooksMyriad: true,
     imageLooksWorldBook: true,
     imageLooksModel: true,
+    imageLooksDrawn: true,
     nameMaskRules: [],
     nameMaskRulesByCard: {},
     imageCompositionMode: 'scene',
@@ -550,7 +551,7 @@ export function getSettings() {
     settings.updateGuideSeenVersion = /^(?:fresh|\d{1,3}\.\d{1,4}\.\d{1,4})$/.test(String(settings.updateGuideSeenVersion || '')) ? String(settings.updateGuideSeenVersion) : '';
     settings.writingStyle = typeof settings.writingStyle === 'string' ? settings.writingStyle : '';
     settings.independentReadCharacterWorldBook = settings.independentReadCharacterWorldBook === true;
-    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel'])
+    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksDrawn', 'imageLooksModel'])
         settings[key] = settings[key] !== false;
     settings.nameMaskRules = normalizeNameMaskRules(settings.nameMaskRules);
     settings.nameMaskRulesByCard = normalizeNameMaskCardRules(settings.nameMaskRulesByCard);
@@ -811,7 +812,7 @@ export function updateSettings(patch) {
         safePatch.writingStyle = typeof safePatch.writingStyle === 'string' ? safePatch.writingStyle : '';
     if (Object.prototype.hasOwnProperty.call(safePatch, 'independentReadCharacterWorldBook'))
         safePatch.independentReadCharacterWorldBook = safePatch.independentReadCharacterWorldBook === true;
-    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksModel']) {
+    for (const key of ['imageLooksLibrary', 'imageLooksCard', 'imageLooksMyriad', 'imageLooksWorldBook', 'imageLooksDrawn', 'imageLooksModel']) {
         if (Object.prototype.hasOwnProperty.call(safePatch, key))
             safePatch[key] = safePatch[key] !== false;
     }
