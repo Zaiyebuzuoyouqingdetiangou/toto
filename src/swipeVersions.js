@@ -1,9 +1,10 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.2";
+import { rmT as __rmT } from "./textTable.js?rmv=2.12.3";
 export const FACE_SWIPE_MAX = 5;
 export const FACE_SWIPE_FULL_MESSAGE = __rmT(".m0by1h9qE.UYxirWf9m0aUMvUR_h5GXdIk");
 const STORE_KEY = 'rabbit_mirror_face_swipes_v1';
 const STORE_SCHEMA = 1;
 const STACK_LIMIT = 80;
+const MEMORY_STACK_LIMIT = 160;
 const ENTRY_MAX_CHARS = 400 * 1024;
 function hashText(text = '') {
     let h = 2166136261;
@@ -197,7 +198,7 @@ function readStore() {
     try {
         const raw = JSON.parse(globalThis.localStorage?.getItem(STORE_KEY) || 'null');
         if (raw && typeof raw === 'object' && raw.faces && typeof raw.faces === 'object') {
-            memoryStore = cloneStore(raw);
+            memoryStore = cloneStore({ schema: STORE_SCHEMA, faces: raw.faces });
             return cloneStore(memoryStore);
         }
     }
@@ -205,18 +206,39 @@ function readStore() {
     memoryStore = emptyStore();
     return cloneStore(memoryStore);
 }
+export function dropLegacyFaceSwipeKeys(matchSlot) {
+    if (typeof matchSlot !== 'function')
+        return false;
+    let snapshot = null;
+    try {
+        snapshot = JSON.parse(globalThis.localStorage?.getItem(STORE_KEY) || 'null');
+    }
+    catch {
+        snapshot = null;
+    }
+    if (!snapshot?.faces || typeof snapshot.faces !== 'object')
+        return false;
+    let changed = false;
+    for (const key of Object.keys(snapshot.faces)) {
+        const split = key.lastIndexOf('\u0000');
+        const slot = split >= 0 ? key.slice(0, split) : key;
+        if (matchSlot(slot)) {
+            delete snapshot.faces[key];
+            changed = true;
+        }
+    }
+    if (changed)
+        writeLocalSnapshot(snapshot);
+    return changed;
+}
 export function resetFaceSwipeStoreForTests() {
     cancelDeferredSnapshot();
     memoryStore = null;
     durableStacks.clear();
 }
 export function flushDeferredFaceSwipeSnapshotForTests() {
-    if (!deferredSnapshotTimer)
-        return false;
     cancelDeferredSnapshot();
-    if (memoryStore)
-        writeStore(cloneStore(memoryStore));
-    return true;
+    return false;
 }
 export function compactSwipeState(value) {
     const state = normalizeSwipeState(value);
@@ -230,9 +252,9 @@ function backedUp(key, value) {
     return !archiveWrites.get(faceSwipeStorageSlot(base))?.pending
         && durableStacks.get(faceSwipeKey(base, index)) === stackSignature(value);
 }
-function compactStore(store) {
+function compactStore(store, memoryLimit = null) {
     const next = cloneStore({ ...store, faces: {} });
-    const limit = Number.isInteger(store?.cacheLimit) ? store.cacheLimit : STACK_LIMIT;
+    const limit = Number.isInteger(memoryLimit) ? memoryLimit : Number.isInteger(store?.cacheLimit) ? store.cacheLimit : STACK_LIMIT;
     const stacks = Object.entries(store.faces || {})
         .map(([key, value]) => [key, normalizeSwipeState(value)])
         .filter(([, state]) => state.versions.length)
@@ -261,33 +283,13 @@ function cancelDeferredSnapshot() {
     }
 }
 function deferSnapshotWrite(store) {
-    if (typeof setTimeout !== 'function') {
-        writeStore(store);
-        return;
-    }
     memoryStore = cloneStore(store);
-    if (deferredSnapshotTimer)
-        return;
-    deferredSnapshotTimer = setTimeout(() => {
-        deferredSnapshotTimer = 0;
-        if (memoryStore)
-            writeStore(cloneStore(memoryStore));
-    }, 1500);
 }
 function writeStore(store) {
     cancelDeferredSnapshot();
-    const compacted = compactStore(store);
-    memoryStore = cloneStore(store);
-    if (writeLocalSnapshot(compacted))
-        return true;
-    for (const key of Object.keys(compacted.faces).reverse()) {
-        if (!backedUp(key, compacted.faces[key]))
-            continue;
-        delete compacted.faces[key];
-        if (writeLocalSnapshot(compacted))
-            return true;
-    }
-    return false;
+    const faceCount = Object.keys(store?.faces || {}).length;
+    memoryStore = faceCount > MEMORY_STACK_LIMIT ? compactStore(store, MEMORY_STACK_LIMIT) : cloneStore(store);
+    return true;
 }
 export function dropFaceSwipeStacksForCleanup(keys = []) {
     const drop = new Set(Array.isArray(keys) ? keys : []);
@@ -317,7 +319,16 @@ export function dropFaceSwipeStacksForCleanup(keys = []) {
 }
 export function compactFaceSwipeStoreForQuota(limits = [40, 20, 10, 5, 1]) {
     const store = readStore();
-    const stacks = Object.entries(store.faces || {})
+    let snapshot = null;
+    try {
+        snapshot = JSON.parse(globalThis.localStorage?.getItem(STORE_KEY) || 'null');
+    }
+    catch {
+        snapshot = null;
+    }
+    if (!snapshot?.faces || typeof snapshot.faces !== 'object')
+        return false;
+    const stacks = Object.entries(snapshot.faces || {})
         .map(([key, value]) => [key, normalizeSwipeState(value)])
         .filter(([, state]) => state.versions.length)
         .sort((a, b) => Number(b[1].touched || 0) - Number(a[1].touched || 0));
@@ -457,13 +468,10 @@ export function snapshotFaceSwipes(slot) {
     return states;
 }
 export function faceSwipeSnapshotStored(slot, states = snapshotFaceSwipes(slot)) {
-    try {
-        const raw = JSON.parse(globalThis.localStorage?.getItem(STORE_KEY) || 'null');
-        return Object.entries(states).every(([index, state]) => stackSignature(raw?.faces?.[faceSwipeKey(slot, Number(index))]) === stackSignature(state));
-    }
-    catch {
+    const base = faceSwipeStorageSlot(slot);
+    if (archiveWrites.get(base)?.pending)
         return false;
-    }
+    return Object.entries(states || {}).every(([index, state]) => durableStacks.get(faceSwipeKey(base, Number(index))) === stackSignature(state));
 }
 export function restoreFaceSwipeSnapshot(slot, states) {
     for (let index = 0; index < 5; index++) {
@@ -475,6 +483,9 @@ export function restoreFaceSwipeSnapshot(slot, states) {
     }
 }
 const ARCHIVE_DB = 'rabbit_mirror_resay_history_v1';
+const HISTORY_DB = 'rabbit_mirror_history_archive_v1';
+const HISTORY_STORE = 'history';
+const HISTORY_PER_SLOT = 10;
 const archiveLoads = new Map();
 const archiveWrites = new Map();
 const archiveSaved = new Map();
@@ -505,7 +516,7 @@ export function faceSwipeArchiveRecordStored(slot, record) {
     return String(saved.html) === String(record.html)
         && initial(saved) === initial(record) && source(saved) === source(record);
 }
-function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000 } = {}) {
+function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000, storeName = 'owners', dbName = ARCHIVE_DB } = {}) {
     if (!globalThis.indexedDB)
         return Promise.resolve(readStatus ? { ok: true, value: null } : null);
     return new Promise(resolve => {
@@ -526,10 +537,10 @@ function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000 }
         }
         catch { } finish(null); }, timeoutMs);
         try {
-            const request = globalThis.indexedDB.open(ARCHIVE_DB, 1);
+            const request = globalThis.indexedDB.open(dbName, 1);
             request.onupgradeneeded = () => {
-                if (!request.result.objectStoreNames.contains('owners'))
-                    request.result.createObjectStore('owners', { keyPath: 'slot' });
+                if (!request.result.objectStoreNames.contains(storeName))
+                    request.result.createObjectStore(storeName, { keyPath: 'slot' });
             };
             request.onerror = request.onblocked = () => finish(null);
             request.onsuccess = () => {
@@ -540,10 +551,14 @@ function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000 }
                 }
                 db.onversionchange = () => db.close();
                 try {
-                    tx = db.transaction('owners', mode);
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        finish(null);
+                        return;
+                    }
+                    tx = db.transaction(storeName, mode);
                     tx.oncomplete = () => finish(value, true);
                     tx.onerror = tx.onabort = () => finish(null);
-                    work(tx.objectStore('owners'), result => { value = result; });
+                    work(tx.objectStore(storeName), result => { value = result; });
                 }
                 catch {
                     finish(null);
@@ -554,6 +569,53 @@ function archiveTransaction(mode, work, { readStatus = false, timeoutMs = 8000 }
             finish(null);
         }
     });
+}
+export function historyArchiveKey(slot) {
+    const text = String(slot || '');
+    const match = /^(.+):(\d+):(\d+):([0-9a-z]+)$/i.exec(text);
+    return match ? `${match[1]}\u0000${match[4]}` : text;
+}
+const historyWrites = new Map();
+export function saveHistoryArchive(slot, entries) {
+    const key = historyArchiveKey(slot);
+    const list = (Array.isArray(entries) ? entries : []).filter(entry => entry?.html).map(entry => ({ ...entry }));
+    if (!key || !list.length || !globalThis.indexedDB)
+        return Promise.resolve(false);
+    const run = (historyWrites.get(key) || Promise.resolve()).then(() => archiveTransaction('readwrite', (store, done) => {
+        const read = store.get(key);
+        read.onsuccess = () => {
+            const existing = Array.isArray(read.result?.entries) ? read.result.entries : [];
+            const byId = new Map();
+            for (const entry of [...existing, ...list])
+                if (entry?.html)
+                    byId.set(String(entry.id || ''), entry);
+            const merged = [...byId.values()].sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0)).slice(-HISTORY_PER_SLOT);
+            store.put({ schema: 1, slot: key, entries: merged });
+            done(true);
+        };
+    }, { readStatus: true, storeName: HISTORY_STORE, dbName: HISTORY_DB })).then(result => result?.ok === true && result.value === true).catch(() => false);
+    historyWrites.set(key, run.catch(() => false));
+    return run;
+}
+export function loadHistoryArchive(slot) {
+    const key = historyArchiveKey(slot);
+    if (!key || !globalThis.indexedDB)
+        return Promise.resolve(null);
+    return (historyWrites.get(key) || Promise.resolve()).then(() => archiveTransaction('readonly', (store, done) => {
+        const read = store.get(key);
+        read.onsuccess = () => done(read.result || null);
+    }, { readStatus: true, storeName: HISTORY_STORE, dbName: HISTORY_DB })).then(result => result?.ok && Array.isArray(result.value?.entries) ? result.value.entries : null).catch(() => null);
+}
+export function dropHistoryArchive(slot) {
+    const key = historyArchiveKey(slot);
+    if (!key || !globalThis.indexedDB)
+        return Promise.resolve(false);
+    const run = (historyWrites.get(key) || Promise.resolve()).then(() => archiveTransaction('readwrite', (store, done) => {
+        store.delete(key);
+        done(true);
+    }, { readStatus: true, storeName: HISTORY_STORE, dbName: HISTORY_DB })).then(result => result?.ok === true).catch(() => false);
+    historyWrites.set(key, run.catch(() => false));
+    return run;
 }
 export function loadFaceSwipeArchiveRows(prefix) {
     const text = String(prefix || '');
@@ -699,6 +761,10 @@ export function remapFaceSwipeSlots(mapSlot) {
     if (!changed)
         return false;
     memoryStore = null;
+    try {
+        dropLegacyFaceSwipeKeys(slot => mapSlot(slot) !== slot);
+    }
+    catch { }
     return writeStore(next);
 }
 export function faceSwipeArchiveRemapSettled() {

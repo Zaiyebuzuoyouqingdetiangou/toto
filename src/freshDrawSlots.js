@@ -1,4 +1,5 @@
-import { getContext } from './independentApi/runtime.js?rmv=2.9.2';
+import { getContext } from './independentApi/runtime.js?rmv=2.12.3';
+import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.12.3';
 const KEY = '__rabbitMirrorFreshDrawSlots';
 const LIMIT = 500;
 function slots() {
@@ -84,6 +85,8 @@ function outputIdentity(ctx, message, swipe) {
     const index = ctx?.chat?.indexOf(message);
     if (!(index >= 0))
         return '';
-    return ctx?.chatMetadata?.rabbit_mirror_independent_outputs_v2?.owners?.[`${index}:${swipe}`]?.html
+    const onMessage = readMessageRecord(message, swipe);
+    return (onMessage && onMessage.deleted !== true ? onMessage.html : '')
+        || ctx?.chatMetadata?.rabbit_mirror_independent_outputs_v2?.owners?.[`${index}:${swipe}`]?.html
         || message?.extra?.display_text || swipeSource(message, swipe);
 }

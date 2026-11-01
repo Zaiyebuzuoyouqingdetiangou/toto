@@ -1,7 +1,7 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.2";
-import { clearLastCombo } from './storage.js?rmv=2.9.2';
-import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag, clearAllMirrorImagePrompts, measureAllMirrorImagePromptCleanup, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=2.9.2';
-import { compactFaceSwipeStoreForQuota, faceSwipeCleanupStats, prepareFaceSwipeArchiveCleanup } from './swipeVersions.js?rmv=2.9.2';
+import { rmT as __rmT } from "./textTable.js?rmv=2.12.3";
+import { clearLastCombo } from './storage.js?rmv=2.12.3';
+import { slimMirrorImagesForQuota, resetMirrorImageSlimFlag, clearAllMirrorImagePrompts, measureAllMirrorImagePromptCleanup, dropMirrorImageCopiesSavedInChat } from './imageStore.js?rmv=2.12.3';
+import { compactFaceSwipeStoreForQuota, faceSwipeCleanupStats, prepareFaceSwipeArchiveCleanup } from './swipeVersions.js?rmv=2.12.3';
 const storage = () => { try {
     return globalThis.localStorage || null;
 }
@@ -54,7 +54,7 @@ const HISTORY = key => /^rabbit_mirror_theater:(?:last_combo|pending_combo):v11$
 export const STORAGE_CLEANUP_CATEGORIES = Object.freeze([
     {
         id: 'covered', safe: true, label: __rmT(".mhF4xp9pEscyBMNxSn1OiehvUtK.u0KftT"),
-        note: __rmT("TsB3HLDQ5N.C0..a_t6GcUZAX8jRaKmtbX3mCvlWHv9crelcI_xBv_kmfL2.5Ip.n6cSL87bYr.6IufPu4xqnfQXdSIuBukHbmEudDl8RA9hCNMRslVuvDFZD9eSYwavhkUy2TitJ0S4fxVrP7U9_jsNwFtwtDu6eezfHocv6I0pChWa0mKNAB4R17E"),
+        note: __rmT("8JLuBBc0Q5vFmm3y3TEDiI6dqz9kxX8jXpR_4T_ybK.a0minYNQNKrquN7In7XQCm2i688mFuo4D8JinirKhSB2Mx2UEqUTHUVySYt0Z7Mek7SP7uBUskrnx1.ZO6FjZrjcbYFfYCsTqfharf5b_09b3_BofYwJixMuPCPP57Zdg6vQ_wwRojP2xb4Kkfd3Dy8L8jMS8MnF96Y4.DNBmBqmnFITxOg86TEt_izn83z2rKibKp94yvXLLy_M6DUdk4RV8z.3ZM3K8CUWDvwn.fQo5zclU3.Dq7V2DaEmfYpayPtIl6bymXzVIgjkbWb_WxCoREqrxD7jgf2vspRW.Nk"),
         measure: () => sizeOf(COVERED),
         detail: () => {
             let stats = null;
@@ -242,7 +242,7 @@ export async function prepareStorageCleanup(ids = []) {
     if (!Array.isArray(ids) || !ids.includes('covered'))
         return { checked: 0, available: true };
     try {
-        await import('./independentApi/persistence.js?rmv=2.9.2');
+        await import('./independentApi/persistence.js?rmv=2.12.3');
     }
     catch { }
     const slots = new Set();

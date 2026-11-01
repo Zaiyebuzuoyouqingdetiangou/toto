@@ -1,4 +1,10 @@
 const MUTE_KEY = 'rabbit_mirror_startup_guard_mute:v1';
+const EVALUATED_AT = (() => { try {
+    return globalThis.performance?.now?.() ?? 0;
+}
+catch {
+    return 0;
+} })();
 const SELF_URL = String(import.meta.url || '');
 const RUNTIME_VERSION = (/[?&]rmv=([^&#]+)/.exec(SELF_URL) || [])[1] || '';
 const BASE_URL = SELF_URL.replace(/[?#].*$/, '').replace(/src\/startupGuard\.js$/, '');
@@ -606,6 +612,157 @@ export async function checkRabbitMirrorDuplicateInstall() {
         actions: [copyAction(`重复安装：${folders.join('、')}`), muteAction(signature), closeAction],
     });
     return { ok: false, others };
+}
+const DELETE_MARK_KEY = 'rabbit_mirror_delete_pending:v1';
+const DELETE_MARK_TTL_MS = 30 * 60 * 1000;
+const DELETE_RELOAD_WINDOW_MS = 2 * 60 * 1000;
+const STARTUP_LOAD_WINDOW_MS = 30 * 1000;
+function selfFolderName() {
+    const name = SELF_FOLDER.replace(/^third-party\//, '');
+    try {
+        return decodeURIComponent(name);
+    }
+    catch {
+        return name;
+    }
+}
+function readDeleteMark() {
+    try {
+        const value = JSON.parse(globalThis.localStorage?.getItem(DELETE_MARK_KEY) || 'null');
+        return value && typeof value === 'object' ? value : null;
+    }
+    catch {
+        return null;
+    }
+}
+function writeDeleteMark(value) {
+    try {
+        if (value)
+            globalThis.localStorage?.setItem(DELETE_MARK_KEY, JSON.stringify(value));
+        else
+            globalThis.localStorage?.removeItem(DELETE_MARK_KEY);
+    }
+    catch { }
+}
+const sameFolderName = (a, b) => String(a || '').replace(/^\/+/, '').replace(/^third-party\//, '') === String(b || '').replace(/^\/+/, '').replace(/^third-party\//, '');
+export function leftoverDeleteHint(folder = selfFolderName()) {
+    return `到酒馆的文件夹里手动删掉「${folder}」这个文件夹（只给自己装的在 data/你的用户名/extensions/ 下面，给所有用户装的在 public/scripts/extensions/third-party/ 下面），删完刷新网页，再重新安装。`;
+}
+function deleteRequestFor(input, init) {
+    try {
+        const url = typeof input === 'string' ? input : input?.url || String(input || '');
+        if (!/\/api\/extensions\/delete(?:[?#]|$)/.test(new URL(url, globalThis.location?.href || 'http://localhost/').pathname + ''))
+            return null;
+        const method = String(init?.method || input?.method || 'GET').toUpperCase();
+        if (method !== 'POST')
+            return null;
+        const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
+        return body && typeof body === 'object' ? body : null;
+    }
+    catch {
+        return null;
+    }
+}
+export function noteRabbitMirrorDeleting({ alertFn = text => globalThis.alert?.(text), timeoutMs = 60000 } = {}) {
+    const folder = selfFolderName();
+    const mark = { folder, at: Date.now(), version: RUNTIME_VERSION };
+    writeDeleteMark(mark);
+    const original = globalThis.fetch;
+    if (typeof original !== 'function')
+        return mark;
+    let done = false;
+    const release = () => {
+        if (done)
+            return;
+        done = true;
+        clearTimeout(timer);
+        if (globalThis.fetch === watcher)
+            globalThis.fetch = original;
+    };
+    const report = (status, text) => {
+        writeDeleteMark({ ...mark, ok: false, status, text: String(text || '').slice(0, 300) });
+        const reason = text ? `酒馆说：${String(text).trim().slice(0, 160)}` : (status ? `酒馆回的是 HTTP ${status}` : '请求没有发出去');
+        try {
+            alertFn(`兔子镜没删干净（${reason}）。\n\n酒馆照样会说「已删除」并刷新网页，但兔子镜的文件夹可能还留着一部分：这时再安装会提示「Directory already exists」（目录已存在），装不上。\n\n请${leftoverDeleteHint(folder)}`);
+        }
+        catch { }
+    };
+    const watcher = async function rabbitMirrorDeleteWatcher(input, init) {
+        if (done)
+            return original.apply(this, arguments);
+        const body = deleteRequestFor(input, init);
+        if (!body || !sameFolderName(body.extensionName, folder))
+            return original.apply(this, arguments);
+        release();
+        let response;
+        try {
+            response = await original.apply(this, arguments);
+        }
+        catch (error) {
+            report(0, String(error?.message || error || ''));
+            throw error;
+        }
+        try {
+            if (response?.ok)
+                writeDeleteMark({ ...mark, ok: true });
+            else {
+                let text = '';
+                try {
+                    text = await response.clone().text();
+                }
+                catch { }
+                report(Number(response?.status) || 0, text);
+            }
+        }
+        catch { }
+        return response;
+    };
+    const timer = setTimeout(release, timeoutMs);
+    try {
+        globalThis.fetch = watcher;
+    }
+    catch {
+        release();
+    }
+    return mark;
+}
+export function clearRabbitMirrorDeleteMark() { writeDeleteMark(null); }
+export function checkRabbitMirrorLeftoverAfterDelete({ now = Date.now(), pageStartedAt = globalThis.performance?.timeOrigin ?? 0, evaluatedAt = EVALUATED_AT } = {}) {
+    const mark = readDeleteMark();
+    if (!mark)
+        return null;
+    const age = now - Number(mark.at || 0);
+    if (!(age >= 0) || age > DELETE_MARK_TTL_MS) {
+        writeDeleteMark(null);
+        return null;
+    }
+    if (pageStartedAt && pageStartedAt < Number(mark.at || 0))
+        return null;
+    writeDeleteMark(null);
+    const reloadedRightAfter = !pageStartedAt || pageStartedAt - Number(mark.at || 0) <= DELETE_RELOAD_WINDOW_MS;
+    const loadedAtStartup = Number(evaluatedAt) <= STARTUP_LOAD_WINDOW_MS;
+    if (!reloadedRightAfter || !loadedAtStartup)
+        return { kind: 'stale' };
+    const folder = selfFolderName();
+    let kind = '';
+    if (!sameFolderName(mark.folder, folder))
+        kind = 'other-copy';
+    else if (mark.ok === false || mark.ok === undefined)
+        kind = 'leftover';
+    else
+        kind = 'same-name-copy';
+    if (disposed)
+        return { kind };
+    const failed = mark.ok === false;
+    const lines = kind === 'other-copy'
+        ? [`刚才删掉的是「${mark.folder}」，但还有一份兔子镜装在「${folder}」，所以刷新后兔子镜还在。`, '要彻底删掉的话，在「管理扩展」里把这一份也删掉。',
+            ...(failed ? [`另外，刚才删「${mark.folder}」也没删干净${mark.status ? `（HTTP ${mark.status}）` : ''}，它的文件夹可能还在，重新安装会提示「Directory already exists」（目录已存在）；还是删不掉的话，` + leftoverDeleteHint(mark.folder)] : [])]
+        : kind === 'same-name-copy'
+            ? ['刚才在「管理扩展」里删掉了兔子镜，酒馆也说删好了，但刷新后兔子镜还在：可能还有一份同名的兔子镜（比如「给所有用户安装」的那一份）。', '要彻底删掉，用管理员账号在「管理扩展」里再删一次。']
+            : [`刚才在「管理扩展」里删除兔子镜没删干净${mark.status ? `（HTTP ${mark.status}${mark.text ? `：${String(mark.text).slice(0, 80)}` : ''}）` : ''}，兔子镜的文件夹还在，所以刷新后它又加载了。`,
+                '这时重新安装会提示「Directory already exists」（目录已存在）。可以在「管理扩展」里再删一次；还是删不掉的话，' + leftoverDeleteHint(folder)];
+    showNotice({ title: '兔子镜', lines, actions: [copyAction(`删除后还在：${kind}${mark.status ? ` HTTP ${mark.status}` : ''}`), closeAction] });
+    return { kind };
 }
 export function disposeRabbitMirrorStartupGuard() {
     disposed = true;
