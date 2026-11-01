@@ -1,16 +1,16 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.13.0";
-import { getSettings } from './settings.js?rmv=2.13.0';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.13.0';
-import { imageBackendName } from './imageBackendName.js?rmv=2.13.0';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.13.0';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=2.13.0';
-import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.13.0';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.13.0';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.13.0';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=2.13.0';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.13.0';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.13.0';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.13.0';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.13.1";
+import { getSettings } from './settings.js?rmv=2.13.1';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.13.1';
+import { imageBackendName } from './imageBackendName.js?rmv=2.13.1';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.13.1';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=2.13.1';
+import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.13.1';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.13.1';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.13.1';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=2.13.1';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.13.1';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.13.1';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.13.1';
 const inflight = new Map();
 const waiters = new Map();
 const progress = new Map();
@@ -1157,7 +1157,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
     }
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.0');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.1');
     const merged = people.map(person => ({ ...person }));
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
     for (const name of pending) {
@@ -1254,7 +1254,7 @@ function readWorldCast(names) {
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000)
         return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.13.0'), import('./independentApi/connection.js?rmv=2.13.0')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.13.1'), import('./independentApi/connection.js?rmv=2.13.1')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1272,7 +1272,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
         throw Object.assign(new Error(__rmT("lG.pz2TnT_Yo4if1")), { name: 'AbortError', code: 'aborted' });
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.0');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.1');
     const merged = people.map(person => ({ ...person }));
     let others = names;
     try {
@@ -1315,9 +1315,17 @@ function drawnLooksPeople(metadata) {
 export function drawnCharactersFor(metadata = chatMetadataNow()) {
     return Object.entries(drawnLooksPeople(metadata)).map(([name, entry]) => ({ name, looks: String(entry?.looks || '') })).filter(person => person.name && person.looks);
 }
-function drawnLooksOnly(text) {
+const HAIRSTYLE_KIND = SCENE_KINDS.find(kind => kind.name === 'hairstyle');
+function drawnLooksOnly(text, tagsOnly = false) {
+    const source = String(text || '');
+    if (tagsOnly || (!/[\u3400-\u9fff]/.test(source) && /,/.test(source))) {
+        return source.split(',').map(part => part.trim()).filter(part => part && !part.includes('#')
+            && (tagTraits(part).length || HAIRSTYLE_KIND?.tag.test(part) || LOOK_FIELD_TESTS.some(([field, test]) => field !== 'gender' && test(part))))
+            .join(', ').slice(0, 400);
+    }
     const clothing = SCENE_KINDS.filter(kind => kind.name === 'clothing');
-    return withoutSceneText(String(text || ''), clothing).replace(/\s{2,}/g, ' ').trim().slice(0, 400);
+    const kept = splitLookClauses(source).filter(clause => lookFieldsOf(clause).length || (HAIRSTYLE_KIND && hasKindText(HAIRSTYLE_KIND, clause)));
+    return withoutSceneText(kept.join(__rmT("Yis")), clothing).replace(/\s{2,}/g, ' ').trim().slice(0, 400);
 }
 export function rememberDrawnLooks(people, tagsOnly, metadata) {
     if (!metadata || typeof metadata !== 'object' || getSettings().imageLooksDrawn === false)
@@ -1326,7 +1334,7 @@ export function rememberDrawnLooks(people, tagsOnly, metadata) {
     let changed = false;
     for (const person of Array.isArray(people) ? people : []) {
         const name = String(person?.name || '').trim().slice(0, 40);
-        const looks = drawnLooksOnly(tagsOnly ? (person.tag || person.text) : (person.nl || person.text || person.tag));
+        const looks = drawnLooksOnly(tagsOnly ? (person.tag || person.text) : (person.nl || person.text || person.tag), tagsOnly);
         if (!name || !looks)
             continue;
         const entry = book.people[name];
@@ -1339,7 +1347,7 @@ export function rememberDrawnLooks(people, tagsOnly, metadata) {
         }
         const held = { name, text: String(entry.looks || ''), modelTag: '', looksFields: [...lookFieldsOfText(String(entry.looks || ''), name)] };
         if ((tagsOnly ? fillTagLooksFrom : fillLooksFrom)(held, looks, __rmT("xbBcjmCR")) && held.text && held.text !== entry.looks) {
-            book.people[name] = { looks: drawnLooksOnly(held.text), at: Number(entry.at) || Date.now() };
+            book.people[name] = { looks: drawnLooksOnly(held.text, tagsOnly), at: Number(entry.at) || Date.now() };
             changed = true;
         }
     }
@@ -1488,7 +1496,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         let cleanRef = value => value;
         try {
-            cleanRef = (await import('./independentApi/connection.js?rmv=2.13.0')).stripExcludedTagsFromReference;
+            cleanRef = (await import('./independentApi/connection.js?rmv=2.13.1')).stripExcludedTagsFromReference;
         }
         catch { }
         for (const person of myriad) {
