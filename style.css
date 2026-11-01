@@ -2382,3 +2382,122 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-sw
 @keyframes rm-ready-chip-in{ from{ opacity:0; transform:translate(-50%, 10px); } to{ opacity:1; transform:translate(-50%, 0); } }
 @keyframes rm-ready-chip-out{ from{ opacity:1; transform:translate(-50%, 0); } to{ opacity:0; transform:translate(-50%, 8px); } }
 @media (prefers-reduced-motion: reduce){ [data-rm-ready-chip], [data-rm-ready-chip][data-rm-leaving="true"]{ animation:none !important; } }
+
+[data-rm-continue-chooser]{
+  --rmc-ink: var(--rh-text, var(--SmartThemeBodyColor, #e6e4dd));
+  --rmc-accent: var(--rh-primary, var(--SmartThemeQuoteColor, #c98bb0));
+  --rmc-soft: color-mix(in srgb, var(--rmc-ink) 62%, transparent);
+  --rmc-line: color-mix(in srgb, var(--rmc-ink) 17%, transparent);
+  --rmc-fill: color-mix(in srgb, var(--rmc-ink) 5%, transparent);
+  box-sizing: border-box;
+  padding: 14px 14px 0;
+  border: 1px solid var(--rmc-line);
+  border-radius: 16px;
+  background-color: var(--rh-card, var(--SmartThemeBlurTintColor, rgba(30, 33, 44, .96)));
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  backdrop-filter: blur(16px) saturate(1.15);
+  color: var(--rmc-ink);
+  box-shadow: 0 22px 48px -18px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .12);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+[data-rm-continue-chooser] *{ box-sizing: border-box; }
+[data-rm-continue-chooser] .rmc-title{ font-size: 16px; font-weight: 700; letter-spacing: .02em; }
+[data-rm-continue-chooser] .rmc-sub{ margin-top: 2px; font-size: 12px; color: var(--rmc-soft); }
+
+[data-rm-continue-chooser] .rmc-quote[hidden]{ display: none; }
+[data-rm-continue-chooser] .rmc-quote{
+  margin: 10px 0 12px;
+  padding: 1px 0 1px 11px;
+  border-left: 2px solid var(--rmc-accent);
+  color: var(--rmc-soft);
+  font-size: 13px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+[data-rm-continue-chooser] .rmc-caret{
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 3px;
+  vertical-align: -.2em;
+  border-radius: 1px;
+  background: var(--rmc-accent);
+  animation: rmc-caret 1.2s steps(1) infinite;
+}
+@keyframes rmc-caret{ 50%{ opacity: 0; } }
+[data-rm-continue-chooser] .rmc-label{ display: block; margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--rmc-soft); }
+
+[data-rm-continue-chooser] .rmc-paper{
+  display: block;
+  width: 100%;
+  min-height: 172px;
+  max-height: 46vh;
+  margin: 0;
+  padding: 2px 12px 0;
+  border: 1px solid var(--rmc-line);
+  border-radius: 12px;
+  resize: vertical;
+  outline: none;
+  background-color: var(--rmc-fill);
+  background-image: linear-gradient(to bottom, transparent 27px, var(--rmc-line) 27px, var(--rmc-line) 28px);
+  background-size: 100% 28px;
+  background-position: 0 2px;
+  background-attachment: local;
+  color: var(--rmc-ink);
+  -webkit-text-fill-color: currentColor;
+  font: inherit;
+  font-size: 14px;
+  line-height: 28px;
+  box-shadow: none;
+}
+[data-rm-continue-chooser] .rmc-paper::placeholder{ color: var(--rmc-soft); opacity: .8; }
+[data-rm-continue-chooser] .rmc-paper:focus-visible{ border-color: var(--rmc-accent); }
+[data-rm-continue-chooser] .rmc-count{ margin: 4px 2px 0; font-size: 11px; color: var(--rmc-soft); text-align: right; font-variant-numeric: tabular-nums; }
+
+[data-rm-continue-chooser] .rmc-actions{
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  margin: 14px -14px 0;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--rmc-line);
+  background-color: var(--rh-card, var(--SmartThemeBlurTintColor, rgba(30, 33, 44, .96)));
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+[data-rm-continue-chooser] .rmc-go{
+  flex: 1;
+  min-height: 44px;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--rmc-ink);
+
+  color: var(--rh-card, var(--SmartThemeBlurTintColor, #1e212c));
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+[data-rm-continue-chooser] .rmc-cancel{
+  min-height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border: 1px solid var(--rmc-line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--rmc-ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+[data-rm-continue-chooser] button:focus-visible{ outline: 2px solid var(--rmc-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce){
+  [data-rm-continue-chooser] .rmc-caret{ animation: none; }
+}
