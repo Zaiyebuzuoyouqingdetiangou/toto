@@ -1,17 +1,18 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.9.2";
-import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.9.2';
-import { presentationModeFields } from '../presentationMode.js?rmv=2.9.2';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.9.2';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.9.2';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.9.2';
-import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, } from '../swipeVersions.js?rmv=2.9.2';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.9.2';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.9.2';
-import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.9.2';
-import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, } from './connection.js?rmv=2.9.2';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.9.2';
-import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.9.2';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.9.2';
+import { rmT as __rmT } from "../textTable.js?rmv=2.10.0";
+import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.10.0';
+import { presentationModeFields } from '../presentationMode.js?rmv=2.10.0';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.10.0';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.10.0';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.10.0';
+import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, } from '../swipeVersions.js?rmv=2.10.0';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.10.0';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.10.0';
+import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.10.0';
+import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.10.0';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.10.0';
+import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.10.0';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.10.0';
+import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.10.0';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 export const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 export const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -33,21 +34,10 @@ export const INDEPENDENT_MAX_CSS_CHARS = 160000;
 export const INDEPENDENT_MAX_CSS_RULES = 1400;
 export const INDEPENDENT_MAX_DATA_URI_CHARS = 192000;
 let storageWarningShown = false;
-const sessionChatOwners = new WeakMap();
-function sessionOwners(ctx, create = false) {
-    const chat = ctx?.chat;
-    if (!Array.isArray(chat))
-        return null;
-    const key = chatKey(ctx);
-    let entry = sessionChatOwners.get(chat);
-    if (entry?.key !== key) {
-        if (!create)
-            return null;
-        entry = { key, owners: {} };
-        sessionChatOwners.set(chat, entry);
-    }
-    return entry.owners;
-}
+const UNSAVED_SHELF_KEY = 'rabbit_mirror_unsaved_shelf_v1';
+const UNSAVED_SHELF_MAX = 4;
+const LOCAL_TO_ARCHIVE_MIGRATION_KEY = 'rabbit_mirror_local_to_archive_migrated_v1';
+const MEMORY_OUTPUT_LIMIT = 160;
 export function independentRecordWithinBudget(value) {
     if (!value?.html)
         return false;
@@ -97,21 +87,107 @@ function copyStoredSlots(slots) {
     }
     return out;
 }
-export function readStore() {
+function legacyOutputStore() {
     try {
         const v = parseStoredJson(STORE_KEY, localStorage.getItem(STORE_KEY) || '{}');
-        if (v === STORED_JSON_INVALID || !v || typeof v !== 'object')
+        if (v === STORED_JSON_INVALID || !v || typeof v !== 'object' || Array.isArray(v))
             return {};
-        if (Array.isArray(v))
-            return v.map(copyStoredEntry);
-        const out = { ...v };
-        for (const key of Object.keys(out))
-            out[key] = copyStoredEntry(out[key]);
-        return out;
+        return v;
     }
     catch {
         return {};
     }
+}
+const memoryOutputs = new Map();
+const OUTPUT_TOMBSTONE = Symbol('rabbitMirror.removedOutput');
+function readUnsavedShelf() {
+    const out = new Map();
+    try {
+        const raw = globalThis.sessionStorage?.getItem(UNSAVED_SHELF_KEY) || '';
+        if (!raw)
+            return out;
+        const parsed = parseStoredJson(UNSAVED_SHELF_KEY, raw);
+        if (parsed === STORED_JSON_INVALID)
+            return out;
+        for (const [slot, record] of Object.entries(parsed && typeof parsed === 'object' ? parsed : {}))
+            if (record?.html)
+                out.set(slot, record);
+    }
+    catch { }
+    return out;
+}
+function writeUnsavedShelf(map) {
+    try {
+        if (!map.size) {
+            globalThis.sessionStorage?.removeItem(UNSAVED_SHELF_KEY);
+            return true;
+        }
+        globalThis.sessionStorage?.setItem(UNSAVED_SHELF_KEY, JSON.stringify(Object.fromEntries(map)));
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function shelfPut(slot, record) {
+    if (!slot || !record?.html)
+        return false;
+    const shelf = readUnsavedShelf();
+    const current = { ...record };
+    delete current.faceSwipes;
+    shelf.delete(slot);
+    shelf.set(slot, current);
+    while (shelf.size > UNSAVED_SHELF_MAX)
+        shelf.delete(shelf.keys().next().value);
+    if (writeUnsavedShelf(shelf))
+        return true;
+    while (shelf.size > 1) {
+        shelf.delete(shelf.keys().next().value);
+        if (writeUnsavedShelf(shelf))
+            return true;
+    }
+    return false;
+}
+function shelfDrop(match) {
+    const shelf = readUnsavedShelf();
+    if (!shelf.size)
+        return;
+    let changed = false;
+    for (const [slot, record] of shelf) {
+        if (typeof match === 'function' ? match(slot, record) : slot === match) {
+            shelf.delete(slot);
+            changed = true;
+        }
+    }
+    if (changed)
+        writeUnsavedShelf(shelf);
+}
+function putOwn(out, key, item) {
+    Object.defineProperty(out, key, { value: item, writable: true, enumerable: true, configurable: true });
+}
+export function readStore() {
+    const out = {};
+    try {
+        for (const [key, item] of Object.entries(legacyOutputStore()))
+            if (item && typeof item === 'object')
+                putOwn(out, key, item);
+    }
+    catch { }
+    try {
+        for (const [key, item] of readUnsavedShelf())
+            if (!Object.hasOwn(out, key) || Number(item.ts || 0) > Number(out[key].ts || 0))
+                putOwn(out, key, item);
+    }
+    catch { }
+    for (const [key, item] of memoryOutputs) {
+        if (item === OUTPUT_TOMBSTONE)
+            delete out[key];
+        else
+            putOwn(out, key, item);
+    }
+    for (const key of Object.keys(out))
+        putOwn(out, key, copyStoredEntry(out[key]));
+    return out;
 }
 try {
     globalThis.__rabbitMirrorReadOutputStore = readStore;
@@ -121,16 +197,137 @@ function parseSlotKey(slot) {
     const match = /^(.+):(\d+):(\d+):([0-9a-z]+)$/.exec(String(slot || ''));
     return match ? { chat: match[1], index: Number(match[2]), swipe: Number(match[3]), sourceHash: match[4] } : null;
 }
-function rawOwnerForKey(ctx, index, swipe) {
+function messageForOwner(ctx, index, msg) {
+    const real = Array.isArray(ctx?.chat) ? ctx.chat[Number(index)] : null;
+    if (msg && typeof msg === 'object' && typeof msg.mes === 'string') {
+        if (real && real !== msg && typeof real === 'object' && real.mes === msg.mes && swipeId(real) === swipeId(msg))
+            return real;
+        return msg;
+    }
+    return real && typeof real === 'object' ? real : (msg && typeof msg === 'object' ? msg : null);
+}
+function legacyOwnerRaw(ctx, index, swipe) {
     const key = chatOwnerKey(index, swipe);
     if (!key)
         return null;
     const raw = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
-    const session = sessionOwners(ctx)?.[key];
-    if (raw?.deleted === true || session?.deleted === true)
-        return { deleted: true };
-    const newest = session && (!raw || Number(session.ts || 0) >= Number(raw.ts || 0)) ? session : raw;
-    return newest && typeof newest === 'object' ? newest : null;
+    return raw && typeof raw === 'object' ? raw : null;
+}
+function swipeBodyFingerprint(msg, swipe) {
+    const current = swipeId(msg);
+    if (Number(swipe) !== current && Array.isArray(msg?.swipes) && typeof msg.swipes[swipe] === 'string')
+        return hashText(msg.swipes[swipe]);
+    return messageSourceFingerprint(msg);
+}
+function recordFitsMessage(record, msg, swipe = swipeId(msg), { cell = false } = {}) {
+    if (!record || typeof record !== 'object' || !msg)
+        return false;
+    const body = swipeBodyFingerprint(msg, swipe);
+    if (record.deleted === true) {
+        const hash = String(record.sourceHash || '');
+        return hash ? hash === body : !cell;
+    }
+    if (String(record.sourceHash || '') === body || String(record.bodyHash || '') === body)
+        return true;
+    const lineage = copyIndependentOwnerLineage(record.ownerLineage);
+    const marker = Number(swipe) === swipeId(msg) ? msg?.extra?.rabbitMirrorOwnerLineage : null;
+    return !!lineage && lineage.acceptedBodyHash === body && (!marker || (marker.revoked !== true && marker.id === lineage.id));
+}
+function inheritedCell(real, swipe, cell) {
+    if (!cell || typeof cell !== 'object')
+        return false;
+    const index = Number(swipe);
+    if (recordFitsMessage(cell, real, index, { cell: true }))
+        return false;
+    const sourceHash = String(cell.sourceHash || '');
+    const same = other => cell.deleted === true
+        ? other?.deleted === true && String(other.sourceHash || '') === sourceHash
+        : other?.deleted !== true && other?.html === cell.html && String(other?.sourceHash || '') === sourceHash;
+    return messageRecordSwipes(real).some(other => other.swipe !== index && same(other.value)
+        && (other.swipe < index || recordFitsMessage(other.value, real, other.swipe, { cell: true })));
+}
+function swipePending(real, swipe) {
+    if (!real || !Array.isArray(real.swipes) || !real.swipes.length)
+        return false;
+    const index = Number(swipe);
+    return index === swipeId(real) && index > 0 && index >= real.swipes.length;
+}
+function runtimeBefore(runtime, target) {
+    const parse = value => String(value || '').trim().split('.').map(part => parseInt(part, 10));
+    const a = parse(runtime), b = parse(target);
+    if (!a.length || a.some(part => !Number.isFinite(part)))
+        return true;
+    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+        const x = a[i] || 0, y = b[i] || 0;
+        if (x !== y)
+            return x < y;
+    }
+    return false;
+}
+const MESSAGE_CELL_RUNTIME = '2.10.0';
+function deletedMarkerOf(raw, fallbackHash = '') {
+    return { deleted: true, ts: Number(raw?.ts || 0), runtime: String(raw?.runtime || RUNTIME_VERSION), sourceHash: String(raw?.sourceHash || fallbackHash || '') };
+}
+function markLegacyOwnerDeleted(ctx, index, swipe, marker) {
+    const metadata = chatMetadataObject(ctx);
+    const key = chatOwnerKey(index, swipe);
+    if (!metadata || !key)
+        return false;
+    let state = metadata[CHAT_OUTPUT_METADATA_KEY];
+    if (!state || typeof state !== 'object' || !state.owners || typeof state.owners !== 'object')
+        state = emptyChatOutputMetadata();
+    if (state.owners[key]?.deleted === true)
+        return false;
+    state.version = CHAT_OUTPUT_METADATA_SCHEMA;
+    state.owners[key] = deletedMarkerOf(marker);
+    metadata[CHAT_OUTPUT_METADATA_KEY] = state;
+    return true;
+}
+function retargetCellLineage(ctx, real, index, swipe, cell) {
+    const lineage = cell?.ownerLineage;
+    if (!lineage || typeof lineage !== 'object' || cell.deleted === true)
+        return cell;
+    let key = '';
+    try {
+        key = chatKey(ctx);
+    }
+    catch {
+        key = '';
+    }
+    if (lineage.mesid === Number(index) && lineage.swipe === Number(swipe) && (!key || lineage.chatKey === key))
+        return cell;
+    const next = { ...cell, ownerLineage: { ...lineage, mesid: Number(index), swipe: Number(swipe), ...(key ? { chatKey: key } : {}) } };
+    writeMessageRecord(real, swipe, next);
+    return next;
+}
+function ownerCell(ctx, index, swipe, msg = null) {
+    const real = messageForOwner(ctx, index, msg);
+    if (swipePending(real, swipe))
+        return null;
+    let cell = real ? readMessageRecord(real, swipe) : undefined;
+    if (cell !== undefined && inheritedCell(real, swipe, cell)) {
+        writeMessageRecord(real, swipe, null);
+        cell = undefined;
+    }
+    const legacy = legacyOwnerRaw(ctx, index, swipe);
+    const legacyNewer = !!legacy && !!real && !!cell && typeof cell === 'object' && runtimeBefore(legacy.runtime, MESSAGE_CELL_RUNTIME)
+        && Number(legacy.ts || 0) > Number(cell.ts || 0) && recordFitsMessage(legacy, real, swipe);
+    if (cell !== undefined && !legacyNewer)
+        return cell && typeof cell === 'object' ? { value: retargetCellLineage(ctx, real, index, swipe, cell), source: 'message' } : null;
+    if (!legacy)
+        return null;
+    if (real && recordFitsMessage(legacy, real, swipe)) {
+        const value = legacy.deleted === true ? deletedMarkerOf(legacy, swipeBodyFingerprint(real, swipe)) : compactChatPersistedRecord(legacy);
+        if (value && writeMessageRecord(real, swipe, value))
+            return { value: retargetCellLineage(ctx, real, index, swipe, value), source: 'message' };
+    }
+    return { value: legacy, source: 'legacy' };
+}
+function rawOwnerForKey(ctx, index, swipe) {
+    const cell = ownerCell(ctx, index, swipe);
+    if (!cell)
+        return null;
+    return cell.value.deleted === true ? { deleted: true } : cell.value;
 }
 function cacheCoverage(ctx, slot, record) {
     const parsed = parseSlotKey(slot);
@@ -291,7 +488,7 @@ function coveredStorageStats() {
     }
     catch { }
     try {
-        for (const [slot, entries] of Object.entries(readHistoryStore().slots || {}))
+        for (const [slot, entries] of Object.entries(legacyHistoryStore().slots || {}))
             for (const entry of (Array.isArray(entries) ? entries : []))
                 visit(slot, entry);
     }
@@ -306,7 +503,7 @@ catch { }
 function trimHistoryForQuota() {
     let history;
     try {
-        history = readHistoryStore();
+        history = legacyHistoryStore();
     }
     catch {
         return false;
@@ -349,7 +546,7 @@ catch { }
 function freeHistoryRoomFor(serialized) {
     let history;
     try {
-        history = readHistoryStore();
+        history = legacyHistoryStore();
     }
     catch {
         return false;
@@ -392,6 +589,116 @@ function freeHistoryRoomFor(serialized) {
     return false;
 }
 export function writeStore(v) {
+    const current = readStore();
+    const next = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    for (const [key, item] of Object.entries(next))
+        if (item && typeof item === 'object')
+            memoryOutputs.set(key, { ...item });
+    for (const key of Object.keys(current))
+        if (!Object.prototype.hasOwnProperty.call(next, key))
+            memoryOutputs.set(key, OUTPUT_TOMBSTONE);
+    if (memoryOutputs.size > MEMORY_OUTPUT_LIMIT)
+        trimMemoryOutputs();
+    return true;
+}
+function trimMemoryOutputs() {
+    let hidden = null;
+    try {
+        const shelf = readUnsavedShelf();
+        const legacy = legacyOutputStore();
+        hidden = key => shelf.has(key) || Object.prototype.hasOwnProperty.call(legacy, key);
+    }
+    catch {
+        hidden = null;
+    }
+    if (hidden)
+        for (const [key, item] of [...memoryOutputs])
+            if (item === OUTPUT_TOMBSTONE && !hidden(key))
+                memoryOutputs.delete(key);
+    const entries = [...memoryOutputs].filter(([, item]) => item !== OUTPUT_TOMBSTONE).sort((a, b) => Number(a[1]?.ts || 0) - Number(b[1]?.ts || 0));
+    for (const [key, item] of entries) {
+        if (memoryOutputs.size <= MEMORY_OUTPUT_LIMIT)
+            break;
+        if (independentRecordDurable(key, item))
+            memoryOutputs.delete(key);
+    }
+}
+function legacyOutputHas(slot, record) {
+    try {
+        const local = legacyOutputStore()[slot];
+        return !!local?.html && String(local.html) === String(record?.html || '') && String(local.sourceHash || '') === String(record?.sourceHash || '');
+    }
+    catch {
+        return false;
+    }
+}
+export function independentRecordDurable(slot, record) {
+    if (!record?.html)
+        return false;
+    const parsed = parseSlotKey(slot);
+    const base = parsed ? `${parsed.chat}:${parsed.index}:${parsed.swipe}` : faceSwipeStorageSlot(String(slot || ''));
+    if (base && faceSwipeArchiveRecordStored(base, record))
+        return true;
+    if (legacyOutputHas(slot, record))
+        return true;
+    if (parsed) {
+        let ctx = null;
+        try {
+            ctx = getContext();
+        }
+        catch {
+            ctx = null;
+        }
+        let mine = false;
+        try {
+            mine = !!ctx && (parsed.chat === chatKey(ctx) || parsed.chat === legacyChatKey(ctx));
+        }
+        catch {
+            mine = false;
+        }
+        const msg = mine ? ctx.chat?.[parsed.index] : null;
+        if (msg && swipeId(msg) === parsed.swipe && savedInChatFile(ctx, parsed.index, msg, record.html, String(record.sourceHash || '')))
+            return true;
+    }
+    return false;
+}
+function persistOutputFallback(slot, record) {
+    if (!slot || !record?.html)
+        return false;
+    let legacy = {};
+    try {
+        const parsed = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+            legacy = parsed;
+    }
+    catch {
+        legacy = {};
+    }
+    const current = { ...record };
+    delete current.faceSwipes;
+    legacy[slot] = current;
+    return writeLocalOutputs(legacy);
+}
+function dropLegacyOutputs(match) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+            return false;
+        let changed = false;
+        for (const slot of Object.keys(parsed))
+            if (match(slot)) {
+                delete parsed[slot];
+                changed = true;
+            }
+        if (changed)
+            localStorage.setItem(STORE_KEY, JSON.stringify(parsed));
+        return changed;
+    }
+    catch {
+        return false;
+    }
+}
+function writeLocalOutputs(v) {
     const compacted = compactOutputStore(v);
     if (!compacted) {
         warnStorageTrimmed();
@@ -454,14 +761,45 @@ export function writeStore(v) {
     }
 }
 function emptyHistoryStore() { return { version: 1, slots: {} }; }
-export function readHistoryStore() {
+function legacyHistoryStore() {
     try {
         const parsed = parseStoredJson(HISTORY_STORE_KEY, localStorage.getItem(HISTORY_STORE_KEY) || 'null');
         if (parsed !== STORED_JSON_INVALID && parsed && typeof parsed === 'object' && parsed.slots && typeof parsed.slots === 'object')
-            return { ...parsed, slots: copyStoredSlots(parsed.slots) };
+            return parsed;
     }
     catch { }
     return emptyHistoryStore();
+}
+const memoryHistory = new Map();
+export function readHistoryStore() {
+    const legacy = legacyHistoryStore();
+    const slots = { ...(legacy.slots || {}) };
+    for (const [slot, entries] of memoryHistory) {
+        if (entries.length)
+            putOwn(slots, slot, entries);
+        else
+            delete slots[slot];
+    }
+    return { version: 1, slots: copyStoredSlots(slots) };
+}
+function dropLegacyHistory(match) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(HISTORY_STORE_KEY) || 'null');
+        if (!parsed?.slots || typeof parsed.slots !== 'object')
+            return false;
+        let changed = false;
+        for (const slot of Object.keys(parsed.slots))
+            if (match(slot)) {
+                delete parsed.slots[slot];
+                changed = true;
+            }
+        if (changed)
+            localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(parsed));
+        return changed;
+    }
+    catch {
+        return false;
+    }
 }
 function compactHistoryStore(value) {
     const normalized = value && typeof value === 'object' ? value : emptyHistoryStore();
@@ -518,32 +856,14 @@ function compactHistoryStore(value) {
     return next;
 }
 function writeHistoryStore(value) {
-    const compacted = compactHistoryStore(value);
-    try {
-        localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(compacted));
-        return true;
-    }
-    catch {
-        const flattened = [];
-        for (const [slot, entries] of Object.entries(compacted.slots || {}))
-            for (const entry of entries)
-                flattened.push({ slot, entry });
-        flattened.sort((a, b) => Number(b.entry?.ts || 0) - Number(a.entry?.ts || 0));
-        while (flattened.length > 1) {
-            flattened.pop();
-            const retry = emptyHistoryStore();
-            for (const { slot, entry } of flattened)
-                (retry.slots[slot] || (retry.slots[slot] = [])).push(entry);
-            try {
-                localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(retry));
-                warnStorageTrimmed();
-                return true;
-            }
-            catch { }
-        }
-        warnStorageTrimmed();
-        return false;
-    }
+    const current = readHistoryStore();
+    const next = value && typeof value === 'object' && value.slots && typeof value.slots === 'object' ? value.slots : {};
+    for (const [slot, entries] of Object.entries(next))
+        memoryHistory.set(slot, (Array.isArray(entries) ? entries : []).map(copyStoredEntry));
+    for (const slot of Object.keys(current.slots || {}))
+        if (!Object.prototype.hasOwnProperty.call(next, slot))
+            memoryHistory.set(slot, []);
+    return true;
 }
 export function normalizeHistoryEntry(value) {
     if (!independentRecordWithinBudget(value))
@@ -583,11 +903,33 @@ export function appendHistoryEntry(slot, value) {
             delete store.slots[key];
     }
     writeHistoryStore(store);
+    void saveHistoryArchive(slot, store.slots[slot] || [entry]).catch(() => { });
     return entry;
 }
 export function historyEntriesForSlot(slot) {
     const list = readHistoryStore().slots?.[slot];
     return (Array.isArray(list) ? list : []).map(normalizeHistoryEntry).filter(Boolean).sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+}
+export async function loadArchivedHistoryEntries(slots = []) {
+    const wanted = [...new Set((Array.isArray(slots) ? slots : []).map(String).filter(Boolean))];
+    if (!wanted.length)
+        return false;
+    let changed = false;
+    const loaded = await Promise.all(wanted.map(slot => Promise.resolve().then(() => loadHistoryArchive(slot)).catch(() => null)));
+    for (const [position, slot] of wanted.entries()) {
+        const rows = loaded[position];
+        if (!Array.isArray(rows) || !rows.length)
+            continue;
+        const current = historyEntriesForSlot(slot);
+        const ids = new Set(current.map(entry => entry.id));
+        const extra = rows.map(normalizeHistoryEntry).filter(entry => entry && !ids.has(entry.id));
+        if (!extra.length)
+            continue;
+        const merged = [...current, ...extra].sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0)).slice(-10);
+        memoryHistory.set(slot, merged);
+        changed = true;
+    }
+    return changed;
 }
 function remountIndependentFaceFromHtml(identity, html, faceIndex) {
     const host = identity?.host;
@@ -863,10 +1205,20 @@ function chatOwnerPending(ctx, ownerKey) {
     return !!state && (state.allGen !== state.savedGen || state.pending.has(ownerKey));
 }
 function chatOwnerConfirmedInFile(ctx, ownerKey, owner) {
-    if (!ownerKey)
+    const parsed = parseChatOwnerKey(ownerKey);
+    if (!parsed)
         return false;
-    const raw = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[ownerKey];
-    if (!raw || (owner && raw !== owner && String(raw.html || '') !== String(owner.html || '')))
+    const copies = [];
+    const real = messageForOwner(ctx, parsed.index, null);
+    const cell = real ? readMessageRecord(real, parsed.swipe) : undefined;
+    if (cell && typeof cell === 'object')
+        copies.push(cell);
+    const legacy = legacyOwnerRaw(ctx, parsed.index, parsed.swipe);
+    if (legacy)
+        copies.push(legacy);
+    if (!copies.length)
+        return false;
+    if (owner && !copies.some(raw => raw === owner || String(raw.html || '') === String(owner.html || '')))
         return false;
     return !chatOwnerPending(ctx, ownerKey);
 }
@@ -895,11 +1247,108 @@ function confirmChatSave(request, snapshot) {
         state.savedGen = snapshot.allGen;
     if (Object.keys(saved).length) {
         try {
+            shelfDrop(slot => Object.prototype.hasOwnProperty.call(saved, slot));
+        }
+        catch { }
+        try {
             clearSavedIndependentOutputNotices({ ...readStore(), ...saved });
         }
         catch { }
     }
     return true;
+}
+export function independentHistoryDurable(base, states) {
+    if (faceSwipeSnapshotStored(base, states))
+        return true;
+    const match = /^(.+):(\d+):(\d+)$/.exec(String(base || ''));
+    if (!match)
+        return false;
+    let ctx = null;
+    try {
+        ctx = getContext();
+    }
+    catch {
+        ctx = null;
+    }
+    let mine = false;
+    try {
+        mine = !!ctx && (match[1] === chatKey(ctx) || match[1] === legacyChatKey(ctx));
+    }
+    catch {
+        mine = false;
+    }
+    if (!mine)
+        return false;
+    const index = Number(match[2]), swipe = Number(match[3]);
+    const copies = fileCopiesForOwner(ctx, index, { swipe_id: swipe });
+    if (!copies.length || copies[0].deleted === true || chatOwnerPending(ctx, chatOwnerKey(index, swipe)))
+        return false;
+    const want = Object.entries(states || {}).map(([face, state]) => [face, JSON.stringify(compactSwipeState(state))]);
+    return copies.some(raw => want.every(([face, signature]) => JSON.stringify(compactSwipeState(raw.faceSwipes?.[face])) === signature));
+}
+export async function migrateLocalStoresToArchive() {
+    if (!globalThis.indexedDB || typeof localStorage === 'undefined')
+        return false;
+    try {
+        if (localStorage.getItem(LOCAL_TO_ARCHIVE_MIGRATION_KEY) === '1')
+            return false;
+    }
+    catch {
+        return false;
+    }
+    let complete = true;
+    try {
+        for (const [slot, record] of Object.entries(legacyOutputStore())) {
+            const parsed = parseSlotKey(slot);
+            if (!parsed || !record?.html || !independentRecordWithinBudget(record))
+                continue;
+            const base = `${parsed.chat}:${parsed.index}:${parsed.swipe}`;
+            let row = null;
+            try {
+                row = await loadFaceSwipeArchive(base);
+            }
+            catch {
+                row = null;
+            }
+            if (row?.record && (row.record.deleted === true || Number(row.record.ts || 0) >= Number(record.ts || 0)))
+                continue;
+            if (row?.record && String(row.record.sourceHash || row.record.bodyHash || '') !== String(record.sourceHash || parsed.sourceHash || ''))
+                continue;
+            let outcome = null;
+            try {
+                outcome = await saveFaceSwipeArchive(base, { ...record, sourceHash: String(record.sourceHash || parsed.sourceHash || '') });
+            }
+            catch {
+                outcome = null;
+            }
+            if (!outcome?.saved)
+                complete = false;
+        }
+        for (const [slot, entries] of Object.entries(legacyHistoryStore().slots || {})) {
+            const list = (Array.isArray(entries) ? entries : []).map(normalizeHistoryEntry).filter(Boolean);
+            if (!list.length)
+                continue;
+            let ok = false;
+            try {
+                ok = await saveHistoryArchive(slot, list);
+            }
+            catch {
+                ok = false;
+            }
+            if (!ok)
+                complete = false;
+        }
+    }
+    catch {
+        complete = false;
+    }
+    if (complete) {
+        try {
+            localStorage.setItem(LOCAL_TO_ARCHIVE_MIGRATION_KEY, '1');
+        }
+        catch { }
+    }
+    return complete;
 }
 const SAFE_SAVE_DELAY_MS = 2500;
 const SAFE_SAVE_RETRY_MS = 4000;
@@ -991,20 +1440,16 @@ function parseChatOwnerKey(value = '') {
     return { index: Number(match[1]), swipe: Number(match[2]) };
 }
 export function persistedOwnerForMessage(ctx, index, msg) {
-    const key = chatOwnerKey(index, swipeId(msg));
+    const swipe = swipeId(msg);
+    const key = chatOwnerKey(index, swipe);
     if (!key)
         return null;
-    const metadata = chatMetadataObject(ctx);
-    const raw = metadata?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
-    const session = sessionOwners(ctx)?.[key];
-    if (raw?.deleted === true || session?.deleted === true) {
-        const removed = raw?.deleted === true ? raw : session;
-        return { deleted: true, ts: Number(removed.ts || 0), runtime: String(removed.runtime || RUNTIME_VERSION), sourceHash: String(removed.sourceHash || '') };
-    }
-    const newest = session && (!raw || Number(session.ts || 0) > Number(raw.ts || 0)
-        || (Number(session.ts || 0) === Number(raw.ts || 0)
-            && Number(session.ownerLineage?.observedAt || 0) >= Number(raw.ownerLineage?.observedAt || 0))) ? session : raw;
-    return newest && typeof newest === 'object' ? compactChatPersistedRecord(newest) : null;
+    const cell = ownerCell(ctx, index, swipe, msg);
+    if (!cell)
+        return null;
+    if (cell.value.deleted === true)
+        return deletedMarkerOf(cell.value);
+    return compactChatPersistedRecord(cell.value);
 }
 export function chatMovedOwners(ctx) {
     const moved = readChatOutputMetadata(ctx)?.moved || {};
@@ -1040,10 +1485,10 @@ export function dropMovedOwner(ctx, hash) {
     return true;
 }
 export function chatPersistedOwnerKeys(ctx) {
-    const keys = new Set([
-        ...Object.keys(chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners || {}),
-        ...Object.keys(sessionOwners(ctx) || {}),
-    ]);
+    const keys = new Set(Object.keys(chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners || {}));
+    for (const { m, i } of assistantMessages(ctx))
+        for (const { swipe } of messageRecordSwipes(m))
+            keys.add(chatOwnerKey(i, swipe));
     return [...keys].map(parseChatOwnerKey).filter(Boolean);
 }
 export function chatPersistedOwnerEntries(ctx) {
@@ -1071,8 +1516,9 @@ export function earliestMirrorEvidenceFloor(ctx, store = null) {
     const owners = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners;
     for (const key of Object.keys(owners && typeof owners === 'object' ? owners : {}))
         note(parseChatOwnerKey(key)?.index);
-    for (const key of Object.keys(sessionOwners(ctx) || {}))
-        note(parseChatOwnerKey(key)?.index);
+    for (let i = 0; i < chat.length && i < first; i += 1)
+        if (messageRecordSwipes(chat[i]).length)
+            note(i);
     const prefix = `${chatKey(ctx)}:`;
     for (const slot of Object.keys(store && typeof store === 'object' ? store : {}))
         if (slot.startsWith(prefix))
@@ -1161,21 +1607,22 @@ export function restoreIndependentHistory(ctx, index, msg, { retry = false } = {
 }
 export function writePersistedOwner(ctx, index, msg, value, { overwrite = true, swipe } = {}) {
     const ownerSwipe = Number.isInteger(swipe) && swipe >= 0 ? swipe : swipeId(msg);
-    const metadata = chatMetadataObject(ctx);
     const ownerKey = chatOwnerKey(index, ownerSwipe);
     if (!ownerKey)
         return false;
-    const session = sessionOwners(ctx, true);
-    let state = metadata?.[CHAT_OUTPUT_METADATA_KEY];
-    if (!state || typeof state !== 'object' || !state.owners || typeof state.owners !== 'object')
-        state = emptyChatOutputMetadata();
-    const existing = session?.[ownerKey] || state.owners?.[ownerKey];
+    const real = messageForOwner(ctx, index, msg);
+    if (!real)
+        return false;
+    if (swipePending(real, ownerSwipe))
+        return false;
+    const existingCell = readMessageRecord(real, ownerSwipe);
+    const existing = existingCell && typeof existingCell === 'object' ? existingCell : legacyOwnerRaw(ctx, index, ownerSwipe);
     if (!overwrite && existing)
         return false;
     const base = `${chatKey(ctx)}:${index}:${ownerSwipe}`;
     let next = null;
     if (value?.deleted === true)
-        next = { deleted: true, ts: Number(value.ts || Date.now()), runtime: RUNTIME_VERSION, sourceHash: String(value.sourceHash || existing?.sourceHash || existing?.bodyHash || '') };
+        next = { deleted: true, ts: Number(value.ts || Date.now()), runtime: RUNTIME_VERSION, sourceHash: String(value.sourceHash || swipeBodyFingerprint(real, ownerSwipe) || existing?.sourceHash || existing?.bodyHash || '') };
     else {
         if (value.faceSwipes || existing?.faceSwipes)
             restoreFaceSwipeSnapshot(base, value.faceSwipes || existing.faceSwipes);
@@ -1183,26 +1630,44 @@ export function writePersistedOwner(ctx, index, msg, value, { overwrite = true, 
     }
     if (!next)
         return false;
-    if (session)
-        session[ownerKey] = next;
     const savedSlot = chatPersistenceSlot(ctx, index, ownerSwipe, next);
+    const unchanged = !!existingCell && typeof existingCell === 'object' && JSON.stringify(existingCell) === JSON.stringify(next);
+    if (!next.deleted && savedSlot && !unchanged)
+        shelfPut(savedSlot, next);
+    else if (next.deleted)
+        shelfDrop(slot => slot.startsWith(`${base}:`) || slot === base);
     void saveFaceSwipeArchive(base, next).then(({ saved, row }) => {
-        if (saved)
+        if (saved) {
+            if (savedSlot)
+                shelfDrop(savedSlot);
             clearSavedIndependentOutputNotices({ ...readStore(), [savedSlot]: row.record });
-        if (saved || faceSwipeSnapshotStored(base, row.states))
             clearIndependentHistorySaveNotice(savedSlot, row.states);
-        else if (Object.values(row.states).some(state => state.versions?.length > 1))
+            return;
+        }
+        if (next.deleted)
+            return;
+        const inFile = savedInChatFile(ctx, index, real, next.html, String(next.sourceHash || ''));
+        if (!inFile) {
+            if (savedSlot && persistOutputFallback(savedSlot, next))
+                clearSavedIndependentOutputNotices();
+            else
+                showIndependentUnsavedOutput(next, savedSlot);
+        }
+        if (!inFile && Object.values(row.states || {}).some(state => state.versions?.length > 1))
             showIndependentUnsavedOutput(next, savedSlot, { history: row.states, historySlot: base });
     }).catch(() => { });
-    if (!metadata)
-        return !!session;
-    if (state.owners?.[ownerKey] && JSON.stringify(state.owners[ownerKey]) === JSON.stringify(next))
+    if (unchanged)
         return false;
-    state.version = CHAT_OUTPUT_METADATA_SCHEMA;
-    state.owners[ownerKey] = next;
-    metadata[CHAT_OUTPUT_METADATA_KEY] = state;
+    if (!writeMessageRecord(real, ownerSwipe, next)) {
+        if (next.deleted && markLegacyOwnerDeleted(ctx, index, ownerSwipe, next)) {
+            markChatOwnerPending(ctx, ownerKey, null, savedSlot);
+            return true;
+        }
+        return false;
+    }
+    if (next.deleted)
+        markLegacyOwnerDeleted(ctx, index, ownerSwipe, next);
     markChatOwnerPending(ctx, ownerKey, next.deleted ? null : value, savedSlot);
-    saveChatOutputMetadata(ctx);
     return true;
 }
 function swipeCachePrefixes(ctx, index, swipe) {
@@ -1231,11 +1696,20 @@ export function deleteChatSwipeTheater(ctx, index, swipe) {
     if (!Number.isInteger(swipeIndex) || swipeIndex < 0)
         return { ok: false, reason: 'swipe' };
     const prefixes = swipeCachePrefixes(ctx, index, swipeIndex);
+    const historySlots = new Set();
+    try {
+        const owner = rawOwnerForKey(ctx, index, swipeIndex);
+        const slot = owner && !owner.deleted ? chatPersistenceSlot(ctx, index, swipeIndex, owner) : '';
+        if (slot)
+            historySlots.add(slot);
+    }
+    catch { }
     try {
         const store = readStore();
         let changed = false;
         for (const slot of Object.keys(store))
             if (slotBelongsToSwipe(slot, prefixes)) {
+                historySlots.add(slot);
                 delete store[slot];
                 changed = true;
             }
@@ -1250,6 +1724,7 @@ export function deleteChatSwipeTheater(ctx, index, swipe) {
         let changed = false;
         for (const slot of Object.keys(history.slots || {}))
             if (slotBelongsToSwipe(slot, prefixes)) {
+                historySlots.add(slot);
                 delete history.slots[slot];
                 changed = true;
             }
@@ -1260,11 +1735,35 @@ export function deleteChatSwipeTheater(ctx, index, swipe) {
         console.warn(__rmT("0ntRcB.fj8nRJx729d5YYO5uuIJ1Sxz9LaHIHc3rH1Nf.nzf8BXPpggc9hmtFs5SZZ9AV78XUTlrEf"), error);
     }
     try {
+        for (const slot of Object.keys(legacyHistoryStore().slots || {}))
+            if (slotBelongsToSwipe(slot, prefixes))
+                historySlots.add(slot);
+    }
+    catch { }
+    for (const slot of historySlots) {
+        try {
+            void dropHistoryArchive(slot).catch(() => false);
+        }
+        catch { }
+    }
+    try {
         remapFaceSwipeSlots(slot => slotBelongsToSwipe(slot, prefixes) ? null : slot);
     }
     catch (error) {
         console.warn(__rmT("UnX0nRLVcQzumShYaRVSwKc82KFBM7GDygWrKZLNgnTxYX4tTT7bf6kq3HecTFFrf7LxWhiQZ7G"), error);
     }
+    try {
+        dropLegacyOutputs(slot => slotBelongsToSwipe(slot, prefixes));
+    }
+    catch { }
+    try {
+        dropLegacyHistory(slot => slotBelongsToSwipe(slot, prefixes));
+    }
+    catch { }
+    try {
+        dropLegacyFaceSwipeKeys(slot => slotBelongsToSwipe(slot, prefixes));
+    }
+    catch { }
     for (const prefix of prefixes) {
         try {
             clearOwnerLockForBase(prefix);
@@ -1272,13 +1771,23 @@ export function deleteChatSwipeTheater(ctx, index, swipe) {
         catch { }
     }
     const written = writePersistedOwner(ctx, index, msg, { deleted: true }, { overwrite: true, swipe: swipeIndex });
-    const ownerKey = chatOwnerKey(index, swipeIndex);
-    const marked = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[ownerKey]?.deleted === true
-        || sessionOwners(ctx)?.[ownerKey]?.deleted === true;
+    const marked = rawOwnerForKey(ctx, index, swipeIndex)?.deleted === true;
     if (!written && !marked)
         return { ok: false, reason: 'save' };
     requestSafeChatSave(ctx, index, msg);
     return { ok: true, swipe: swipeIndex, current: swipeId(msg) === swipeIndex };
+}
+function fileCopiesForOwner(ctx, index, msg) {
+    const swipe = swipeId(msg);
+    const copies = [];
+    const real = messageForOwner(ctx, index, msg);
+    const cell = real && Array.isArray(ctx?.chat) && ctx.chat[Number(index)] === real ? readMessageRecord(real, swipe) : undefined;
+    if (cell && typeof cell === 'object')
+        copies.push(cell);
+    const legacy = legacyOwnerRaw(ctx, index, swipe);
+    if (legacy)
+        copies.push(legacy);
+    return copies;
 }
 export function savedInChatFile(ctx, index, msg, html, sourceHash = '') {
     const key = chatOwnerKey(index, swipeId(msg));
@@ -1286,24 +1795,21 @@ export function savedInChatFile(ctx, index, msg, html, sourceHash = '') {
         return false;
     if (typeof ctx?.saveMetadataDebounced !== 'function')
         return false;
-    const raw = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
-    if (!raw || raw.deleted === true || String(raw.html || '') !== String(html))
+    const copies = fileCopiesForOwner(ctx, index, msg);
+    if (!copies.length || copies[0].deleted === true)
         return false;
     if (chatOwnerPending(ctx, key))
         return false;
-    return !sourceHash || String(raw.sourceHash || '') === String(sourceHash);
+    return copies.some(raw => raw.deleted !== true && String(raw.html || '') === String(html) && (!sourceHash || String(raw.sourceHash || '') === String(sourceHash)));
 }
 export function chatOwnerHasRecordVersion(ctx, index, msg, record) {
     const key = chatOwnerKey(index, swipeId(msg));
     if (!key || !record?.html)
         return false;
-    const raw = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
-    if (!raw || raw.deleted === true)
+    const copies = fileCopiesForOwner(ctx, index, msg);
+    if (!copies.length || copies[0].deleted === true)
         return false;
-    const session = sessionOwners(ctx)?.[key];
-    if (session && session !== raw && (session.deleted === true || Number(session.ts || 0) > Number(raw.ts || 0)))
-        return false;
-    return sameIndependentRecordVersion(raw, record);
+    return sameIndependentRecordVersion(copies[0], record);
 }
 const ARCHIVE_RETRY_MS = 3 * 60 * 1000;
 const archiveRetryAt = new Map();
@@ -1330,23 +1836,22 @@ export function writtenToChatMetadata(ctx, index, msg, html, sourceHash = '') {
         return false;
     if (typeof ctx?.saveMetadataDebounced !== 'function')
         return false;
-    const raw = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners?.[key];
-    if (!raw || raw.deleted === true || String(raw.html || '') !== String(html))
+    const copies = fileCopiesForOwner(ctx, index, msg);
+    if (!copies.length || copies[0].deleted === true)
         return false;
-    return !sourceHash || String(raw.sourceHash || '') === String(sourceHash);
+    return copies.some(raw => raw.deleted !== true && String(raw.html || '') === String(html) && (!sourceHash || String(raw.sourceHash || '') === String(sourceHash)));
 }
 export function chatPersistenceSlot(ctx, index, swipe, record) {
     const sourceHash = String(record?.sourceHash || record?.bodyHash || '').trim();
     return sourceHash ? `${chatKey(ctx)}:${Number(index)}:${Number(swipe)}:${sourceHash}` : '';
 }
 function mergeChatOutputsIntoLocalStore(ctx, store) {
-    const state = readChatOutputMetadata(ctx);
-    const metadata = chatMetadataObject(ctx);
     let storeChanged = false;
     let metadataChanged = false;
-    for (const [ownerKey, raw] of Object.entries(state.owners || {})) {
-        const owner = parseChatOwnerKey(ownerKey);
-        if (!owner)
+    for (const owner of chatPersistedOwnerKeys(ctx)) {
+        const ownerKey = chatOwnerKey(owner.index, owner.swipe);
+        const raw = rawOwnerForKey(ctx, owner.index, owner.swipe);
+        if (!raw)
             continue;
         const base = `${chatKey(ctx)}:${owner.index}:${owner.swipe}`;
         if (raw?.deleted === true) {
@@ -1368,9 +1873,11 @@ function mergeChatOutputsIntoLocalStore(ctx, store) {
                 && Number(existingReady.ownerLineage?.observedAt || 0) > Number(record.ownerLineage?.observedAt || 0)));
         if (localIsNewer) {
             if (String(existingReady.html || '') !== String(record.html || '') || JSON.stringify(existingReady.ownerLineage) !== JSON.stringify(record.ownerLineage)) {
-                state.owners[ownerKey] = existingReady;
-                metadataChanged = true;
-                markChatOwnerPending(ctx, ownerKey);
+                const real = messageForOwner(ctx, owner.index, null);
+                if (real && writeMessageRecord(real, owner.swipe, existingReady)) {
+                    metadataChanged = true;
+                    markChatOwnerPending(ctx, ownerKey);
+                }
             }
         }
         else if (!existingReady || String(existingReady.html || '') !== String(record.html || '') || JSON.stringify(existingReady.ownerLineage) !== JSON.stringify(record.ownerLineage)) {
@@ -1379,22 +1886,19 @@ function mergeChatOutputsIntoLocalStore(ctx, store) {
         }
         setOwnerLockForBase(base, slot, String((localIsNewer ? existingReady : record)?.sourceHash || (localIsNewer ? existingReady : record)?.bodyHash || ''));
     }
-    if (metadataChanged && metadata) {
-        metadata[CHAT_OUTPUT_METADATA_KEY] = state;
-        saveChatOutputMetadata(ctx);
-    }
     return { storeChanged, metadataChanged };
 }
 function migrateLegacyLocalOutputsToChatMetadata(ctx, store) {
-    const metadata = chatMetadataObject(ctx);
-    if (!metadata)
+    if (!Array.isArray(ctx?.chat))
         return { metadataChanged: false, storeChanged: false };
-    const state = readChatOutputMetadata(ctx);
     let metadataChanged = false;
     let storeChanged = false;
     for (const { m, i } of assistantMessages(ctx)) {
         const ownerKey = chatOwnerKey(i, swipeId(m));
-        if (!ownerKey || Object.prototype.hasOwnProperty.call(state.owners, ownerKey))
+        if (!ownerKey)
+            continue;
+        const cell = ownerCell(ctx, i, swipeId(m), m);
+        if (cell && cell.source !== 'legacy')
             continue;
         const observed = observeMessageSourceRevision(ctx, i, m);
         const base = messageBaseSlotKey(ctx, i, m);
@@ -1409,13 +1913,10 @@ function migrateLegacyLocalOutputsToChatMetadata(ctx, store) {
         const compact = compactChatPersistedRecord(record);
         if (!compact?.html || !independentStoredHtmlRestorable(compact.html))
             continue;
-        state.owners[ownerKey] = compact;
-        metadataChanged = true;
-        markChatOwnerPending(ctx, ownerKey);
-    }
-    if (metadataChanged) {
-        metadata[CHAT_OUTPUT_METADATA_KEY] = state;
-        saveChatOutputMetadata(ctx);
+        if (writeMessageRecord(m, swipeId(m), compact)) {
+            metadataChanged = true;
+            markChatOwnerPending(ctx, ownerKey);
+        }
     }
     return { metadataChanged, storeChanged };
 }
@@ -1608,9 +2109,7 @@ export function reconcileIndependentChatOwners(ctx = getContext(), options = {})
         const metadata = chatMetadataObject(ctx);
         const state = metadata?.[CHAT_OUTPUT_METADATA_KEY];
         const ownersPlan = state && typeof state === 'object' && state.owners && typeof state.owners === 'object' ? remapOwnerMap(state.owners, mapper) : { next: null, changed: false };
-        const session = sessionOwners(ctx);
-        const sessionPlan = session ? remapOwnerMap(session, mapper) : { next: null, changed: false };
-        if (ownersPlan === null || sessionPlan === null) {
+        if (ownersPlan === null) {
             console.warn(__rmT("kfw6L7U6T2_c5C8abbNvvjwTuLR3XiF6nXsH24LQGlv_qVJpnlLfcwqj1lRAWli4CXML6IauQ5J0Ss1jyFG72M9PWAT"));
             rememberChatMessageOrder(ctx);
             return result;
@@ -1628,12 +2127,6 @@ export function reconcileIndependentChatOwners(ctx = getContext(), options = {})
             saveChatOutputMetadata(ctx);
             writeLocalRemapEpoch(key, state.remapEpoch);
         };
-        if (sessionPlan.changed) {
-            for (const ownerKey of Object.keys(session))
-                delete session[ownerKey];
-            Object.assign(session, sessionPlan.next);
-            result.changed = true;
-        }
         const ownerKeyOfSlot = slot => { const match = /:(\d+):(\d+)(?::[^:]*)?$/.exec(String(slot || '')); return match ? `${match[1]}:${match[2]}` : ''; };
         const retargetValue = (value, slot) => { const ownerKey = ownerKeyOfSlot(slot); return ownerKey ? retargetOwnerRecord(value, ownerKey) : value; };
         const retargetList = (list, slot) => Array.isArray(list) ? list.map(entry => retargetValue(entry, slot)) : list;

@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.2";
-import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=2.9.2';
+import { rmT as __rmT } from "./textTable.js?rmv=2.10.0";
+import { isRabbitMirrorManagedChatSurface, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=2.10.0';
 const TOUCH_THEATER_SELECTOR = '[data-rm-dai-sekkin-mode="true"], [data-rm-touch-theater="true"]';
 const TOUCH_ZONE_SELECTOR = 'label[data-rm-touch-zone]';
 const TOUCH_CLOSE_SELECTOR = '[data-rm-touch-close="true"]';

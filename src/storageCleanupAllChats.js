@@ -1,6 +1,7 @@
-import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=2.9.2';
-import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=2.9.2';
-import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=2.9.2';
+import { dropFaceSwipeStacksForCleanup } from './swipeVersions.js?rmv=2.10.0';
+import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.10.0';
+import { messageStampSeconds, stampSeconds } from './messageStamp.js?rmv=2.10.0';
+import { mirrorImageCopyCovers, mirrorImageCopyOnMessage, mirrorImageMessageOwns, mirrorImageKeySlot, parseMirrorImageArchiveKey, mirrorImageDraftSuperseded, mirrorImageLocalCopyNames } from './imageStore.js?rmv=2.10.0';
 const OUTPUTS = 'rabbit_mirror_independent_outputs_v1';
 const HISTORY = 'rabbit_mirror_independent_history_v1';
 const SWIPES = 'rabbit_mirror_face_swipes_v1';
@@ -238,13 +239,17 @@ export async function scanAllChatsForCleanup(ctx, { onProgress = null, signal = 
             continue;
         }
         result.checked += 1;
-        const owners = file.metadata?.[OWNERS]?.owners || {};
+        const legacyOwners = file.metadata?.[OWNERS]?.owners || {};
+        const ownerAt = (index, swipe) => {
+            const onMessage = readMessageRecord(file.messages?.[Number(index)], Number(swipe));
+            return onMessage !== undefined ? onMessage : legacyOwners[`${index}:${swipe}`];
+        };
         for (const item of [...items.filter(item => item.kind !== 'image-draft'), ...items.filter(item => item.kind === 'image-draft')]) {
             let ok = false;
             if (item.kind === 'output' || item.kind === 'history')
-                ok = ownerHasRecord(owners[`${item.p.index}:${item.p.swipe}`], item.record);
+                ok = ownerHasRecord(ownerAt(item.p.index, item.p.swipe), item.record);
             else if (item.kind === 'swipe') {
-                const saved = owners[`${item.p.index}:${item.p.swipe}`]?.faceSwipes?.[String(item.face)];
+                const saved = ownerAt(item.p.index, item.p.swipe)?.faceSwipes?.[String(item.face)];
                 const savedVersions = Array.isArray(saved?.versions) ? saved.versions : [];
                 const mine = Array.isArray(item.record?.versions) ? item.record.versions : [];
                 ok = mine.length > 0 && mine.every(version => savedVersions.some(other => sameVersion(version, other)));
