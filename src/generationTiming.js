@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.12.3";
+import { rmT as __rmT } from "./textTable.js?rmv=2.13.0";
 export function createGenerationTimer() {
     let readClock = () => Date.now();
     try {

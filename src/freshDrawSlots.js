@@ -1,5 +1,5 @@
-import { getContext } from './independentApi/runtime.js?rmv=2.12.3';
-import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.12.3';
+import { getContext } from './independentApi/runtime.js?rmv=2.13.0';
+import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.13.0';
 const KEY = '__rabbitMirrorFreshDrawSlots';
 const LIMIT = 500;
 function slots() {

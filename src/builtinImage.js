@@ -1,16 +1,16 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.12.3";
-import { getSettings } from './settings.js?rmv=2.12.3';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.12.3';
-import { imageBackendName } from './imageBackendName.js?rmv=2.12.3';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.12.3';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=2.12.3';
-import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.12.3';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.12.3';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.12.3';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=2.12.3';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.12.3';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.12.3';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.12.3';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.13.0";
+import { getSettings } from './settings.js?rmv=2.13.0';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.13.0';
+import { imageBackendName } from './imageBackendName.js?rmv=2.13.0';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.13.0';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=2.13.0';
+import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.13.0';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.13.0';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.13.0';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=2.13.0';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.13.0';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.13.0';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.13.0';
 const inflight = new Map();
 const waiters = new Map();
 const progress = new Map();
@@ -1157,7 +1157,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
     }
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.12.3');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.0');
     const merged = people.map(person => ({ ...person }));
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
     for (const name of pending) {
@@ -1254,7 +1254,7 @@ function readWorldCast(names) {
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000)
         return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.12.3'), import('./independentApi/connection.js?rmv=2.12.3')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.13.0'), import('./independentApi/connection.js?rmv=2.13.0')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1272,7 +1272,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
         throw Object.assign(new Error(__rmT("lG.pz2TnT_Yo4if1")), { name: 'AbortError', code: 'aborted' });
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.12.3');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.0');
     const merged = people.map(person => ({ ...person }));
     let others = names;
     try {
@@ -1294,6 +1294,85 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
             continue;
         }
         (tagsOnly ? fillTagLooksFrom : fillLooksFrom)(person, looks, __rmT("MlaXH7Ec"));
+    }
+    return merged;
+}
+const DRAWN_LOOKS_KEY = 'rabbitMirrorDrawnLooks';
+const DRAWN_LOOKS_MAX_PEOPLE = 60;
+function chatMetadataNow() {
+    try {
+        const value = getContext()?.chatMetadata || globalThis.chat_metadata;
+        return value && typeof value === 'object' ? value : null;
+    }
+    catch {
+        return null;
+    }
+}
+function drawnLooksPeople(metadata) {
+    const book = metadata?.[DRAWN_LOOKS_KEY];
+    return book && typeof book === 'object' && book.people && typeof book.people === 'object' ? book.people : {};
+}
+export function drawnCharactersFor(metadata = chatMetadataNow()) {
+    return Object.entries(drawnLooksPeople(metadata)).map(([name, entry]) => ({ name, looks: String(entry?.looks || '') })).filter(person => person.name && person.looks);
+}
+function drawnLooksOnly(text) {
+    const clothing = SCENE_KINDS.filter(kind => kind.name === 'clothing');
+    return withoutSceneText(String(text || ''), clothing).replace(/\s{2,}/g, ' ').trim().slice(0, 400);
+}
+export function rememberDrawnLooks(people, tagsOnly, metadata) {
+    if (!metadata || typeof metadata !== 'object' || getSettings().imageLooksDrawn === false)
+        return false;
+    const book = metadata[DRAWN_LOOKS_KEY] && typeof metadata[DRAWN_LOOKS_KEY] === 'object' && metadata[DRAWN_LOOKS_KEY].people ? metadata[DRAWN_LOOKS_KEY] : { version: 1, people: {} };
+    let changed = false;
+    for (const person of Array.isArray(people) ? people : []) {
+        const name = String(person?.name || '').trim().slice(0, 40);
+        const looks = drawnLooksOnly(tagsOnly ? (person.tag || person.text) : (person.nl || person.text || person.tag));
+        if (!name || !looks)
+            continue;
+        const entry = book.people[name];
+        if (!entry) {
+            if (Object.keys(book.people).length >= DRAWN_LOOKS_MAX_PEOPLE)
+                continue;
+            book.people[name] = { looks, at: Date.now() };
+            changed = true;
+            continue;
+        }
+        const held = { name, text: String(entry.looks || ''), modelTag: '', looksFields: [...lookFieldsOfText(String(entry.looks || ''), name)] };
+        if ((tagsOnly ? fillTagLooksFrom : fillLooksFrom)(held, looks, __rmT("xbBcjmCR")) && held.text && held.text !== entry.looks) {
+            book.people[name] = { looks: drawnLooksOnly(held.text), at: Number(entry.at) || Date.now() };
+            changed = true;
+        }
+    }
+    if (!changed)
+        return false;
+    metadata[DRAWN_LOOKS_KEY] = book;
+    try {
+        const ctx = getContext();
+        if (chatMetadataNow() === metadata)
+            (ctx?.saveMetadataDebounced || ctx?.saveMetadata)?.call(ctx);
+    }
+    catch { }
+    return true;
+}
+function withDrawnAppearance(people, frame, tagsOnly, metadata) {
+    const names = frameCastNames(frame);
+    const pending = names.filter(name => !looksComplete(people.find(person => person.name === name)));
+    if (!pending.length)
+        return people;
+    const book = drawnLooksPeople(metadata);
+    const merged = people.map(person => ({ ...person }));
+    for (const name of pending) {
+        const looks = String(book[name]?.looks || '');
+        if (!looks)
+            continue;
+        const person = merged.find(item => item.name === name);
+        if (!person) {
+            const fresh = merged.length < 4 && newPersonFromLooks(name, looks, __rmT("xbBcjmCR"), tagsOnly);
+            if (fresh)
+                merged.push(fresh);
+            continue;
+        }
+        (tagsOnly ? fillTagLooksFrom : fillLooksFrom)(person, looks, __rmT("xbBcjmCR"));
     }
     return merged;
 }
@@ -1409,7 +1488,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         let cleanRef = value => value;
         try {
-            cleanRef = (await import('./independentApi/connection.js?rmv=2.12.3')).stripExcludedTagsFromReference;
+            cleanRef = (await import('./independentApi/connection.js?rmv=2.13.0')).stripExcludedTagsFromReference;
         }
         catch { }
         for (const person of myriad) {
@@ -1425,7 +1504,8 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const publicCharacters = [...publicFirst, ...otherLibrary.slice(0, Math.max(0, BUDGET - publicFirst.length - myriadCharacters.length))];
         if (!isCurrent())
             throw staleImageRequest();
-        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, myriadCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
+        const drawnCharacters = looksSettings.imageLooksDrawn !== false ? drawnCharactersFor() : [];
+        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, myriadCharacters, drawnCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim())
             throw planningFailure();
         return plan;
@@ -1476,6 +1556,8 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         reportProgress(key, `${withLlm ? __rmT(".TFGufFok4ZBcjFukCA") : ''}${__rmT("J94acmgjj9f")}${provider}${__rmT("8bBlOU.2")}`);
         let tidy = { promptIsTags: true, flatTagLines: 'none' };
         let looksSources = options.looksSources && typeof options.looksSources === 'object' ? options.looksSources : null;
+        const drawnMetadata = chatMetadataNow();
+        let drawnPeople = null;
         const payload = planned ? {
             prompt: String(planned.prompt || planned.flatPrompt || planned.nl || ''),
             flatPrompt: String(planned.flatPrompt || ''),
@@ -1485,10 +1567,11 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         } : await (async () => {
             const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
             const tagOf = person => mergeTagLists(person.libraryTag, person.modelTag);
-            const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, myriad: settings.imageLooksMyriad !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false };
+            const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, myriad: settings.imageLooksMyriad !== false, world: settings.imageLooksWorldBook !== false, model: settings.imageLooksModel !== false, drawn: settings.imageLooksDrawn !== false };
             let cast = readCharacters(frame);
             if (tagsOnly)
                 cast = cast.map(person => ({ ...person, text: /[\u3400-\u9fff]/.test(person.text) && person.modelTag ? person.modelTag : person.text }));
+            const modelCast = use.model ? cast.map(person => ({ name: person.name, text: person.text, tag: person.modelTag })) : [];
             if (!use.model)
                 cast = cast.map(person => ({ ...person, text: '', modelTag: '' }));
             if (use.library)
@@ -1499,6 +1582,8 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 cast = await withMyriadAppearance(cast, frame, tagsOnly);
             if (use.world)
                 cast = await withWorldBookAppearance(cast, frame, tagsOnly, options.signal || null);
+            if (use.drawn)
+                cast = withDrawnAppearance(cast, frame, tagsOnly, drawnMetadata);
             const people = cast
                 .filter(person => tagsOnly ? String(person.text || '').trim() : String(person.text || '').trim() || tagOf(person));
             if (!isCurrent())
@@ -1506,6 +1591,7 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             const appearanceOf = person => tagsOnly ? person.text : [...new Set([person.text, tagOf(person)].filter(Boolean))].join('; ');
             const appearance = people.map(person => `${person.name}: ${appearanceOf(person)}`).join('\n');
             looksSources = Object.fromEntries(people.map(person => [person.name, person.looksSource || __rmT("NJVecsmDkMT")]));
+            drawnPeople = { tagsOnly, people: modelCast };
             prompt = reconcileSceneAppearance(prompt, people, tagsOnly);
             const tags = tagsOnly ? '' : reconcileSceneAppearance(readTags(frame), people, true);
             return {
@@ -1549,6 +1635,17 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                     reportProgress(key, `${provider}${__rmT("7ys")}${phase}…`);
             },
         });
+        if (!options.direct) {
+            try {
+                if (planned && !options.reuse && settings.imageLooksModel !== false) {
+                    const plannedTags = (planned.promptFormat || settings.imagePromptFormat) === 'nai45-tags';
+                    rememberDrawnLooks(readCharacters(frame).map(person => ({ name: person.name, text: plannedTags && /[\u3400-\u9fff]/.test(person.text) && person.modelTag ? person.modelTag : person.text, tag: person.modelTag })), plannedTags, drawnMetadata);
+                }
+                else if (drawnPeople)
+                    rememberDrawnLooks(drawnPeople.people, drawnPeople.tagsOnly, drawnMetadata);
+            }
+            catch { }
+        }
         const record = { ...generated, builtinImageFit: 'cover', ...(looksSources ? { looksSources } : {}), ...(options.direct ? { editedPrompt: true } : {}) };
         const superseded = entry.superseded === true;
         Object.defineProperty(record, 'superseded', { value: superseded, enumerable: false });
