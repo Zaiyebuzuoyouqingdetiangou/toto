@@ -1,18 +1,18 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.12.2";
-import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.12.2';
-import { presentationModeFields } from '../presentationMode.js?rmv=2.12.2';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.12.2';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.12.2';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.12.2';
-import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, } from '../swipeVersions.js?rmv=2.12.2';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.12.2';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.12.2';
-import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.12.2';
-import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.12.2';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.12.2';
-import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.12.2';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.12.2';
-import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.12.2';
+import { rmT as __rmT } from "../textTable.js?rmv=2.12.3";
+import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.12.3';
+import { presentationModeFields } from '../presentationMode.js?rmv=2.12.3';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.12.3';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.12.3';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.12.3';
+import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, } from '../swipeVersions.js?rmv=2.12.3';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.12.3';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.12.3';
+import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.12.3';
+import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.12.3';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.12.3';
+import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.12.3';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.12.3';
+import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.12.3';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 export const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 export const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -301,6 +301,76 @@ export function dropInheritedCellForNewSwipe(ctx, index) {
     delete real.extra.rabbitMirror;
     return true;
 }
+let continueCellStash = null;
+let continueStashTimer = 0;
+function watchContinueStash() {
+    if (continueStashTimer)
+        clearTimeout(continueStashTimer);
+    continueStashTimer = globalThis.setTimeout?.(() => {
+        continueStashTimer = 0;
+        if (!continueCellStash)
+            return;
+        let active = false;
+        try {
+            active = hostGenerationLooksActive();
+        }
+        catch {
+            active = false;
+        }
+        if (active && Date.now() - Number(continueCellStash.at || 0) < 10 * 60 * 1000)
+            watchContinueStash();
+        else
+            restoreStashedContinueCell();
+    }, 5000) || 0;
+}
+function readCellOrStash(real, swipe) {
+    const cell = readMessageRecord(real, swipe);
+    if (cell !== undefined)
+        return cell;
+    const stash = continueCellStash;
+    return stash && stash.msg === real && Number(swipe) === swipeId(real) ? stash.cell : undefined;
+}
+export function stashCellForContinue(ctx) {
+    restoreStashedContinueCell();
+    const chat = Array.isArray(ctx?.chat) ? ctx.chat : null;
+    if (!chat || !chat.length)
+        return false;
+    const index = chat.length - 1, real = chat[index];
+    if (!real || typeof real !== 'object' || real.is_user || !real.extra || typeof real.extra !== 'object')
+        return false;
+    const cell = real.extra.rabbitMirror;
+    if (cell === undefined)
+        return false;
+    delete real.extra.rabbitMirror;
+    continueCellStash = { msg: real, cell, at: Date.now() };
+    watchContinueStash();
+    return true;
+}
+export function restoreStashedContinueCell() {
+    const stash = continueCellStash;
+    if (continueStashTimer) {
+        clearTimeout(continueStashTimer);
+        continueStashTimer = 0;
+    }
+    if (!stash)
+        return false;
+    continueCellStash = null;
+    const real = stash.msg;
+    if (!real || typeof real !== 'object')
+        return false;
+    if (!real.extra || typeof real.extra !== 'object')
+        real.extra = {};
+    const present = real.extra.rabbitMirror;
+    if (present !== undefined) {
+        const sameBody = present && typeof present === 'object' && present.deleted !== true && stash.cell && typeof stash.cell === 'object'
+            && String(present.sourceHash || '') === String(stash.cell.sourceHash || '');
+        if (!sameBody)
+            return false;
+    }
+    real.extra.rabbitMirror = stash.cell;
+    return true;
+}
+export function continueCellStashedForTests() { return continueCellStash; }
 function runtimeBefore(runtime, target) {
     const parse = value => String(value || '').trim().split('.').map(part => parseInt(part, 10));
     const a = parse(runtime), b = parse(target);
@@ -358,7 +428,7 @@ function ownerCell(ctx, index, swipe, msg = null) {
         catch { }
         return null;
     }
-    let cell = real ? readMessageRecord(real, swipe) : undefined;
+    let cell = real ? readCellOrStash(real, swipe) : undefined;
     if (cell !== undefined && inheritedCell(real, swipe, cell)) {
         writeMessageRecord(real, swipe, null);
         cell = undefined;
@@ -1281,7 +1351,7 @@ function chatOwnerConfirmedInFile(ctx, ownerKey, owner) {
         return false;
     const copies = [];
     const real = messageForOwner(ctx, parsed.index, null);
-    const cell = real ? readMessageRecord(real, parsed.swipe) : undefined;
+    const cell = real ? readCellOrStash(real, parsed.swipe) : undefined;
     if (cell && typeof cell === 'object')
         copies.push(cell);
     const legacy = legacyOwnerRaw(ctx, parsed.index, parsed.swipe);
@@ -1854,7 +1924,7 @@ function fileCopiesForOwner(ctx, index, msg) {
     const swipe = swipeId(msg);
     const copies = [];
     const real = messageForOwner(ctx, index, msg);
-    const cell = real && Array.isArray(ctx?.chat) && ctx.chat[Number(index)] === real ? readMessageRecord(real, swipe) : undefined;
+    const cell = real && Array.isArray(ctx?.chat) && ctx.chat[Number(index)] === real ? readCellOrStash(real, swipe) : undefined;
     if (cell && typeof cell === 'object')
         copies.push(cell);
     const legacy = legacyOwnerRaw(ctx, index, swipe);

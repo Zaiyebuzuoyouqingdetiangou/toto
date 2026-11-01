@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.12.2";
-import { spritePaths } from '../pixelSprites.js?rmv=2.12.2';
-import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.12.2';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.12.2';
-import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, waitArtSelector } from './mirrorScene.js?rmv=2.12.2';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.12.3";
+import { spritePaths } from '../pixelSprites.js?rmv=2.12.3';
+import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.12.3';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.12.3';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, waitArtSelector, isPreStartPlaceholderText } from './mirrorScene.js?rmv=2.12.3';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
@@ -822,7 +822,8 @@ function applyCommon(node, view) {
         node.dataset.rmGpPhase = view.phase;
 }
 const OWNER_ATTR = 'data-rm-gp-owner';
-const AUTO_OPEN_ATTR = 'data-rm-gp-auto-opened';
+const ownerOpenState = new Map();
+const SEEN_ATTR = 'data-rm-gp-seen';
 const ownedByNewer = (node, owner) => Number(node?.getAttribute?.(OWNER_ATTR)) > Number(owner || 0);
 export function renderProgressCard(host, view, doc = host?.ownerDocument, owner = 0, dark = false) {
     const placeholder = host?.querySelector?.(PLACEHOLDER_SELECTOR);
@@ -847,13 +848,18 @@ export function renderProgressCard(host, view, doc = host?.ownerDocument, owner 
     if (card.parentNode !== body)
         body.append(card);
     for (const node of [...body.childNodes])
-        if (node.nodeType === 3)
+        if (node.nodeType === 3 && (isPreStartPlaceholderText(node.textContent) || !node.textContent.trim()))
             node.remove();
-    if (host.getAttribute(AUTO_OPEN_ATTR) !== String(owner || 'x')) {
-        host.setAttribute(AUTO_OPEN_ATTR, String(owner || 'x'));
-        if (!placeholder.open)
+    const openKey = String(owner || 'x');
+    if (placeholder.getAttribute(SEEN_ATTR) !== openKey) {
+        placeholder.setAttribute(SEEN_ATTR, openKey);
+        const wanted = ownerOpenState.has(openKey) ? ownerOpenState.get(openKey) : true;
+        if (wanted && !placeholder.open)
             placeholder.setAttribute('open', '');
+        placeholder.addEventListener('toggle', () => { if (placeholder.getAttribute(SEEN_ATTR) === openKey)
+            ownerOpenState.set(openKey, placeholder.open === true); });
     }
+    ownerOpenState.set(openKey, placeholder.open === true);
     for (const art of host.querySelectorAll(waitArtSelector()))
         art.remove();
     if (view.phase !== 'preparing') {
@@ -1058,6 +1064,7 @@ export function startGenerationProgress({ getHost, faceCount = 1, dark = false, 
             if (stopped)
                 return;
             stopped = true;
+            ownerOpenState.delete(String(owner));
             if (timer)
                 clearTimeout(timer);
             timer = 0;

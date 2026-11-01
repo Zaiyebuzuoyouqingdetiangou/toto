@@ -1,17 +1,17 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.12.2";
-import { buildFailedMirror, sceneKit } from './mirrorScene.js?rmv=2.12.2';
+import { rmR as __rmR } from "../textTable.js?rmv=2.12.3";
+import { buildFailedMirror, sceneKit } from './mirrorScene.js?rmv=2.12.3';
 const { BASE_W, grid, put, blit, mirror, room, waitGround, svgOf, group, BIG, SMALL, STAR, QUESTION, BANG, WAIT_EYES, MIRROR_RX, MIRROR_RY } = sceneKit;
 export const ERROR_SCENE_KINDS = Object.freeze(['network', 'auth', 'quota', 'busy', 'blocked', 'cut', 'garbled', 'local', 'rest', 'crash']);
 const RULES = [
     ['rest', __rmR("kO6v35F68dSSgW3eJStAY.FxxjfmmPRh7iElmPa.4h7xFFm70CHGvYzXcXg8spmgFGfLHLYncUp0ECgxW1ASCO6jii7qt87aqg7tBU5Y9YDRmFLm5x4nH58jtJukOPw4GrqM7Kzb_FyqoYlyJJ_drgP9WqB", "")],
     ['blocked', __rmR("RkdzxBvEAjl9xW4TgCoOUsK9iLQQjuzUDc.aIhWEoQHWS58J6uLTmLjRN4YKxX7FoMjbK8UD69SAidjRpzs8BBkCpfsCIImrxes.RRvpFkh9LSdg9.ed20xmyRS5yuExHfAP71bKHqxrb2wldhLmEdUXwPEwmQfQTs28H2yC5Wwpj8FusSRZXMqw5EvBs3RhCHaXEuUL3.Rb5KELbO4ei8QlFT7C57qLSNcKUPmfbnleKs0fUmj92hw20PA", "i")],
     ['quota', __rmR("Fg_lDAfe.HkaRBKSUI_aWnSz9V9YWK50oS4HZ5yxYChINWR858ERuOMpaYrJlZC3pf3gTS3ZKQ6fMxCjJGlSPR27m9o6fRuhYU_HnJTEr76cpryvXPBOFAcvNh8RQwEurkPxeZawHP18Rj0tlJzMliklAkwH6evOsw0bzo7E7D5avbPNyOVAR.lHucVM54HpsL_O8K88eFCDPgsd3AO09dOrwq54qca_nDwdDfRtM_BHshVYfAobPAOUSXpSYpZCr21WFV6GpvwV_.KKdlOMNochbgFwCq8X0KGJbwfxkTTrS_cik1QSuv.idYEJC5hDwjkCDo_d8ZfVso6lT01jBWhdJ7hDh1AbMZizWcqSzlZsEiAAvAugoNtzsQDNGujzg1.txfBjSzKxgtEyLyWS61Nd", "i")],
-    ['busy', __rmR("lPNvK4RWdKXvMM_WoHBG0Lbu2TvR0NyKBBkovIxth.Y0ZSegvFApEeaAfb83U5joBBDvt1DH1fTcBG.7vMCCESDuIAeBgdFKWMXjmNuJ_SAuq5qoF9p6Cb9.GsCrRjtO0HFBtfbGqp8644C5aSCCD8OEh7ycuNYciQn9G3ydIIvxK2Bt8bfGAqDKjUY", "i")],
-    ['auth', __rmR("V_UmzU1j88vMAa6V6oo4W4w3tzlQsvugjqPk_vR8A7SzQFBDce0Bd.RMXYy7kvPjbMUCh1tZpxknhrbSn_P0aNBSGDzz3OSvkHdoN.JLUsRQ2owqFZ2Ce6WCXQaYLqT5zZzhy4U4_DbHDs0uSMpn61ngjbJEUCxPTzIIndopr__JQe3PnpZcPCwQLfIYdAQhwkQYw5QssfI3vgA6y6Wr0W0M05hjyY0D41_WBaiEf0jSFFrWlpnFtDxYyVK0NmyIRlE", "i")],
+    ['busy', __rmR("BWYLzeZO9kzxsR.To9Og.PfSO_1.WtZJxyMFyXPEMdYSoQgt3NOw_oiAqu4iIYc6LnLrdpJaojHCwEwfcCbfIfGU07duWuXUfIgKwiUhebN9qa_U2K2pYdgQrAOi7RBskk9PD77froALvcoXsMHjNjhSPcOx_uOPsECRKPX_njO_X72OpU8iHykEWOjA8Zl3LAWsEKqOYy47tviRddtDOFnfA4Lylo5RZT6Af0lbkiFLcf", "i")],
+    ['auth', __rmR("83yyd.NaOh5zOLiDGPK_lqyw30pZKHUP9AI2yVu6kTA3.Mg2Ze2xvMtT02LB5WAvrQxuU1Y1vbfCeVWzZPOideL9cKRfuJhlWZtPLDo2q.Fqzid23XpbxdOD_GrtK1TOdiRaKbnQSlcN_8VbI5DhzpoAVO1RiNZj5zqdFZkmGbmc5eAhXAeepGv7uRJilhR0CoNG1CxqKkAelpsiJSQ8lAJaY1Id4AgSuvyxGOtk2UQaS1g9d6x0mG96wTkhTc7RLsxoVnh2NwSEbx0viXDhzSXqVoJ_hWQ5UNOF4LG3mgKVB3G7rOcbu8Lxlf_", "i")],
     ['local', __rmR("yVMvK6wtGUHT91m3.v2AwSRREigrxQFQYtDECXzaZ.8f.NTB563WdNXTiMnnw4Jnp2DDuf1NLNXYYyG3NWXhUJvg79PdjNzftgONMfy0cUYYMf", "")],
     ['cut', __rmR("2tqermnTy9iTqDXQcg3uKbmcFUys5kbqejBZ2UWqCOPVjya5X.ed74x1kkSRzTO01IhJoqt7Le1rO9jIkaRnjU_G5t7Npfsl.CRy2httOaQh2LLN7gxls53VJmqKYP5LvQgrFcrqVbh", "i")],
-    ['network', __rmR("6CuKSY7FZMkYYzWpvJ5LI4H6ziZT.cSQ7p8K03z0D803W7jq6uDBqAxtreGL92dudbckrsUXx53ZT4.rbeTNIouwkw0f2J.CBB.wgrPmvNOalN1wc39R12uFzI5fbqsPx75XviFWyrSkmpwCDVG3.bytPFd7kz5Hc_4G_qhzlXqaXGmKs26eT5nvIgGoKj6GdCWZiRoN5d9z9h", "i")],
-    ['garbled', __rmR("YRpVbb_kX8qxhI7zRQNT8bOfGa.bqyiKsiTiPMtry6QwrVrAjwpmcGwWB1fzmyD.jysA7wRxkk5DyBBkYtO.8j8uQTiQ3ZYB0MKbC_D.uYK30_aVFEfGCY0SaPv6iUFHFmN7.UwG4vQjNM3hCYK6LG3E1A4tk.F3c8bY52eVVvDuoHmZLRujxLnkZ1k", "")],
+    ['network', __rmR("9B.pIHkifQ4FU8xu5DmdMBYR0DzuE7I15MNF1Ygt_sNeId4m_GoUd7qLb2HTnKG.XEm9B9MMeZ6LjpIVhbUA3tBthXBvk0MRAj4e8TAeaYQ2x556H0bFOEU9VA2wGQkSu5NAWXp0vLucLelbe7.h0rKjRBxBchfJuY40TDTj_2p2MnZexazNxEEP_cUJ.CsB6QK7qRx_djHDVK3Xh8_HBM9E5pTeVzA73X9Zi0HD2M1n8U5nrJT321NviglLMf", "i")],
+    ['garbled', __rmR("miT8rm3ibkNtlNQsE.ykvmoJBL9waj1tWAU7U5Ad329rsC0Ebb.kmd94bO6jmRawE3ZztH6Hi.f_X5AGaGiEUb6sz8vrH_mZ0NG4zhcgGSecS1JKC1xkY4k18z7k0916uSGDBrQYkP6tU.LIO2cdtgn8npW8WGa1qe5BcdQ14BIb0Xtne_c321ch2U.Nc_izvDyV4JJQPSgToC1nP_sxpr.zO5A", "")],
 ];
 export function errorSceneKind(text = '') {
     const message = String(text || '');

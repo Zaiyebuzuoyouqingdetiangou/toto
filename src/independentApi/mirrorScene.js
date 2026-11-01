@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.12.2";
-import { spritePaths } from '../pixelSprites.js?rmv=2.12.2';
+import { rmT as __rmT } from "../textTable.js?rmv=2.12.3";
+import { spritePaths } from '../pixelSprites.js?rmv=2.12.3';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const SCENE_H = 30;
 const BASE_W = 42;
@@ -327,6 +327,12 @@ export function buildMirrorScene(doc, scene) {
     return null;
 }
 export const WAITING_FOR_BODY_MESSAGE = __rmT("3E5IRTlGkBro0dgxr.5U4Wch5tGET35UPo7C6v7JgG8");
+export const PREPARING_FOR_BODY_MESSAGE = __rmT("HExVh4bLZHZIyTHKxucX.QOlaZJQBetBJWRSf744RD.0jxxKiLlZ7MzUijI2mrRNk5xcp3MrxjZ4HY_VnwCF00BYHMfcxf");
+export const READING_CONTEXT_MESSAGE = __rmT("RHgve.GHpdmYABVrSlaI.uw652DDj5cPkUXfXr_IhI9Q2h");
+export function isPreStartPlaceholderText(text) {
+    const value = String(text || '').trim();
+    return value === WAITING_FOR_BODY_MESSAGE || value === PREPARING_FOR_BODY_MESSAGE || value === READING_CONTEXT_MESSAGE;
+}
 export const WAIT_ART_CLASS = 'rabbit-mirror-external-wait-art';
 const WAIT_CYCLE_MS = 7200;
 const waitTemplates = new WeakMap();

@@ -1,7 +1,7 @@
-import { rabbitMirrorMessageSourceHash, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=2.12.2';
-import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=2.12.2';
-import { readFollowPartialResult } from './followPartialResults.js?rmv=2.12.2';
-import { getRenderedRabbitMirrorInteractionRoots } from './outputSanitizer/runtime.js?rmv=2.12.2';
+import { rabbitMirrorMessageSourceHash, rabbitMirrorMultifaceSourceHash } from './multifaceProof.js?rmv=2.12.3';
+import { parseMultifaceOutput } from './multifaceProtocol.js?rmv=2.12.3';
+import { readFollowPartialResult } from './followPartialResults.js?rmv=2.12.3';
+import { getRenderedRabbitMirrorInteractionRoots } from './outputSanitizer/runtime.js?rmv=2.12.3';
 const CHAT_KEY = 'rabbit_mirror_follow_continuations_v1';
 const MAX_CHARS = 512 * 1024;
 const MAX_SECTIONS_PER_FACE = 30;

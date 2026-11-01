@@ -753,8 +753,10 @@ export function checkRabbitMirrorLeftoverAfterDelete({ now = Date.now(), pageSta
         kind = 'same-name-copy';
     if (disposed)
         return { kind };
+    const failed = mark.ok === false;
     const lines = kind === 'other-copy'
-        ? [`刚才删掉的是「${mark.folder}」，但还有一份兔子镜装在「${folder}」，所以刷新后兔子镜还在。`, '要彻底删掉的话，在「管理扩展」里把这一份也删掉。']
+        ? [`刚才删掉的是「${mark.folder}」，但还有一份兔子镜装在「${folder}」，所以刷新后兔子镜还在。`, '要彻底删掉的话，在「管理扩展」里把这一份也删掉。',
+            ...(failed ? [`另外，刚才删「${mark.folder}」也没删干净${mark.status ? `（HTTP ${mark.status}）` : ''}，它的文件夹可能还在，重新安装会提示「Directory already exists」（目录已存在）；还是删不掉的话，` + leftoverDeleteHint(mark.folder)] : [])]
         : kind === 'same-name-copy'
             ? ['刚才在「管理扩展」里删掉了兔子镜，酒馆也说删好了，但刷新后兔子镜还在：可能还有一份同名的兔子镜（比如「给所有用户安装」的那一份）。', '要彻底删掉，用管理员账号在「管理扩展」里再删一次。']
             : [`刚才在「管理扩展」里删除兔子镜没删干净${mark.status ? `（HTTP ${mark.status}${mark.text ? `：${String(mark.text).slice(0, 80)}` : ''}）` : ''}，兔子镜的文件夹还在，所以刷新后它又加载了。`,

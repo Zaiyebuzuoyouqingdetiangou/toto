@@ -44,6 +44,10 @@ export function writeMessageRecord(msg, swipe, value) {
         else if (copy === undefined && !removing && stale && stale !== msg.extra
             && Array.isArray(msg.swipes) && msg.swipes.length > 1 && msg.swipes[index] === msg.mes)
             put(stale);
+        else if (copy !== undefined && !removing && stale && stale !== msg.extra && copy && typeof copy === 'object'
+            && Array.isArray(msg.swipes) && typeof msg.swipes[index] === 'string' && msg.swipes[index] === msg.mes
+            && String(value.sourceHash || '') && String(copy.sourceHash || '') !== String(value.sourceHash || ''))
+            put(stale);
         return true;
     }
     const extra = extraOfSwipeInfo(msg, index);
