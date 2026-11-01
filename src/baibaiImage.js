@@ -1,9 +1,10 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.8.4";
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=2.8.4';
-import { getSettings } from './settings.js?rmv=2.8.4';
-import { getContext } from './independentApi/runtime.js?rmv=2.8.4';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=2.8.4';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.8.4';
+import { rmT as __rmT } from "./textTable.js?rmv=2.9.0";
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=2.9.0';
+import { iphonieStatus, generateViaIphonie } from './iphonieImage.js?rmv=2.9.0';
+import { getSettings } from './settings.js?rmv=2.9.0';
+import { getContext } from './independentApi/runtime.js?rmv=2.9.0';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=2.9.0';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.0';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 function imageApi() {
     const api = globalThis.STBaiBaiImage;
@@ -16,6 +17,11 @@ function imageApi() {
 }
 export function getImageBackendStatus() {
     try {
+        if (getSettings().imageBackend === 'iphonie') {
+            const status = iphonieStatus();
+            return { available: status.configured === true, configured: status.configured === true,
+                backend: `st-iphonie:${status.engine || ''}`, model: status.style || '', supportsCharacters: false, reason: String(status.reason || '') };
+        }
         if (getSettings().imageBackend === 'chatu8') {
             const status = chatu8Status();
             return { available: status.configured === true, configured: status.configured === true,
@@ -31,6 +37,8 @@ export function getImageBackendStatus() {
 export function getImageCharacters({ floor } = {}) {
     if (getSettings().imageBackend === 'chatu8')
         return getChatu8ImageCharacters(getContext());
+    if (getSettings().imageBackend === 'iphonie')
+        return [];
     const api = imageApi();
     if (api.capabilities?.characterLibrary !== true || typeof api.getCharacters !== 'function')
         return [];
@@ -42,6 +50,8 @@ export function getImageCharacters({ floor } = {}) {
 export async function generateMirrorImage(plan, { signal, onProgress, character, size, assertCurrent } = {}) {
     if (getSettings().imageBackend === 'chatu8')
         return generateViaChatu8(plan, { signal, size, assertCurrent });
+    if (getSettings().imageBackend === 'iphonie')
+        return generateViaIphonie(plan, { signal, size, assertCurrent, onProgress });
     const api = imageApi();
     const status = api.getBackendStatus();
     if (!status.configured)

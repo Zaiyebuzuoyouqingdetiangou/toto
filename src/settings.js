@@ -1,13 +1,14 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.8.4";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.8.4';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.8.4';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.8.4';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.9.0";
+import { normalizeImageBackend } from './imageBackendName.js?rmv=2.9.0';
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.9.0';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.9.0';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.9.0';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.8.4';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.8.4';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.8.4';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.8.4';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.9.0';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.9.0';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.9.0';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.9.0';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -575,7 +576,7 @@ export function getSettings() {
     settings.visualSceneryCombination = settings.visualSceneryCombination === true;
     settings.imageEnabled = settings.imageEnabled === true;
     settings.imageLlmEnabled = settings.imageLlmEnabled === true;
-    settings.imageBackend = settings.imageBackend === 'chatu8' ? 'chatu8' : 'baibai';
+    settings.imageBackend = normalizeImageBackend(settings.imageBackend);
     for (const key of ['imageLlmProfileId', 'imageLlmBaseUrl', 'imageLlmKey', 'imageLlmModel'])
         settings[key] = typeof settings[key] === 'string' ? settings[key] : '';
     settings.imageLlmTemperature = Number.isFinite(Number(settings.imageLlmTemperature)) ? Math.min(2, Math.max(0, Number(settings.imageLlmTemperature))) : 0.8;
