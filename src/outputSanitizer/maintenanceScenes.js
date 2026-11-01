@@ -1,4 +1,4 @@
-import { sceneKit } from '../independentApi/mirrorScene.js?rmv=2.14.0';
+import { sceneKit } from '../independentApi/mirrorScene.js?rmv=2.15.0';
 const { BASE_W, grid, put, blit, mirror, room, svgOf, group, SMALL, STAR, QUESTION, BANG } = sceneKit;
 export const MAINTENANCE_ART_PHASES = Object.freeze(['work', 'ok', 'found', 'unsure']);
 export function maintenanceArtPhase(state = '') {

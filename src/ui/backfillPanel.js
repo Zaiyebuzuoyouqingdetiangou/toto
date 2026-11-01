@@ -1,5 +1,6 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.14.0";
-import { createBackfillQueue, describeBackfill } from '../backfillQueue.js?rmv=2.14.0';
+import { rmT as __rmT } from "../textTable.js?rmv=2.15.0";
+import { createBackfillQueue, describeBackfill } from '../backfillQueue.js?rmv=2.15.0';
+import { setBusyRabbit } from './busyRabbit.js?rmv=2.15.0';
 let queue = null;
 let deps = null;
 let lastToast = '';
@@ -32,6 +33,7 @@ function render(view = queue?.snapshot()) {
     const text = describeBackfill(view);
     parts.status.hidden = !text;
     parts.status.textContent = text;
+    setBusyRabbit(parts.status, view.status === 'running');
 }
 function toastFor(view) {
     const toastr = globalThis.toastr;

@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.14.0";
-import { sceneKit } from './independentApi/mirrorScene.js?rmv=2.14.0';
+import { rmR as __rmR } from "./textTable.js?rmv=2.15.0";
+import { sceneKit } from './independentApi/mirrorScene.js?rmv=2.15.0';
 const { BASE_W, grid, put, blit, room, svgOf, group, SMALL } = sceneKit;
 export const DRAW_WAIT_PHASES = Object.freeze(['think', 'queue', 'paint', 'save']);
 export function drawWaitPhase(text = '') {
