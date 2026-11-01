@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.7.0";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.8.4";
 export const PRESENTATION_FORMATS = [
     {
         "id": "10.2",
@@ -475,13 +475,16 @@ export const PRESENTATION_FORMATS = [
     {
         "id": "1.1.3",
         "group": "1",
-        "title": __rmT("1fiwWpSzRXVMs3MTLXA"),
-        "summary": __rmT("N8EFRvIq3XFHvutsc25Ah10LMBqoFwdkFxiMufZa03axczQX"),
+        "title": __rmT("eFO1q8wrood.VGZh"),
+        "summary": __rmT("bQxEb1BkGD3NKYQXTOCLhy.MA5gpEm9_mXh6mPN7iO_jIXNZFadBg_.DuTT6cRRfexGCnMw3t6bxViw6A65xk0BHcYAymePQCwODvhFWlwvBXXEOOWOj2I7J.w_90IksJJSp5mA7sZaSV2FHf_C"),
         "tags": [
             "independent",
             "digital"
         ],
-        "raw": __rmT("i7lgkBbORXWtv.u8zGchiZPqB.i.1He84bBE9nW2soLcWDGw3au2r7cA13_o83fyTbI3tyrb_qfrPZC5JNO1yauxF1swDWTJst_LRf")
+        "raw": __rmT("rYdVPbKM5Xg7VjEhJjTSrayVPZRROOZpHuNVsb8S.z_Eovzc0_LGqepdN7fQiBF.H7dn_zpxSAE8KD7sX3Qsxr8J7tVBoI3upT.pOoqDlg0LJ2EmtnAEIMA324E0J96fpFtHSFZDzZmP7q7.iGfSUSC5day3ssN8iUfwFjVhAJm6j5ByXZdIdWMerTDHlfP85_otof"),
+        "aliases": [
+            __rmT("1fiwWpSzRXVMs3MTLXA")
+        ]
     },
     {
         "id": "1.1.4",
@@ -764,13 +767,16 @@ export const PRESENTATION_FORMATS = [
     {
         "id": "1.4.2",
         "group": "1",
-        "title": __rmT("cFIPAoBZAGY"),
-        "summary": __rmT("qojy4Y97eX9HRZ3xTsux1lEnVNUWvQa_gAauAmKq"),
+        "title": __rmT("cFIPA2Yf_cp"),
+        "summary": __rmT("Fl3d.RIYl_JTWibL5j6Fj_8YavCHtT6kH99Ad2MQTbgQV2rPNlS0ymy_03P3JCbtnyyLkLYlgJtV1kYCof7o.fVi3Y0ivIZzdcCedKQcUzL7QdczDVL4kGrclRtIHYKoHp24YW8FRUizZh"),
         "tags": [
             "independent",
             "digital"
         ],
-        "raw": __rmT("sgoxmG.zY.R5bDr4DSQv9lz.jrJj6zPFRG.4JeX_te3H2NqV75dbIIQbCXAbhz_bAvSN63t0J7HDJcELK0CFrh")
+        "raw": __rmT("Yg2rKpcW83X0M6AWbQBm0ZWupTT6cSgEEkWnfaHth3eV.NbLmKtkmXmMrcFxK2p0oaDPLXyhSD32Wo8b3b9o8_QahO_cobTueEqvkwEBWLlo0dKgul7wTm4Jh8bojWzkwkEeutdXCz.VsM3hZd3i7_lzXWVBtdxCfX4qhm.MXTwSCc6xdtjamp6I17E"),
+        "aliases": [
+            __rmT("cFIPAoBZAGY")
+        ]
     },
     {
         "id": "1.5",
@@ -1539,14 +1545,14 @@ export const PRESENTATION_FORMATS = [
         "id": "3.6",
         "group": "3",
         "title": __rmT("WgWsfpvSe.N._gNgmBT7Xk"),
-        "summary": __rmT("N2jKzi1M7r6Px9OpoFfEyUbEc6kJsRTzZhI9ppxQ22UG.poYPeVpIeKLKtToGqtzScKxlxNFqhKWMfgb0TZPgI55dmtDjlE_t6r6pib20Q5ut6qhlI3Sok_uH1Pbc3MRNydVln.RjeE_uMeemAj.GozObrS6vB9zH52YJyEMRZZuAALf6c8t6hLEGCFzHEJ8_gLtLdseykXHzQDH"),
+        "summary": __rmT("ZmYJV9yPi7B_2losVywyLRLSxWu8BK6Fntahw_bCCfxd.fSS2FWqT7RvsJ8mfAOOCqMgasqTPSpjdJEUBEiPr7MM_ahlMWSaXBTX9rIAlw6ZPrOnBNoe766rezvFUYFhDEdpE79APe1BkMZAlQhbRH2tgpOBjCs0"),
         "tags": [
             "independent",
-            "analysis",
-            "academic",
+            "visual",
+            "interactive",
             "catalog"
         ],
-        "raw": __rmT("3sCgzSmjdBvHAqnVMXb8WtZgo6VAsceg1j9MDuFbGKtYQmKwW5VIcVhE8K1dBedV_Rj2qFSCdA2hacaVAgxJHqKVEojhk0b.J_wWQy50aDaCr5LFMVZku6ML7_WsNTcrVUgkzrYYGto2feNFt.X4W5O1rTc_men5.jl4rwGt2uenemEAp1ZlmVicJWmNv4KfBqk6qA_oWWGdPaUUUyPLqcOM16l0u0fqpvWB1f4Sn6APUImMEEaD9oENl00.1ysunmE")
+        "raw": __rmT("0JDKhHQGechmj4VELV9ZfA09lRzZFMr_d63fs74d9SkQgTjM_oMLQWoL9DRwvP25XbdbS6Sltv6dsvo2Vjo03RkJLypmdFRLJvyxWV0gg5Ms4TVgcwoAE8q_i5HH2YfBCTi7EOrXYKmQ_Sc7fmFJ0HDAmQmMlc9bhyT9NtxLqpkAuxHVRiznHDySSxaVqGPCkMq8WC2znpW87SG5BUY")
     },
     {
         "id": "4.2",
@@ -2184,12 +2190,12 @@ export const PRESENTATION_FORMATS = [
         "id": "5.3.1",
         "group": "5",
         "title": __rmT("vt5T8pUKF6Godf"),
-        "summary": __rmT("f9woZaMROu8LbAKKhqwhubeLzWc1ET8WpHPcpdjlx3hqPDFaf47h0fWLukILCwmBW9Nhc5HxX1ymwAc2r7u5sEIhEjCfQV8m0tI723_uY.V7aPEYW9pb4kZIgxxNF2xUmBqqlybJBN8k0bnQsm8kGUdbJa_RJG4kPVpOROWqJ8Vro_Kohuxwf8_5YFdz6hbWLHSdkZ2dtQy0sf7PzBrXLcjnTMIevTpGJtPshA995.zLPQzc"),
+        "summary": __rmT("giMxSvEemCdna8xICykfwfZmUVJ.aYmgYPk8wnA2q9YwgvvpEHcAEnzAkfVhH5ExRLlw2KddIqI3gQ1Bwl6ftI0du0_VB1pSAmkVhEEeVKQviudGCiKGXNWV6AuWv9SwSoTh4eZFenQD2ERKLL3I2u81C1068bVSkaqJLOYukZyEo_qfAmceAoWP17E"),
         "tags": [
             "independent",
             "mystic"
         ],
-        "raw": __rmT("EzYCDJm7BvncPzZbItRMmVad5fVlwcIS5y3FjbCgN6cujjEa13MRxGP1GVq6jpD.EQ9LjzAQPZ3p4Ck0P.zX60kTG2MWtwimqDimIHhpQCcRLNh14WVGR.WN8KF5dFQk8fe6G.KLMyn12G2rtlWXV7SCvOnrb4zc_iQSpmblVGi2BKZTIxWXHzuCMMOrLFPrQHMQhXXu9bsPq8TaM.msx.ym1L4oF_BeEb1Vs9XdTGQHPPK3NG0kvoLDeoOUC1jxGLfMGZ8tk8mmOMxMdsTfLOQ_fdPg3ZCk")
+        "raw": __rmT("aJTrNQWmEY0euOf5LN0nGwIvdNc06ZnwyqPefh1L8gbdVIEea4MqMl5.ZNXFP1PTsyYS1QRSQ1FdBbRRayINgY48UQB7PXgW_dfMOZTcAMNfDeK8bVJAHhSlMWVzTcgyvqppT831jul.mo1MZwgqmSmt9WMFlIU2NNyEuEd56UQaHA0OUmTWE0NU3uhoFdwXTDH6MOTu5SGMVCEPpzOnRFTKs_p3AriNCIJbYIXSsdB")
     },
     {
         "id": "5.3.1.1",
@@ -2207,23 +2213,23 @@ export const PRESENTATION_FORMATS = [
         "id": "5.3.2",
         "group": "5",
         "title": __rmT("95wT8pUKF6Godf"),
-        "summary": __rmT("N9hlP8rjy9ZyhXsj2Y351yp9._GiKlhBJ7Iu9JGzWN10gzyozcFA7Nm6MEVCyjyfmAvHt6Nl42Ra6rYkjpvxPxgH_nKYkLY4vHBgVfwnafpY9yRpbKdIQ0PKIDtP7mtf7ljnLXiFkaz9jZmD6fqNiML4jZE6qgCFHnAlcn.ZKNFIB2LxRTC2T_dWWs9OAlaaCivG9AWRST8EwMbjJsTT6T"),
+        "summary": __rmT("ApJ.n6sgULJIQ7PWq8GrOC1ZUhgGQ3QTKq9vMHGkvjyluYH3y1LgdMRE39lXnfAMvA2h11SvNqd.fLyy59pBru7xxT5UdmKQYjsCL7SA2CYO1xM9XQhOfVby_8XNEBwmzAx.sfPlSgrhyK3ANbNTDXWo3iXcSjm.NgGbl6ek"),
         "tags": [
             "independent",
             "visual"
         ],
-        "raw": __rmT("uftV7kitzYvgRTUSt9_1oH4s6v1FraigGsVuQ2ijt.N0itG.w9XpiA_6wIyV_L00TBMMNY3KReRNYIkhKIBotcap7nawUt_BdUpNm4Ggq.vYF4J9xp_6VKRJz1pZVCn.gigRYAKFbUhJnKz0DnhUVD.T_CNjDTbz5.0FYcXUw9RDXZLi7bvEPAc0HXgvhlKbxYozb5Gw_ls4M9BAv3rGTjvrrf6DsiLth4JOXfCO2JmW9yv9b87nKHyXJFmXjz_soQcifh")
+        "raw": __rmT("YWlqXBmzmLjsySeTKfk8bzyBhtoiACD3l7VIy1LV2omUTr.m2jxocYjEIGuF1zOE.GAyLhXAYFLUw9blZqfojoRHYy4seDUMkbiuFUgDtg3hu33ahX0Jbt6Pti3dRz5GAkzQX0uIeOSMru0W5vougBn2cVsEFMzqMAF0Q6S36dgLvR7IzdRrbqXOwoMDNJWwVS9PQuLSZWHd.oSS.kRJ9shT")
     },
     {
         "id": "5.3.2.1",
         "group": "5",
         "title": __rmT("gC8snf"),
-        "summary": __rmT("LgpxKnFGhSpwDAwraMQcKtLHE9E1SdIgm.9nh3RN2eqn.2iWS7YK0I5kzQ_A0V0xVLqCKNmruuyNUBrv2u.B8dPOVWXlq.AoqaE.93EIBJWP0i_z"),
+        "summary": __rmT("PNnPfVwgL_1GJaMe_EcPSry0WckaanImOmwcWPUj8wI.Zv7tMAC_Vb7Ck_DbFDJtJDgocu8.OAIH3m6n1uOsr8_1YkE5Xqqc9UMfXvz665yDgoafICVGjfQaGEhfvfmmRgBDc7swv7D4v6IDf_C"),
         "tags": [
             "independent",
             "mystic"
         ],
-        "raw": __rmT("VOeSsPj4evdPgwMwBmU0kyVCnctdaGj5eDDHa7f1o8XMFzO9HA84G6ZbXR19QvLLmNIhVABiAViqq7yCBr.5QbHUI04v0.v0vR6otAseczxtLjan569k49cHEdpgEfNynP0HKWIWBHFLxebbqejgPscUOlTSIf")
+        "raw": __rmT("qlV6iHnMwY70gpXRCX8bS0ettdM8MF_FIKJqjAxyAyo3JDYXsCd02ZhXCeeBNFhnrPZsTE3NWbWXNcjDUnKfMcgeJeRKOtkmhHPgFRAGC9.2CKIqTjV1ezVQkslJ07t81hPuk973urYHvRGZTtrGP0pCxqFvYyvjDrW8jMfJTlGN5jpUng3TIu4TnWTi3azO")
     },
     {
         "id": "5.3.2.2",
@@ -2273,12 +2279,12 @@ export const PRESENTATION_FORMATS = [
         "id": "5.3.3",
         "group": "5",
         "title": __rmT("athVhxEh"),
-        "summary": __rmT("fepxsTQMP8KM7NbvXkMQK2Y6CI1.Fv_n1.OsGH4405XEPHYO_GnKK8tpSFaGIH7QwtBFJwEQxFPZJCFA4GalVn.njUIao73gpvBko3RYrl_CaA5ianxgaDq6O9NZfPeoIcL1JTeUBfWKdlwnUR4YDcF66vRyrFKbdPT07Esq6rubjhO_2gkSYklGXGHFVSz1ErB"),
+        "summary": __rmT("k593cAPZ1cJVuVcU5_Fsz3VrEMJp4IhUmlfRCewJ7UYMrAYaA_EVlL3IpfZUtGaB1cbDywM_spodHJp0Sxu2ybQAltBbVYjH_MlzTApbK_a4_hT3svJUPEO1dtrneXMLX3tsSyV1sz9hpZHHO38U3o9H5JrMjPrMLxEU7PMldTwGkf"),
         "tags": [
             "independent",
             "visual"
         ],
-        "raw": __rmT("k1eSzZ9OAhzCslVToMO_.wESX_10F5buCgL9yF5EauGagtuOGS16rbJAXaXvIuhnPdAppN27g1G8wEwfclEXLh3j6CEHXGiUj7gCwHGIuyvmliOVqCFEDn6QUxFxxNxv9VWKogpISuMmwZ5VymUvphP3gfwLtAG40mCfOz2ZDA0hBfU0_d6GKEe0913gEC.pAIhFT4vjgD1pEx1avvqQYi656owcFIrZdXYvLtPtNtAedT")
+        "raw": __rmT("YWlqXBmzmLjsySeTKfk8bzJBhtoYFTTPzny5fnWoj7zWUIq7FNZwFSJZNi_089h4mJyORLN1jjVKk7DGBcBa9x38XU8CD0IAVyed6zbA.jIRliIhMFLcRTnzBFSM6wT2EZCj6dR8MzbYVWWaBp0CRvCcayFJ6TNchq5nz5kY_U3DMfZk4PmBupDzmkfOBpwJoloq3frSw8QnC2Srkxq0j_hT")
     },
     {
         "id": "5.4",
@@ -2416,12 +2422,12 @@ export const PRESENTATION_FORMATS = [
         "id": "6.2.1.1.b",
         "group": "6",
         "title": __rmT("RM3q5HATesH.15UQ"),
-        "summary": __rmT("VTjadadjaRkKupJpLvJuL0zaUzoj0yCoA62pDGK90T.XOlMJeSXlxc2ix_4kEI8_ZvcqqHGP"),
+        "summary": __rmT("QIVsAECm1_rr15UpnRWvlXzKZ2MLGSh55pUWU1WacRGIzmYHHGmVIQ_ys4YnyPV8.0bAGn.hEyPNRMtS_SSyQWmHgGXuaOQxl6peFAw9"),
         "tags": [
             "canon",
             "game"
         ],
-        "raw": __rmT("KDP2PIDKQ8ricE4FGokgnNtKYyjiELNF_kKSF8IhfHZkVZ9NF.g_xI5HLfQMMAAWQkuclUQIpWpwzdEQ1pTTqzc7Dafp0hT5NXAj4eSAEnagbUq8EA6XDTRqkwk_zjx2dTJOvT")
+        "raw": __rmT("kYvlGK1I8dbg.QkP6k8rwHvyaDpCTO432dSMsVwZIFXkwt3lc4hY2PXWpP4BuOh1UpaM85abebaogwdkmi9AC6YoSWTi48fPFHUqAwgldCtEqCqtchddHcQu2IRXEBs2RXnpviG2aQBltnjU9_wvTe3JhJwlaYLJH5Gx_T")
     },
     {
         "id": "6.2.1.1.c",
@@ -2868,24 +2874,27 @@ export const PRESENTATION_FORMATS = [
         "id": "6.5.4",
         "group": "6",
         "title": __rmT("SbhUnXteqLCA0SeLhSh"),
-        "summary": __rmT("x4Y6jcPnniPpRffjfEMaJXhfEcSVXi9hVG92A5E9mxq2m50UWxzC4fD0qj2UBlS7_3Gz3ILaGe83Yr0vEHAB541Up7KCeThXANA"),
+        "summary": __rmT("xg.JYzd6yXfonGPu6Miu1af32S5zQ8Dl.KTgy7TJJesYVZCR6kZZIVtmRUN26DO_hOJ3_ELHXtADhonbdzUknurVhi26PrflHHXHCcupEPN0Wwv_.0rnOE0S8ik"),
         "tags": [
             "independent",
             "interactive"
         ],
-        "raw": __rmT("Fs.2ZAO4j6MfnsX32LcOQ2oQQPhdrnDiShis21vSxdhQs4CRyiT6dN1dP6RHWiq.pZya0ugYy9ZHYUAZT8_OlMNUvbPjrHnuepzHOvO18hE7dCVeWwU572A.IN3LOKYcUqjz20NVykyhEBNJfymvTcFL")
+        "raw": __rmT("aF3x5uSMfyq37pCVCeWK62hn5yXjU_2S1RokFyFy_JbyOhkf8TvyW8xCaZ4mm.1vCKuaGh5hZx8h.VK9JiT7y4FH97wKEUp8OA95mBzoSxHTIs5LhF0138K1RZt08h_2Vwhemo76dMkr4Uxy6EPOo5fnf6GlPbUlqMK53X8bBio5c1Rw")
     },
     {
         "id": "6.5.4.1",
         "group": "6",
-        "title": __rmT("TvwwasxZbHzLeT"),
-        "summary": __rmT("62NiHmVfJZZizRyZ5qe9p2mpwtxBrOjutk5jcau1ZqfNpIjYUvsr7f"),
+        "title": __rmT("Tvwwamd7N6OYHf"),
+        "summary": __rmT("xoUIEpn_JHFdQwUrVucL_l.iM0zemIgtHLJxLnjwc8W6mU3hxqTLu67BPR.Nk4ivf7niqvS.9aYnuJpBH4uWCSBKtDhcxf"),
         "tags": [
             "independent",
             "game",
             "interactive"
         ],
-        "raw": __rmT("fEzah_Cpi2UFY3W.FazLQeN.yUMtP1KTc2uRqYL8ebj4OI4PE1LZ_S68lcNVk3_OAdwGAx8rB5Bc8kH5Dg.wrFw5I_n5jbby7di1DGHv79s")
+        "raw": __rmT("OXPP1xR_S6_hbfPx7FQ.q5YAmkD3QOCD5KQZsrx3RXRk1kCNGxBrHtI5Jbx_Aortvuyd3tCLAV9Cjug4M71gFrpwanRS6Dmk9UM7q.RMdxb8xydJ2MVRhLeOtnk7.T2cJJhkKKGID4csrSHZf_C"),
+        "aliases": [
+            __rmT("TvwwasxZbHzLeT")
+        ]
     },
     {
         "id": "6.5.4.2",
@@ -3157,13 +3166,13 @@ export const PRESENTATION_FORMATS = [
         "id": "6.9",
         "group": "6",
         "title": __rmT("FSxIA2VN3J6ALk"),
-        "summary": __rmT("5uxZ4XJ9KnCrxaW5VSkpN1ovjcZ8Q67V8xqNuXLNW3ZvXvQX"),
+        "summary": __rmT("bx1yb7R8Y2Cr6hKwomeGIiDZLbWmbRTylV7gJFjXJqgd.akrfCbYZpNv4BaNORGl_JsM3s5jqS_N4hkdzj.VXndWcoCxIIGG_grqJyWmWNeSVyy909H4zDUt"),
         "tags": [
             "independent",
             "adult",
             "game"
         ],
-        "raw": __rmT("_kiQLeQ6S23O5hCalt2bvYyH15oQHlGLEjeo24XQdd1_IyNoE_9RI10mRz0JlC9oCYLcl0vsc5gg.5gRvDEpOPLhWAT")
+        "raw": __rmT("GfNsZ4u7R_j0R612_P1Q1j4I9zcfUVv0.1rFymKkWC2F9J73Uj6scHcW_yi4Sqr2dtShljvtA6MfJTtzDbOg5nf88JSEnwKHude_yYclNILxE5dnjZFjvCpNe3I9LQsZ3UuXtkchbeiuwXva81Lnsw8bi9Nz8zZRPSp")
     },
     {
         "id": "7.1",

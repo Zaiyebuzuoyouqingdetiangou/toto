@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.7.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.8.4";
 const GAMEPLAY_RULES = Object.freeze({
     '6.2.2': __rmT("XwE3oMOLTTsQzVI1bAA6e34PwUuXJ04cy6xaMxEPrwd75lR6dXt3UaD8mg9_wDPtwxACtVDr3nh71rK5VNSstf_jTnC6OK5ssfWVJGO.brm8qs8_d8s0if"),
     '6.2.5': __rmT("Wx37L7z4yxLFAD0QSwEwcn7w3aJ3x3vyJMm7qiQobcovv2qsPOIiJKBjWR.iYoJ2YOKa7YzjJ33aW86tSFuUMm5iXOetfg06ANA"),
@@ -28,7 +28,7 @@ const GAMEPLAY_RULES = Object.freeze({
     '6.5.19': __rmT("UA32ut9MKBEdwzYqBwh3FUZUbGw2O8JP0sNJZ0W_O74GUXcRwiKk_FKvb3PYUMjRVf66cZNGjPfrmO29GPJI6.xKNcoVgEP.5oCLRf"),
     '6.7': __rmT("MH1g5EE9yov_HW3.x6SEUUXSLSxIOb1aq2FDIIUaw7PpDPHuulaoqP0NemFWWABrUVKtgeQKF4D9SqbLkJHrdOJJWAT"),
     '6.8': __rmT("QFDKp5PFZVpx4lpZrzLDmMOmH9yiZqIk5bKNaw.bPlzIJ71n0u6IDbr3a98VU0I8yLSMXkECZ8bCpNc1LlBzRT8p.GfF.4YO"),
-    '6.9': __rmT("8sFLKhE8DRQ7RorkDK3TIbNK4cj3B5lvQU5W.jn8S_uvVUtkDGKZVBhlaO41yDXRkpRyl.LWntKAQOqJNzCoDHn.HDUjlI7xK6ZHmYw9"),
+    '6.9': __rmT("EXGm0XHQkXWWULsEnL69iJolaty9yjVBj6saiMamWRDtQRJ0StFZDP_gobunlkP8LkXJlQgtZBGxA6Vmsn1yEnOFHAPgYhD5SBH7iNUGDIzwrg.Dn1HcPzZ.73ihWLu9vc2ijeCxD2ZzZh"),
 });
 export function gameplayRuleFor(item) {
     const id = item?.id;

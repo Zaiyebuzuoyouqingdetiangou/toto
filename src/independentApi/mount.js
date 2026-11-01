@@ -1,47 +1,50 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.7.0";
-import { lendMirrorImages } from '../imageStore.js?rmv=2.7.0';
-import { markFreshDrawSlot } from '../freshDrawSlots.js?rmv=2.7.0';
-import { noteGenerationEvidenceMount } from '../generationEvidence.js?rmv=2.7.0';
-import { carryExternalFaceFrames, clearFaceFrame } from './faceFrame.js?rmv=2.7.0';
-import { describeLocalStorageUsage } from '../storageUsage.js?rmv=2.7.0';
-import { hasUsableAssistantBody } from './missingRetryShell.js?rmv=2.7.0';
-import { pickMovedIndependentRecord, pickOwnStaleRecord } from './movedRecord.js?rmv=2.7.0';
-import { expandHtmlDocumentCodeBlocks } from '../outputSanitizer/markup.js?rmv=2.7.0';
-import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=2.7.0';
-import { desktopFaceZoomActive } from '../desktopFaceZoom.js?rmv=2.7.0';
-import { startGenerationProgress, dropGenerationProgressUnlessLoading } from './generationProgress.js?rmv=2.7.0';
-import { stampGeneratedFaces } from '../generationStamp.js?rmv=2.7.0';
-import { faceDrawMetadataFields } from '../faceDrawRules.js?rmv=2.7.0';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.7.0';
-import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=2.7.0';
-import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=2.7.0';
-import { getSettings } from '../settings.js?rmv=2.7.0';
-import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=2.7.0';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=2.7.0';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=2.7.0';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.7.0';
-import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, } from '../outputSanitizer.js?rmv=2.7.0';
-import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=2.7.0';
-import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=2.7.0';
-import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from '../multifaceProof.js?rmv=2.7.0';
-import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, FOLLOW_GENERATION_SETTLED_EVENT, getRabbitMirrorFollowBatchFailure, } from '../visualScanner.js?rmv=2.7.0';
-import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch, describeComboHistoryFailure, comboHistoryFailureCode } from '../storage.js?rmv=2.7.0';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.8.4";
+import { lendMirrorImages } from '../imageStore.js?rmv=2.8.4';
+import { appendContinuationToFaceHtml, continuationParagraphs, longTextContinuationPrompts } from './longTextContinuation.js?rmv=2.8.4';
+import { isNameMaskActive, unmaskNameMaskClone } from '../nameMask.js?rmv=2.8.4';
+import { followFaceKey, isFollowFaceRoot, restoreFollowContinuationsInMessage, saveFollowContinuation } from '../followContinuations.js?rmv=2.8.4';
+import { markFreshDrawSlot } from '../freshDrawSlots.js?rmv=2.8.4';
+import { noteGenerationEvidenceMount } from '../generationEvidence.js?rmv=2.8.4';
+import { carryExternalFaceFrames, clearFaceFrame } from './faceFrame.js?rmv=2.8.4';
+import { describeLocalStorageUsage } from '../storageUsage.js?rmv=2.8.4';
+import { hasUsableAssistantBody, REMOVED_SWIPE_THEATER_MESSAGE } from './missingRetryShell.js?rmv=2.8.4';
+import { pickMovedIndependentRecord, pickOwnStaleRecord } from './movedRecord.js?rmv=2.8.4';
+import { expandHtmlDocumentCodeBlocks } from '../outputSanitizer/markup.js?rmv=2.8.4';
+import { restoreRuntimeAnimationClone } from '../runtimeAnimationState.js?rmv=2.8.4';
+import { desktopFaceZoomActive } from '../desktopFaceZoom.js?rmv=2.8.4';
+import { startGenerationProgress, dropGenerationProgressUnlessLoading } from './generationProgress.js?rmv=2.8.4';
+import { stampGeneratedFaces } from '../generationStamp.js?rmv=2.8.4';
+import { faceDrawMetadataFields } from '../faceDrawRules.js?rmv=2.8.4';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.8.4';
+import { presentationModeFields, isBlankLongTextSelection } from '../presentationMode.js?rmv=2.8.4';
+import { PRESENTATION_FORMATS } from '../../data/structured/presentationIndex.js?rmv=2.8.4';
+import { getSettings } from '../settings.js?rmv=2.8.4';
+import { configuredIndependentMaxRequestChars } from '../independentRequestBudget.js?rmv=2.8.4';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=2.8.4';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=2.8.4';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.8.4';
+import { cleanRabbitMirrorOutput, refreshRabbitMirrorToolsInScope, isolateRabbitMirrorInteractionIds, rearmRabbitMirrorSerializedInteractionRoot, armRabbitMirrorFirstUseInteraction, } from '../outputSanitizer.js?rmv=2.8.4';
+import { matchesRabbitMirrorTextReplacementReceipt } from '../replacementReceipt.js?rmv=2.8.4';
+import { parseMultifaceOutput, createMultifaceFailureSlot, MULTIFACE_FAILURE_ATTR, normalizedSummaryText } from '../multifaceProtocol.js?rmv=2.8.4';
+import { getSanitizedRabbitMirrorFaceProof, markSanitizedRabbitMirrorFace, rabbitMirrorMultifaceSourceHash, rabbitMirrorMessageSourceHash } from '../multifaceProof.js?rmv=2.8.4';
+import { FOLLOW_MULTIFACE_COMMITTED_EVENT, FOLLOW_MULTIFACE_REJECTED_EVENT, FOLLOW_GENERATION_SETTLED_EVENT, getRabbitMirrorFollowBatchFailure, } from '../visualScanner.js?rmv=2.8.4';
+import { commitVisualHistorySelection, commitPendingComboBatch, releasePendingComboBatch, describeComboHistoryFailure, comboHistoryFailureCode } from '../storage.js?rmv=2.8.4';
 let lastComboHistoryWarning = null;
-import { consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected, } from '../feedbackCat.js?rmv=2.7.0';
-import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=2.7.0';
-import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=2.7.0';
-import { shouldAutomaticReroll, automaticRerollStatusText, automaticRerollExhaustedNote, shouldAnnounceAutomaticRerollExhausted, isAutomaticRerollStall, isQuotaInsufficientFailure, isNonRetryableRequestFailure, isLocalPreflightFailure, configuredAutomaticRerollIdleMs, } from '../automaticReroll.js?rmv=2.7.0';
-import { mergeMissingIndependentFaces, mergeRetrySelectionDiagnostic, missingIndexesFromIndependentResult, recipesCoverMissing, } from '../missingFaceMerge.js?rmv=2.7.0';
-import { FACE_SWIPE_FULL_MESSAGE, canAppendSwipe, seedSwipeState, updateCurrentSwipeHtml, readFaceSwipe, writeFaceSwipe, mutateFaceSwipe, faceSwipeSnapshotStored, saveFaceSwipeArchive, loadFaceSwipeArchiveRows, emptySwipeState, restoreFaceSwipeSnapshot, snapshotFaceSwipes, } from '../swipeVersions.js?rmv=2.7.0';
-import { ACTION_BRIDGE_KEY, CONTEXT_TOTAL_BUDGET, EXTERNAL_SHELL_ATTR, FOLLOW_EXTERNAL_ANCHOR_ATTR, HISTORICAL_LIGHT_HOST_ATTR, HISTORY_EVENT, INDEPENDENT_GENERATION_INTENTS_KEY, INDEPENDENT_GENERATION_INTENT_TTL_MS, INDEPENDENT_GENERATION_INTENT_TYPES, INDEPENDENT_REPAIR_PERSIST_EVENT, RESAY_EVENT, RUNTIME_VERSION, SOURCE_ATTR, byteLength, currentRuntime, getContext, hashText, independentMaintenanceLiveRepairLocked, } from './runtime.js?rmv=2.7.0';
-import { ACTIVE_GENERATION_WAIT_MS, FINAL_RENDER_CONFIRMATION_TTL_MS, FINAL_RENDER_POLL_INTERVAL_MS, FINAL_RENDER_SOURCE_STABLE_WAIT_MS, GENERATION_PLACEHOLDER_POLL_INTERVAL_MS, GENERATION_PLACEHOLDER_POLL_LIMIT_MS, OWNER_REATTACH_WAIT_MS, SOURCE_STABLE_WAIT_MS, WEAK_GENERATION_FLAG_GRACE_MS, WEAK_GENERATION_SOURCE_STABLE_WAIT_MS, advanceOperationEpochForBase, automaticDispatchAlreadyConsumed, automaticFailureStopFor, automaticFailureStops, blockingAutomaticFailureStopFor, isMissingShellStop, clearAutomaticFailureStop, createIndependentRequestDeadline, createManualDispatchLease, flightIdentity, generationPolls, globalFlights, hasAutomaticFailureStop, markAutomaticFailureStop, operationEpochForBase, pending, reserveAutomaticDispatchLease, } from './flights.js?rmv=2.7.0';
-import { HISTORY_PANEL_ATTR, INDEPENDENT_RECORD_BUDGET_BYTES, appendHistoryEntry, applyIndependentFaceSwipe, canIndependentFaceResay, chatPersistenceSlot, deleteIndependentFaceSwipe, hasIndependentSwipeInitial, historyEntriesForSlot, independentFaceSwipeView, independentRecordWithinBudget, persistedOwnerForMessage, savedInChatFile, writtenToChatMetadata, independentHistoryLoaded, independentHistoryReadState, restoreIndependentHistory, readStore, restoreIndependentFaceSwipeInitial, writePersistedOwner, requestSafeChatSave, writeStore, chatPersistedOwnerEntries, chatMovedOwners, saveMovedOwner, dropMovedOwner, } from './persistence.js?rmv=2.7.0';
-import { appendIndependentFaceSwipe, faceDetailsListFromHtml, mergeFaceDetailsIntoHtml, hasEphemeralFaceFailure, independentRerollMax, independentSwipeSlot, scrubSwipeDetailsHtml, seedIndependentFaceSwipes, seedNeighborIndependentFaceSwipes, showEphemeralFaceFailure, } from './faceSwipe.js?rmv=2.7.0';
-import { INDEPENDENT_OWNER_OBSERVATION, assistantMessages, bindIndependentRecordContinuity, chatKey, contextBundle, createIndependentVisibleTextReader, externalHostGenerationActivity, findSavedRecord, globalWorldInfoContextView, globalWorldInfoSnapshotFor, hostGenerationActivity, hostGenerationLooksActive, hostModule, independentLineageOriginSlot, isRabbitMirrorEligibleAssistantMessage, isRabbitMirrorToolResultMessage, lastAssistantMessage, legacyChatKey, legacyMessageSlotKeys, lockedIndependentRecordForBase, messageBaseSlotKey, messageBody, messageBodyFingerprint, messageDisplayFingerprint, messageElement, messageReasoningFingerprint, messageSlotKey, messageSourceFingerprint, legacyMessageSourceFingerprints, observeMessageSourceRevision, ownerLockForBase, recordKey, saveRecordForSlot, savedIndependentRecordForOwner, savedRecordMatchesObserved, setOwnerLockForBase, slotSearchKeys, swipeId, stripExcludedTagsFromReference, } from './connection.js?rmv=2.7.0';
-import { allExternalHosts, assertIndependentMarkupComplexityWithDiagnostic, callIndependentApi, commitIndependentVisualResult, externalHosts, externalInsertTarget, followOriginMarker, hasMultifaceMarkup, independentExternalEffectiveViewportWidth, independentMarkupLimitError, independentPaletteFingerprintFromHtml, independentSelectedFormatDescriptors, legacyFollowOriginContainer, markExternalGeometryLifecycle, matchingExternalHosts, outputCutMessage, removeDuplicateExternalHosts, removeEmptyFollowExternalAnchors, republishIndependentTerminalFailure, requestIndependentCompletion, stampExternalDetailsOwnership, wrapIndependentFace, wrapPreparedIndependentFace, wrappedIndependentMirrorHtml, } from './request.js?rmv=2.7.0';
-import { DEFERRED_INTERACTION_RESCUE_ATTR, INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR, INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR, INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR, MAINTENANCE_PERSISTED_LAYOUT_ATTR, averageExternalShellColors, beginHostWorkTiming, buildExternalHost, captureIndependentContentWidthBaseline, clearExternalHostFreshSourceState, clearIndependentResayStatus, collapseDuplicateIdentityHosts, ensureExternalTools, externalPlaceholderTitle, ensureReplyGenerationPlaceholder, externalHostsOwnedByMesid, externalShellColorsFromText, externalToolHost, extractReadyDetails, fallbackExternalDetails, hasExplicitSourceReplacementEvidence, independentStoredHtmlRestorable, initialHtmlForRecord, inlineRabbitMirrorDetails, isRabbitMirrorDetails, markExternalDetails, markMountedFaceProofs, messageElementForExternalHost, mirrorSemanticFingerprint, mountExternalFaceDetails, mountedIndependentErrorHostMatchesObserved, mountedIndependentReadyHostMatchesObserved, parseExternalShellColor, passiveIndependentFailureForIdentity, placeExternalHost, prepareQuickResay, prepareStoredIndependentRecordHtml, quickActionOwnerCurrent, quickStartOwners, readyDetailsFromHost, readyRecordFromHost, rebuildCollapsedReadyHost, recoverEscapedExternalDetails, recoverSavedRecord, refreshExistingExternalDetails, removeInlineMirrorDuplicate, renderExternalErrorBody, repatriateExternalDetails, replaceExternalMultifaceFace, restoreIndependentContentWidthBaseline, releaseExternalFlowHeight, sanitizeIndependentReadyFragment, scheduleExternalShellTint, scrubIndependentInteractionState, sealIndependentTextReplacementRecord, setPlaceholderSummary, showIndependentResayStatus, transferExternalTools, usableReadyDetails, } from './geometry.js?rmv=2.7.0';
-import { assertEarlyBodyOwner, automaticHostGenerationMayUseTools, automaticHostRenderProof, automaticMainReplySafetyOptions, cancelEarlyBodyOwner, clearAutomaticHostGenerationSettlement, clearScheduledGeneration, earlyBodyOwnerCurrent, hasExistingFollowRabbitMirror, queueMessageSync, scheduleStartupHistorySync, suppressesAutomaticGeneration, unlockAutomaticGenerationCutover, } from './earlyBody.js?rmv=2.7.0';
-import { automaticGenerationCutovers, backgroundLifecycleListenersInstalled, backgroundLifecycleNeedsRecovery, backgroundResumeTimer, generationPlaceholderStartedAt, generationPlaceholderTimer, hostGenerationHintStartedAt, hostGenerationInProgress, independentActionBridge, lastAppliedIndependentTiming, runtimeConfigSequence, writeBackgroundLifecycleListenersInstalled, writeBackgroundLifecycleNeedsRecovery, writeBackgroundResumeTimer, writeGenerationPlaceholderStartedAt, writeGenerationPlaceholderTimer, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, writeIndependentActionBridge, writeLastAppliedIndependentTiming, } from './lifecycle.js?rmv=2.7.0';
+import { consumeInjectedFeedbackForSuccessfulIndependentRabbitMirror, getActiveFeedbackForCurrentChat, markFeedbackCatInjected, } from '../feedbackCat.js?rmv=2.8.4';
+import { getRabbitMirrorRecipe, recordRabbitMirrorRecipe } from '../blacklist.js?rmv=2.8.4';
+import { readFollowPartialResult, followPartialResultFaceOwnerKey } from '../followPartialResults.js?rmv=2.8.4';
+import { shouldAutomaticReroll, automaticRerollStatusText, automaticRerollExhaustedNote, shouldAnnounceAutomaticRerollExhausted, isAutomaticRerollStall, isQuotaInsufficientFailure, isNonRetryableRequestFailure, isLocalPreflightFailure, configuredAutomaticRerollIdleMs, } from '../automaticReroll.js?rmv=2.8.4';
+import { mergeMissingIndependentFaces, mergeRetrySelectionDiagnostic, missingIndexesFromIndependentResult, recipesCoverMissing, } from '../missingFaceMerge.js?rmv=2.8.4';
+import { FACE_SWIPE_FULL_MESSAGE, canAppendSwipe, seedSwipeState, updateCurrentSwipeHtml, readFaceSwipe, writeFaceSwipe, mutateFaceSwipe, faceSwipeSnapshotStored, saveFaceSwipeArchive, loadFaceSwipeArchiveRows, emptySwipeState, restoreFaceSwipeSnapshot, snapshotFaceSwipes, } from '../swipeVersions.js?rmv=2.8.4';
+import { ACTION_BRIDGE_KEY, CONTEXT_TOTAL_BUDGET, EXTERNAL_SHELL_ATTR, FOLLOW_EXTERNAL_ANCHOR_ATTR, HISTORICAL_LIGHT_HOST_ATTR, HISTORY_EVENT, INDEPENDENT_GENERATION_INTENTS_KEY, INDEPENDENT_GENERATION_INTENT_TTL_MS, INDEPENDENT_GENERATION_INTENT_TYPES, INDEPENDENT_REPAIR_PERSIST_EVENT, RESAY_EVENT, RUNTIME_VERSION, SOURCE_ATTR, byteLength, currentRuntime, getContext, hashText, independentMaintenanceLiveRepairLocked, } from './runtime.js?rmv=2.8.4';
+import { ACTIVE_GENERATION_WAIT_MS, FINAL_RENDER_CONFIRMATION_TTL_MS, FINAL_RENDER_POLL_INTERVAL_MS, FINAL_RENDER_SOURCE_STABLE_WAIT_MS, GENERATION_PLACEHOLDER_POLL_INTERVAL_MS, GENERATION_PLACEHOLDER_POLL_LIMIT_MS, OWNER_REATTACH_WAIT_MS, SOURCE_STABLE_WAIT_MS, WEAK_GENERATION_FLAG_GRACE_MS, WEAK_GENERATION_SOURCE_STABLE_WAIT_MS, advanceOperationEpochForBase, automaticDispatchAlreadyConsumed, automaticFailureStopFor, automaticFailureStops, blockingAutomaticFailureStopFor, isMissingShellStop, clearAutomaticFailureStop, createIndependentRequestDeadline, createManualDispatchLease, flightIdentity, generationPolls, globalFlights, hasAutomaticFailureStop, markAutomaticFailureStop, operationEpochForBase, pending, reserveAutomaticDispatchLease, } from './flights.js?rmv=2.8.4';
+import { HISTORY_PANEL_ATTR, INDEPENDENT_RECORD_BUDGET_BYTES, appendHistoryEntry, applyIndependentFaceSwipe, canIndependentFaceResay, chatPersistenceSlot, deleteIndependentFaceSwipe, hasIndependentSwipeInitial, historyEntriesForSlot, independentFaceSwipeView, independentRecordWithinBudget, persistedOwnerForMessage, savedInChatFile, writtenToChatMetadata, independentHistoryLoaded, independentHistoryReadState, restoreIndependentHistory, readStore, restoreIndependentFaceSwipeInitial, writePersistedOwner, requestSafeChatSave, writeStore, chatPersistedOwnerEntries, chatMovedOwners, saveMovedOwner, dropMovedOwner, } from './persistence.js?rmv=2.8.4';
+import { appendIndependentFaceSwipe, faceDetailsListFromHtml, mergeFaceDetailsIntoHtml, hasEphemeralFaceFailure, independentRerollMax, independentSwipeSlot, scrubSwipeDetailsHtml, seedIndependentFaceSwipes, seedNeighborIndependentFaceSwipes, showEphemeralFaceFailure, } from './faceSwipe.js?rmv=2.8.4';
+import { INDEPENDENT_OWNER_OBSERVATION, assistantMessages, bindIndependentRecordContinuity, chatKey, contextBundle, createIndependentVisibleTextReader, externalHostGenerationActivity, findSavedRecord, globalWorldInfoContextView, globalWorldInfoSnapshotFor, hostGenerationActivity, hostGenerationLooksActive, hostModule, independentLineageOriginSlot, isRabbitMirrorEligibleAssistantMessage, isRabbitMirrorToolResultMessage, lastAssistantMessage, legacyChatKey, legacyMessageSlotKeys, lockedIndependentRecordForBase, messageBaseSlotKey, messageBody, messageBodyFingerprint, messageDisplayFingerprint, messageElement, messageReasoningFingerprint, messageSlotKey, messageSourceFingerprint, legacyMessageSourceFingerprints, observeMessageSourceRevision, ownerLockForBase, recordKey, saveRecordForSlot, savedIndependentRecordForOwner, savedRecordMatchesObserved, setOwnerLockForBase, slotSearchKeys, swipeId, stripExcludedTagsFromReference, } from './connection.js?rmv=2.8.4';
+import { allExternalHosts, assertIndependentMarkupComplexityWithDiagnostic, callIndependentApi, commitIndependentVisualResult, externalHosts, externalInsertTarget, followOriginMarker, hasMultifaceMarkup, independentExternalEffectiveViewportWidth, independentMarkupLimitError, independentPaletteFingerprintFromHtml, independentSelectedFormatDescriptors, legacyFollowOriginContainer, markExternalGeometryLifecycle, matchingExternalHosts, outputCutMessage, removeDuplicateExternalHosts, removeEmptyFollowExternalAnchors, republishIndependentTerminalFailure, requestIndependentCompletion, stampExternalDetailsOwnership, wrapIndependentFace, wrapPreparedIndependentFace, wrappedIndependentMirrorHtml, } from './request.js?rmv=2.8.4';
+import { DEFERRED_INTERACTION_RESCUE_ATTR, INDEPENDENT_CONTENT_WIDTH_BASELINE_ATTR, INDEPENDENT_CONTENT_WIDTH_RESCUE_ATTR, INDEPENDENT_EXTERNAL_STAGE_NEUTRALIZED_ATTR, MAINTENANCE_PERSISTED_LAYOUT_ATTR, averageExternalShellColors, beginHostWorkTiming, buildExternalHost, captureIndependentContentWidthBaseline, clearExternalHostFreshSourceState, clearIndependentResayStatus, collapseDuplicateIdentityHosts, ensureExternalTools, externalPlaceholderTitle, ensureReplyGenerationPlaceholder, externalHostsOwnedByMesid, externalShellColorsFromText, externalToolHost, extractReadyDetails, fallbackExternalDetails, hasExplicitSourceReplacementEvidence, independentStoredHtmlRestorable, initialHtmlForRecord, inlineRabbitMirrorDetails, isRabbitMirrorDetails, markExternalDetails, markMountedFaceProofs, messageElementForExternalHost, mirrorSemanticFingerprint, mountExternalFaceDetails, mountedIndependentErrorHostMatchesObserved, mountedIndependentReadyHostMatchesObserved, parseExternalShellColor, passiveIndependentFailureForIdentity, placeExternalHost, prepareQuickResay, prepareStoredIndependentRecordHtml, quickActionOwnerCurrent, quickStartOwners, readyDetailsFromHost, readyRecordFromHost, rebuildCollapsedReadyHost, recoverEscapedExternalDetails, recoverSavedRecord, refreshExistingExternalDetails, removeInlineMirrorDuplicate, renderExternalErrorBody, repatriateExternalDetails, replaceExternalMultifaceFace, restoreIndependentContentWidthBaseline, releaseExternalFlowHeight, sanitizeIndependentReadyFragment, scheduleExternalShellTint, scrubIndependentInteractionState, sealIndependentTextReplacementRecord, setPlaceholderSummary, showIndependentResayStatus, transferExternalTools, usableReadyDetails, } from './geometry.js?rmv=2.8.4';
+import { assertEarlyBodyOwner, automaticHostGenerationMayUseTools, automaticHostRenderProof, automaticMainReplySafetyOptions, cancelEarlyBodyOwner, clearAutomaticHostGenerationSettlement, clearScheduledGeneration, earlyBodyOwnerCurrent, hasExistingFollowRabbitMirror, queueMessageSync, scheduleStartupHistorySync, suppressesAutomaticGeneration, unlockAutomaticGenerationCutover, } from './earlyBody.js?rmv=2.8.4';
+import { automaticGenerationCutovers, backgroundLifecycleListenersInstalled, backgroundLifecycleNeedsRecovery, backgroundResumeTimer, generationPlaceholderStartedAt, generationPlaceholderTimer, hostGenerationHintStartedAt, hostGenerationInProgress, independentActionBridge, lastAppliedIndependentTiming, runtimeConfigSequence, writeBackgroundLifecycleListenersInstalled, writeBackgroundLifecycleNeedsRecovery, writeBackgroundResumeTimer, writeGenerationPlaceholderStartedAt, writeGenerationPlaceholderTimer, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, writeIndependentActionBridge, writeLastAppliedIndependentTiming, } from './lifecycle.js?rmv=2.8.4';
 let generationSequence = 0;
 let historicalRestoreLightDepth = 0;
 let feedbackActionListenerInstalled = false;
@@ -995,6 +998,46 @@ function ensureExternalUiCore(el, key, html, state = 'ready', source = 'independ
     ensureExternalTools(host);
     return host;
 }
+function removeInlineTheaterNodes(el) {
+    for (const node of el?.querySelectorAll?.('toto[data-rabbit-mirror="true"], toto[data-rabbit-hole="true"], details') || []) {
+        if (node.closest?.('[data-rm-source]'))
+            continue;
+        if (String(node.tagName || '').toLowerCase() === 'details') {
+            const title = String(node.querySelector?.(':scope > summary')?.textContent || '').trim();
+            if (!title.startsWith(__rmT("LbiJAf2zaAs")))
+                continue;
+        }
+        try {
+            node.remove();
+        }
+        catch { }
+    }
+}
+export function showRemovedSwipeShell(index) {
+    const ctx = getContext();
+    const msg = ctx?.chat?.[index];
+    const el = messageElement(index);
+    if (!el || !msg)
+        return null;
+    try {
+        cancelFlightsForBase(messageBaseSlotKey(ctx, index, msg), 'snapshot-delete');
+    }
+    catch { }
+    for (const node of externalHosts(el).filter(node => node?.dataset?.rmSource === 'independent')) {
+        try {
+            node.remove();
+        }
+        catch { }
+    }
+    removeInlineTheaterNodes(el);
+    const card = ensureExternalUi(el, recordKey(ctx, index, msg), REMOVED_SWIPE_THEATER_MESSAGE, 'error', 'independent', messageSourceFingerprint(msg));
+    if (card) {
+        card.hidden = false;
+        card.dataset.rmRemovedSwipe = 'true';
+        placeExternalHost(el, card, card.dataset.rmKey || recordKey(ctx, index, msg), 'independent');
+    }
+    return card;
+}
 export function generationPollKey(index) { return `${chatKey(getContext())}:${Number(index)}`; }
 export function generationWaitPollDelay(startedAt = 0) {
     const elapsed = Math.max(0, Date.now() - Number(startedAt || 0));
@@ -1568,6 +1611,23 @@ export function cancelFlightsForSlot(slot, exceptSourceHash = '') {
         pending.delete(slot);
     }
 }
+export function cancelFlightsForBase(baseSlot, reason = 'snapshot-delete') {
+    const base = String(baseSlot || '');
+    if (!base)
+        return;
+    for (const [id, flight] of globalFlights()) {
+        if (String(flight?.baseSlot || '') !== base)
+            continue;
+        abortFlight(flight, reason);
+        globalFlights().delete(id);
+    }
+    for (const [slot, active] of [...pending.entries()]) {
+        if (String(active?.baseSlot || '') !== base)
+            continue;
+        abortFlight(active, reason);
+        pending.delete(slot);
+    }
+}
 export function activeIndependentFlightForBase(baseSlot = '') {
     const base = String(baseSlot || '');
     if (!base)
@@ -1781,8 +1841,8 @@ export async function generateFor(index, msg, force = false, sourceAware = true,
     }
     else
         cancelSupersededFlightsForBase(baseSlot, sourceHash);
-    const recoveredAtGeneration = recoverSavedRecord(store, slot, observed);
-    let saved = persistedSuppressed && !force ? null : (persistedReady || recoveredAtGeneration.saved);
+    const recoveredAtGeneration = persistedSuppressed ? { saved: null, storeChanged: false } : recoverSavedRecord(store, slot, observed);
+    let saved = persistedSuppressed ? null : (persistedReady || recoveredAtGeneration.saved);
     if (recoveredAtGeneration.storeChanged)
         writeStore(store);
     const mountedHost = el ? collapseDuplicateIdentityHosts(el, key, 'independent', sourceHash) : null;
@@ -2133,7 +2193,7 @@ export async function generateFor(index, msg, force = false, sourceAware = true,
         }
         bindIndependentRecordContinuity(settledCtx, index, settledMsg, completed, null, { completed: true });
         recordRabbitMirrorRecipe({ chat: settledCtx.chat, chatKey: chatKey(settledCtx), messageIndex: index, swipeId: swipeId(settledMsg), message: settledMsg, metadata: result?.requestDiagnostic || null, source: 'independent' });
-        void import('../milestones.js?rmv=2.7.0').then(module => module.recordMirrorMilestone(`${settledSlot}:${completed.ts}`)).catch(() => { });
+        void import('../milestones.js?rmv=2.8.4').then(module => module.recordMirrorMilestone(`${settledSlot}:${completed.ts}`)).catch(() => { });
         const recipeDiagnostic = result?.requestDiagnostic || null;
         if (force && multifaceResay) {
             const resayFaceIndex = Number.isInteger(multifaceResay?.faceIndex) ? multifaceResay.faceIndex : 0;
@@ -2240,7 +2300,7 @@ export async function generateFor(index, msg, force = false, sourceAware = true,
                 setTimeout(() => {
                     if (!patrolHost?.isConnected || patrolHost.dataset.rmState !== 'ready' || (patrolHash && String(patrolHost.dataset.rmSourceHash || '') !== patrolHash))
                         return;
-                    void import('../outputSanitizer/toolsChrome.js?rmv=2.7.0')
+                    void import('../outputSanitizer/toolsChrome.js?rmv=2.8.4')
                         .then(module => module.installMaintenanceRabbitsInScope(patrolHost, { autoSafeForceCurrent: true }))
                         .catch(error => console.debug('[RabbitMirror] auto patrol after independent mirror skipped:', error));
                 }, 600);
@@ -2337,7 +2397,7 @@ export async function generateFor(index, msg, force = false, sourceAware = true,
                     clearIndependentResayStatus(currentHost);
                     const faceIndex = Number.isInteger(multifaceResay?.faceIndex) ? multifaceResay.faceIndex : 0;
                     const overlayRoot = externalFaceDetails(currentHost)[currentHost && externalFaceDetails(currentHost).length > 1 ? faceIndex : 0] || currentHost;
-                    showEphemeralFaceFailure(currentHost, faceIndex, failureMessage, () => { void import('../outputSanitizer/toolsChrome.js?rmv=2.7.0').then(module => module.openRabbitMirrorResayChooser(overlayRoot)).catch(() => globalThis.toastr?.warning?.(__rmT("Qpl_vG7HBRK8aT5PZ2ApY1YuYGFaQMxLx7YyEINjKZ_.QzQX"))); }, () => { applyIndependentFaceSwipe(overlayRoot, readFaceSwipe(independentSwipeSlot(failedIdentity), faceIndex).currentIndex); });
+                    showEphemeralFaceFailure(currentHost, faceIndex, failureMessage, () => { void import('../outputSanitizer/toolsChrome.js?rmv=2.8.4').then(module => module.openRabbitMirrorResayChooser(overlayRoot)).catch(() => globalThis.toastr?.warning?.(__rmT("Qpl_vG7HBRK8aT5PZ2ApY1YuYGFaQMxLx7YyEINjKZ_.QzQX"))); }, () => { applyIndependentFaceSwipe(overlayRoot, readFaceSwipe(independentSwipeSlot(failedIdentity), faceIndex).currentIndex); });
                 }
                 else {
                     ensureExternalUi(liveEl, failedKey, previousReadyRecord.html, 'ready', 'independent', failedHash, previousReadyRecord);
@@ -2541,7 +2601,7 @@ export async function generateFor(index, msg, force = false, sourceAware = true,
                     const faces = externalFaceDetails(host);
                     const face = resayFace >= 0 && faces.length > 1 ? faces[resayFace] : null;
                     const entry = face ? { el: face, anchor: host, reveal: () => showMultifaceFace(host, resayFace) } : host;
-                    void import('../readyNotice.js?rmv=2.7.0').then(module => module.noteFacesReady([entry], { failed: notice.failed })).catch(() => { });
+                    void import('../readyNotice.js?rmv=2.8.4').then(module => module.noteFacesReady([entry], { failed: notice.failed })).catch(() => { });
                 }
                 catch { }
             }, 700);
@@ -2964,13 +3024,32 @@ function showIndependentHistory(root, owner = {}) {
     document.body.append(overlay);
     return true;
 }
-export async function continueIndependentLongText(root, owner = {}) {
+const continuingLongTextFaces = new WeakSet();
+function longTextForPrompt(article) {
+    if (!article)
+        return '';
+    if (!isNameMaskActive())
+        return String(article.innerText || '');
+    const copy = unmaskNameMaskClone(article.cloneNode(true), article);
+    copy.querySelectorAll('style, script').forEach(node => node.remove());
+    copy.querySelectorAll('br, p, div, section, li, blockquote, h1, h2, h3, h4, h5, h6').forEach(node => node.after(copy.ownerDocument.createTextNode('\n')));
+    return String(copy.textContent || '');
+}
+export async function continueIndependentLongText(root, owner = {}, options = {}) {
     const identity = resolveIndependentActionIdentity(root, owner);
-    if (!identity)
+    if (!identity) {
+        globalThis.toastr?.warning?.(__rmT("1zO.dLAHtF.OzscMdFfsCAV4vTFhLD_ufeGML7eUDGlJhbHGJPa_ZwVH.yAIsSyTBh0JJSp_AsfrohfVI7ZBisfbgH_cxf"));
         return false;
+    }
     const details = root?.matches?.('details') ? root : root?.querySelector?.('details');
     const article = details?.querySelector?.('article') || details;
-    const existing = String(article?.innerText || '').replace(/\s+/g, ' ').trim();
+    let existing = '';
+    try {
+        existing = longTextForPrompt(article).replace(/\s+/g, ' ').trim();
+    }
+    catch {
+        return true;
+    }
     if (existing.length < 40) {
         globalThis.toastr?.warning?.(__rmT("xS5vkodtLSlfZH3nJ4Iy_nJffePdBlZ5l4vspf"));
         return true;
@@ -2980,50 +3059,89 @@ export async function continueIndependentLongText(root, owner = {}) {
         globalThis.toastr?.warning?.(__rmT("RsCDPv4gzV8LgbmBZPbBqHqmjrQD.sXG5TkY7GDjjT2Lso0vU.ZCtz.NHyLgGhoRikcZ6.t057ZBVnlZS5pFrh"));
         return true;
     }
+    const busyKey = details || root;
+    if (busyKey && continuingLongTextFaces.has(busyKey)) {
+        globalThis.toastr?.info?.(__rmT("5zOr1gmH26lMhHm.03W5whMTrbpHXvBrYoo7cqJ7gG8"));
+        return true;
+    }
     const saved = savedIndependentRecordForOwner(identity.ctx, identity.index, identity.msg, readStore());
+    const followKey = !saved?.html && isFollowFaceRoot(root) ? followFaceKey(root, identity.ctx) : '';
+    const followSourceBefore = followKey ? rabbitMirrorMessageSourceHash(identity.msg) : '';
     const diagnostic = saved?.apiRequest && typeof saved.apiRequest === 'object' ? saved.apiRequest : {};
     const face = Array.isArray(diagnostic.faces) ? diagnostic.faces[Math.max(0, identity.faceIndex)] : diagnostic;
     const subject = [face?.worldBookTitle, ...(Array.isArray(face?.themeLabels) ? face.themeLabels : [])].filter(Boolean).slice(0, 4).join(__rmT("7os"));
-    const systemPrompt = `${__rmT("MAdA1mpwOHneoeShioTdBv11NvIvwrO2w8MmjR3TZw_dhHHtuAfCyZI8xUHNC1veNiwCxHY0h8JZhDniO4K6pwCZ9QK87Df24CTCMa6LCSlQJ8g5yjv_OkcYDG_9AOb7XJvuk0ZPGXfGD.v9L1fMR9YtsguFACvC3pD")}${subject ? `${__rmT("7ys")}${subject}` : ''}${__rmT("L4E0y5AoJtWyWx3C8qbQizZeZkf.vdEGPdzytNjEIyORDLVYiLV9vMARBZ1gUgSCUWBEzgijQGyjGgEf5God0r3EWAT")}`;
-    const existingText = existing.slice(-6000);
-    const userPrompt = `${__rmT("d5eBWSF2FqYdXbk1EM5eL6DRUZntUpBP")}${Number(identity.index) || 0} ASSISTANT]\n${JSON.stringify(existingText)}${__rmT("SkadRxXq5YEx.0EnpfPNxFv.qd_TfjccfyYZx3dRy.41xsyh9TTfaeg_dxl4vw6UUqFbfTwcsPfbA9GQRYRdkkPKVAvaNrubofOvUD7CQ7AYgF_ltwwPASbzQfP38Yw6B_P6SCRtyBNoAYLf4gys_PfHPq3SMvsZxxTM9dCgFYmosT3_rb5QSXSuqnXixl6Utz0VLPLrqfgj_LjHuwzaxYDxjYWHrq6OegAZ_sWRV2yO0F2sWR_lQP_hk8TwVGZdEY6vAM0SM2UBxQV3toPjzJWxNZVLDcV8YM._gFOqeFCZqk")}`;
+    const { systemPrompt, userPrompt, direction } = longTextContinuationPrompts({
+        existingText: existing.slice(-6000), subject, direction: options?.direction, index: identity.index,
+    });
+    if (busyKey)
+        continuingLongTextFaces.add(busyKey);
+    globalThis.toastr?.info?.(direction ? __rmT("bl0NrDQ68ilG3xHzbhNMN5Jffe96dNoLc_MBkf") : __rmT("kBZhOB1_8D3Ym6zjFrbhOT"));
     try {
         const completed = await requestIndependentCompletion(st, systemPrompt, userPrompt, { dispatchLease: createManualDispatchLease(), diagnosticContext: { longTextContinuation: true } });
         if (!completed?.response?.ok || completed?.semanticError)
             throw new Error(completed?.semanticError || __rmT("TDk04PWVeb9WyEyM"));
-        const addition = String(completed?.result?.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        if (addition.length < 20)
+        const paragraphs = continuationParagraphs(completed?.result?.text);
+        if (paragraphs.join('').length < 20)
             throw new Error(__rmT("SOtgn7zP2h86MI7ISEf"));
-        const section = document.createElement('section');
-        section.setAttribute('data-rm-continuation', 'true');
-        section.textContent = addition;
-        article.append(section);
+        if (messageSlotKey(identity.ctx, identity.index, identity.msg) !== identity.slot
+            || (followKey && rabbitMirrorMessageSourceHash(identity.msg) !== followSourceBefore)) {
+            globalThis.toastr?.warning?.(__rmT("nagS0ITcFkwynJlRA5eP469W31pvI4bBIfAJxY80fMijZgSHSSQDvrj6Jx318gWY6xKktDGpilkobh"));
+            return true;
+        }
+        const appendHere = () => {
+            if (!article?.isConnected)
+                return;
+            const section = document.createElement('section');
+            section.setAttribute('data-rm-continuation', 'true');
+            for (const text of paragraphs) {
+                const paragraph = document.createElement('p');
+                paragraph.textContent = text;
+                section.append(paragraph);
+            }
+            article.append(section);
+        };
         const store = readStore();
         const record = savedIndependentRecordForOwner(identity.ctx, identity.index, identity.msg, store);
-        if (record?.html) {
-            const safe = addition.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const snippet = `<section data-rm-continuation="true">${safe}</section>`;
-            let seen = 0;
-            const faceIndex = identity.faceIndex >= 0 ? identity.faceIndex : 0;
-            const html = String(record.html).replace(/<\/article>/g, match => {
-                if (seen === faceIndex) {
-                    seen += 1;
-                    return `${snippet}${match}`;
+        if (!record?.html && followKey) {
+            let live = null;
+            try {
+                live = getContext();
+            }
+            catch {
+                live = null;
+            }
+            const sameChat = !!live && live.chat === identity.ctx.chat && live.chat?.[identity.index] === identity.msg;
+            if (sameChat && saveFollowContinuation(identity.ctx, identity.index, identity.msg, followKey, paragraphs)) {
+                requestSafeChatSave(identity.ctx, identity.index, identity.msg, __rmT("GN33Nh"));
+                try {
+                    restoreFollowContinuationsInMessage(identity.ctx, identity.index);
                 }
-                seen += 1;
-                return match;
-            });
-            const next = { ...record, html, ts: Date.now() };
-            saveRecordForSlot(store, identity.slot, next);
-            writePersistedOwner(identity.ctx, identity.index, identity.msg, next, { overwrite: true });
-            requestSafeChatSave(identity.ctx, identity.index, identity.msg, __rmT("GN33Nh"));
-            if ((!writeStore(store) || readStore()?.[identity.slot]?.html !== html) && !savedInChatFile(identity.ctx, identity.index, identity.msg, html))
-                showIndependentUnsavedOutput(next, identity.slot);
+                catch { }
+                globalThis.toastr?.success?.(__rmT("2ls4iEeLiCoYxC0q2zymCew2bNs"));
+                return true;
+            }
         }
+        appendHere();
+        const faceIndex = identity.faceIndex >= 0 ? identity.faceIndex : 0;
+        const html = record?.html ? appendContinuationToFaceHtml(String(record.html), faceIndex, paragraphs) : '';
+        if (!html || html === record.html) {
+            globalThis.toastr?.warning?.(__rmT("dLqAW9nSdoUa4DpNhGrFb1KUOIGiYtS9MzVDmMbrkDCd3jJiy2ILU9R85gZ7gyujWUE"));
+            return true;
+        }
+        const next = { ...record, html, ts: Date.now() };
+        saveRecordForSlot(store, identity.slot, next);
+        writePersistedOwner(identity.ctx, identity.index, identity.msg, next, { overwrite: true });
+        requestSafeChatSave(identity.ctx, identity.index, identity.msg, __rmT("GN33Nh"));
+        if ((!writeStore(store) || readStore()?.[identity.slot]?.html !== html) && !savedInChatFile(identity.ctx, identity.index, identity.msg, html))
+            showIndependentUnsavedOutput(next, identity.slot);
         globalThis.toastr?.success?.(__rmT("2ls4iEeLiCoYxC0q2zymCew2bNs"));
     }
     catch {
         globalThis.toastr?.error?.(__rmT("zteBtWLdMKTdI0QJKVfNyflfVNd4xCaS7AWCamKq"));
+    }
+    finally {
+        if (busyKey)
+            continuingLongTextFaces.delete(busyKey);
     }
     return true;
 }
@@ -3041,7 +3159,7 @@ export function resayIndependentMirror(root, owner = {}, options = {}) {
             globalThis.toastr?.warning?.(__rmT("InGoNlDHm6NGgcD41ArVQmg01wLLFtPtkWBbFiApaENdrNnv23u0vJwxSl1K3nfUm.16rQGp1O9Spiwnh5CFrh"));
             return true;
         }
-        void import('../followFaceRetry.js?rmv=2.7.0').then(({ retryFollowFace }) => retryFollowFace(root, owner, {
+        void import('../followFaceRetry.js?rmv=2.8.4').then(({ retryFollowFace }) => retryFollowFace(root, owner, {
             getContext, hostBusy: hostGenerationLooksActive, maxRequestChars: configuredIndependentMaxRequestChars(getSettings()), resayNote: note, presentationOverride: form,
             resolveOwner: target => {
                 const host = target?.closest?.('[data-rabbit-mirror-external-source="true"][data-rm-source="follow"]');
@@ -3666,11 +3784,11 @@ async function requestMirrorImagePlan(target, input = {}, options = {}) {
     const current = getSettings();
     if (current.imageEnabled !== true && !(options.builtin === true && current.builtinImageEnabled === true))
         throw new Error(__rmT("8STykmYHLDUz0S8r9hy7tP9wut__8DbUYo_PTBNQgG8"));
-    const { imageLlmSettings } = await import('../imageLlm.js?rmv=2.7.0');
+    const { imageLlmSettings } = await import('../imageLlm.js?rmv=2.8.4');
     const st = imageLlmSettings({ ...current, independentExcludedParams: Array.isArray(current.independentExcludedParams) ? [...current.independentExcludedParams] : current.independentExcludedParams });
     if ((!st.independentConnectionProfileId && !st.independentApiBaseUrl) || !st.independentApiModel)
         throw new Error(__rmT("KVbwQfB8jdVy4ATr1_jgvi2TRRcSg4LmxLopxSIYLEJ.bNiayOeN_.TEkNrEzWrKPa12mp1QUuA1dzRVT0ixsT1NOjV504YO"));
-    const { buildImagePlanningPrompt, parseImagePlan } = await import('../imagePlan.js?rmv=2.7.0');
+    const { buildImagePlanningPrompt, parseImagePlan } = await import('../imagePlan.js?rmv=2.8.4');
     target.assertCurrent();
     const focus = String(input.focus || '').trim();
     const promptFormat = (input.promptFormat || st.imagePromptFormat) === 'nai45-tags' ? 'nai45-tags' : 'nai5-natural';
@@ -3678,7 +3796,7 @@ async function requestMirrorImagePlan(target, input = {}, options = {}) {
         .map(person => ({ name: String(person?.name || '').slice(0, 40), text: String(person?.text || '').slice(0, 800) })).filter(person => person.name && person.text);
     let worldBookCast = '';
     try {
-        const { readCharacterWorldBookContext } = await import('../characterWorldBook.js?rmv=2.7.0');
+        const { readCharacterWorldBookContext } = await import('../characterWorldBook.js?rmv=2.8.4');
         const castFocus = [target.faceText, focus, ...sceneCharacters.map(person => person.name)].join('\n').slice(-20000);
         const cast = await readCharacterWorldBookContext(getContext(), { signal: options.signal, disabledBooks: current.independentWorldInfoDisabledBooks || [], focusText: castFocus, filterContent: value => stripExcludedTagsFromReference(value), onlyMentioned: true, maxChars: 3000, assertCurrent: () => target.assertCurrent() });
         worldBookCast = String(cast?.text || '');
@@ -3764,7 +3882,7 @@ export async function prepareIndependentBackfillFloor(index, { chat = '', token 
     catch { }
     const go = () => (!chat || chatKey(getContext()) === chat) && (typeof keepGoing !== 'function' || keepGoing() !== false);
     try {
-        const snapshot = await import('../theaterSnapshot.js?rmv=2.7.0');
+        const snapshot = await import('../theaterSnapshot.js?rmv=2.8.4');
         await snapshot.revealChatFloor(id, { keepGoing: go });
     }
     catch { }
@@ -3950,7 +4068,7 @@ function handleFollowMultifaceRejected(event) {
     if (!failure || failure.batchId !== event?.detail?.batchId)
         return false;
     queueMessageSync([index]);
-    void import('../followAutomaticReroll.js?rmv=2.7.0').then(({ maybeAutomaticFollowReroll }) => maybeAutomaticFollowReroll(index, followAutomaticRerollDeps()));
+    void import('../followAutomaticReroll.js?rmv=2.8.4').then(({ maybeAutomaticFollowReroll }) => maybeAutomaticFollowReroll(index, followAutomaticRerollDeps()));
     return true;
 }
 function handleFollowGenerationSettled(event) {
@@ -3958,12 +4076,12 @@ function handleFollowGenerationSettled(event) {
     if (!Number.isInteger(index) || index < 0)
         return false;
     if (event?.detail?.cancelled === true) {
-        void import('../followAutomaticReroll.js?rmv=2.7.0').then(({ markFollowAutomaticRerollCancelled }) => {
+        void import('../followAutomaticReroll.js?rmv=2.8.4').then(({ markFollowAutomaticRerollCancelled }) => {
             markFollowAutomaticRerollCancelled(getContext(), index);
         });
         return true;
     }
-    void import('../followAutomaticReroll.js?rmv=2.7.0').then(({ maybeAutomaticFollowReroll }) => maybeAutomaticFollowReroll(index, followAutomaticRerollDeps()));
+    void import('../followAutomaticReroll.js?rmv=2.8.4').then(({ maybeAutomaticFollowReroll }) => maybeAutomaticFollowReroll(index, followAutomaticRerollDeps()));
     return true;
 }
 function cloneFollowFaceForExternal(root) {
@@ -4988,7 +5106,7 @@ export function earlyBodyConfigSignature(settings = getSettings()) {
         settings.independentContextExcludedTags || [],
         ['independentConnectionProfileId', 'independentApiBaseUrl', 'independentApiModel', 'independentApiTemperature', 'independentApiMaxTokens', 'independentMaxRequestChars',
             'independentContextMaxLayers', 'independentReadCharacterCardSummary', 'independentReadPersonaSummary', 'independentReadGlobalWorldInfo', 'independentWorldInfoDisabledBooks',
-            'rabbitMirrorFaceCount', 'samplingMode', 'selfInventMode', 'rawPolicy', 'showCot', 'avoidRepeat', 'cooldownRounds', 'blacklistEnabled', 'blacklistedThemeIds', 'blacklistedFormatIds',
+            'rabbitMirrorFaceCount', 'samplingMode', 'selfInventMode', 'rawPolicy', 'showCot', 'avoidRepeat', 'cooldownRounds', 'drawCooldownFaces', 'blacklistEnabled', 'blacklistedThemeIds', 'blacklistedFormatIds',
             'favoriteThemeIds', 'favoriteFormatIds', 'favoriteThemeMultipliers', 'favoriteFormatMultipliers', 'presentationWorldviewLock', 'richFormatBias',
             'externalWorldBookRandomEnabled', 'externalWorldBookMixMode', 'darkVisualMode', 'visualToneMode', 'postGenerationRecolor', 'visualDesignMode', 'visualPromptEditingEnabled', 'visualPrompt', 'visualExtraPrompt', 'visualAvoidPrompt',
             'appearanceReferenceEnabled', 'appearanceReferenceRevision', 'behaviorRuleMode', 'behaviorRuleText', 'forceVisualScenery', 'visualSceneryCombination', 'rabbitMirrorBannedWords', 'materialTextureEnabled', 'webFontsEnabled']
@@ -5109,11 +5227,11 @@ export function hydrateIndependentFavoriteHtml(container, record) {
     ensureExternalTools(host);
     containFavoriteHostLayout(host);
     if (host.querySelector('[data-rm-sprite]')) {
-        void import('../pixelSprites.js?rmv=2.7.0').then(module => { if (host.isConnected)
+        void import('../pixelSprites.js?rmv=2.8.4').then(module => { if (host.isConnected)
             module.applyPixelSprites(host); }).catch(() => { });
     }
     if (host.querySelector('[data-rm-draw-frame]')) {
-        void import('../builtinImage.js?rmv=2.7.0').then(module => {
+        void import('../builtinImage.js?rmv=2.8.4').then(module => {
             if (!host.isConnected)
                 return;
             for (const details of host.querySelectorAll('details'))

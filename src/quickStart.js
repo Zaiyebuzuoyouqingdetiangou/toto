@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.7.0";
+import { rmT as __rmT } from "./textTable.js?rmv=2.8.4";
 const setting = (id, name, description, target, page = '') => ({ id, name, description, target, page });
 const mirror = (id, name, description, path) => ({ id, name, description, mirror: path });
 export const QUICK_START_GROUPS = [
@@ -38,7 +38,7 @@ export const QUICK_START_GROUPS = [
             setting('replacement', __rmT("FOZbUsa23fx4cuV32Rp"), __rmT("OpMQQrWVQUsYtXFeX0H.DbB2k3arnZUjJy2DS1RaMGQ3.Rr45qZ27h_pzBG"), '#rh_banned_words', 'replacement'),
         ] },
     { name: __rmT("VeMsV6tpsDE"), items: [
-            mirror('snapshot', __rmT("H8BQLf"), __rmT("i4wAKeOwv7.WxELO.xxQ9qU.5OLnL2Ld06Uct2UKgG6iHt_k5fz3Ny6Kz0gD6.YP9mb.aiHDl1L8x1sWr23LY7.Zadx2_qBFwnceIRE7m1G1NhnVu2uKD1kxYyOdZnZXoc6YVfzJxC5rg0zzarkeRxp_1y0sCbcEgptuLP191SO7p7gYf1LBNsMOKu4dT2se8mmHMRW2O9eNHieJnVMhKtpooVYYmjoOUb5sIiNcqgNCifr4xQI4MAozm8A"), __rmT("ZnDCx3GLUpkvcozvRDhN1yzTiz.dFXv1NFfY.Qyk83T")),
+            mirror('snapshot', __rmT("H8BQLf"), __rmT("wG0vx605augGkTVXQ5_ckuK9vhIwPrLaLG5.HMKxXCaP9wJKfySY4hRPLPuYnSzUJJkvNlj367G_FhBMQxKFf1_xNtkfpLSi.cNHNNxtdccPOnFtdz_ean5QGRA7obeMbuZ_2teRxKZT30ccgs5u8YlF5WZFEvmF7JhhBNb9bsInFpoXDhDQODAX5EzO3fvNSuGlw5oSY29VFirz7.kH27yjd5mM9fc_T0q7oKZN7da79D71JIhf4PvQlgQRTtgloe8mSbPGxtjWgH.7ibjdoUepywBWtjOhuiwiFe9wz2oDCt077yoidQBV1ez5afi4.2yV7eWTY3YoOP634s23R3vdFEe1vCjpedQ_E9JntMktvOQ1L8br3lBCcX_FwURxDq.qzM42_WE"), __rmT("ZnDCx3GLUpkvcozvRDhN1yzTiz.dFXv1NFfY.Qyk83T")),
             mirror('cat', __rmT("YB2jfCP7KjkQkCBwtKAmA4Qz"), __rmT("PYGBO2qulOEfpcy.LT3HqpauVnaq0UzN_PcSZIgJtEky_B1nlyde215X"), __rmT("vZlJxBornW9qXC2GwHCVJlWU561wLT")),
             mirror('resay', __rmT("hYhTEk"), __rmT("tk2O9pYxJDp1R9xmOVdZ63TnHoKukJ6pggL0rKfIEM3eWrHvOQqM1X84nqXUE4.Sb9K7LoDE8OxHM3XCQUa_mR.kXzKPWnCmmGm6IBc7K5iKJnB0fQ6dV3Q1Khu2WRfhiEa7YoaUdMInIsvtFgZjiBSQmPsz.vQEJfVUL5nFzyW5l1Rw"), __rmT("E1Da_XPBdJWUroTYpJJ9XmW45gqg9jON3hFZhOiYNM.2xf")),
             mirror('swipe', __rmT("UH.bUZWfKjkQkCBw1tIEmVV4"), __rmT("Igfm6pEr2hl0b0x3_czgdttTe3AD4VvmvEPTxXNiHRPwMOjPuWoDDVrUpPmK8PL2Gdxgel82qdXBpnUjc47.6OGVP6eHi5YO"), __rmT("Gz6ZQz_ovSTgyX.Un_RoiyczvUtK.ePYLlD")),

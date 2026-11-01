@@ -1,18 +1,19 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.7.0";
-import { usesModelOriginalColors } from './visualDesign.js?rmv=2.7.0';
-import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.7.0';
-import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.7.0';
-import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.7.0';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.7.0';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.7.0';
-import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.7.0';
-import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.7.0';
-import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.7.0';
-import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.7.0';
-import { isDocumentFormat } from './documentFormats.js?rmv=2.7.0';
-import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.7.0';
-import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.7.0';
-import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.7.0';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.8.4";
+import { usesModelOriginalColors } from './visualDesign.js?rmv=2.8.4';
+import { faceDrawRule, hasFaceDrawRules, normalizeFaceDrawRules } from './faceDrawRules.js?rmv=2.8.4';
+import { drawFaceRule, faceDrawFingerprint } from './faceDrawEngine.js?rmv=2.8.4';
+import { attachPaletteRecipes } from './paletteRecipes.js?rmv=2.8.4';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.8.4';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.8.4';
+import { getCurrentChatKey, getDirectiveScopedPick, getFormatEligibleMisses, getLastCombo, getRecentGenerationAttemptIds, getRecentIds, getRecentInteractionFamilies, getRecentDiversityHistory, getActivePaletteCooldown, recordGenerationAttempt, recordFormatEligibleMissRound, setDirectiveScopedPick, setLastCombo, setPendingComboBatch, readPendingComboBatch, clearPendingComboBatch, clearPendingCombo, createPendingComboBatchPlan, findPendingComboBatchPlan, readFaceDrawCursorState, } from './storage.js?rmv=2.8.4';
+import { canonicalFormatId, filterRandomFormatPool, filterRandomThemePool, getFavoritesState } from './blacklist.js?rmv=2.8.4';
+import { COLLECTION_ONLY, withCollectionTaste } from './continuationCache.js?rmv=2.8.4';
+import { describeBatchPlanFailure } from './externalWorldBook/errors.js?rmv=2.8.4';
+import { isDocumentFormat } from './documentFormats.js?rmv=2.8.4';
+import { DEFAULT_COOLDOWN_FACES, NEAR_COOLDOWN_FACES, cooldownForPool, isThemeClusterKey, randomSkipIds, reportLikeFactor, sameClusterThemeIds, themeClusterKey, themeClusterMembers } from './drawBalance.js?rmv=2.8.4';
+import { requestedPresentationMode, presentationModeFields, visualSceneryCombinationEnabled, visualSceneryEnabled, isBlankLongTextSelection } from './presentationMode.js?rmv=2.8.4';
+import { planBatchInteractionDiversity } from './batchInteractionDiversity.js?rmv=2.8.4';
+import { chooseExternalSource, externalPoolActive, externalPoolHasAvailable, externalPoolItem, getExternalPoolSelectionKey, getExternalPoolSnapshot, pickExternalItems, sourceMixModeIsExternalOnly, } from './externalWorldBook/externalPool.js?rmv=2.8.4';
 function randomUnit() {
     try {
         const cryptoApi = globalThis.crypto;
@@ -83,6 +84,13 @@ function pickUiReviewFocus(count = 4) {
     return [...mustHave, ...shuffle(rest).slice(0, Math.max(0, n - mustHave.length))];
 }
 let cachedPick = null;
+function cooldownFaces(settings) {
+    return Math.max(1, Math.floor(Number(settings?.drawCooldownFaces)) || DEFAULT_COOLDOWN_FACES);
+}
+function explicitFavoriteFormatIds(favoriteFormatIds = [], favoriteFormatMultipliers = {}) {
+    const collectionOnly = favoriteFormatMultipliers?.[COLLECTION_ONLY];
+    return new Set((favoriteFormatIds || []).filter(id => !collectionOnly?.has?.(id)));
+}
 function normalizeGenerationScopeKey(value) {
     return String(value || '').trim();
 }
@@ -108,6 +116,17 @@ function mergeRecentHitMaps(base = {}, attempts = {}) {
     }
     return result;
 }
+function mergeRecentAges(base = {}, attempts = {}) {
+    const result = {};
+    for (const source of [base, attempts]) {
+        for (const [key, raw] of Object.entries(source || {})) {
+            const age = Math.floor(Number(raw) || 0);
+            if (key && age >= 1)
+                result[key] = Math.min(Number(result[key] || Infinity), age);
+        }
+    }
+    return result;
+}
 function mergeRecent(base, attempts) {
     return {
         themeIds: compactUnique([...(base?.themeIds || []), ...(attempts?.themeIds || [])]),
@@ -116,9 +135,12 @@ function mergeRecent(base, attempts) {
         formatGroups: compactUnique([...(base?.formatGroups || []), ...(attempts?.formatGroups || [])]),
         themeIdHits: mergeRecentHitMaps(base?.themeIdHits, attempts?.themeIdHits),
         formatIdHits: mergeRecentHitMaps(base?.formatIdHits, attempts?.formatIdHits),
+        themeIdAges: mergeRecentAges(base?.themeIdAges, attempts?.themeIdAges),
+        formatIdAges: mergeRecentAges(base?.formatIdAges, attempts?.formatIdAges),
         ...((base?.textIds?.length || attempts?.textIds?.length) ? {
             textIds: compactUnique([...(base?.textIds || []), ...(attempts?.textIds || [])]),
             textIdHits: mergeRecentHitMaps(base?.textIdHits, attempts?.textIdHits),
+            textIdAges: mergeRecentAges(base?.textIdAges, attempts?.textIdAges),
         } : {}),
         themeGroupHits: mergeRecentHitMaps(base?.themeGroupHits, attempts?.themeGroupHits),
         formatGroupHits: mergeRecentHitMaps(base?.formatGroupHits, attempts?.formatGroupHits),
@@ -202,8 +224,37 @@ function immediateFamilySet(values) {
     return new Set((Array.isArray(values) ? values : []).map(value => String(value || '')).filter(Boolean));
 }
 const HIERARCHY_EXPONENT = 0.8;
+const THEME_GROUP_EXPONENT = 0.55;
+const THEME_ITEM_CAP = 1.5;
 const PARENT_ITEM_FACTOR = 0.35;
 const SAME_GROUP_IN_DRAW_FACTOR = 0.3;
+function capItemWeights(itemWeights, cap) {
+    const total = [...itemWeights.values()].reduce((sum, weight) => sum + weight, 0);
+    if (!(total > 0) || itemWeights.size < 2 || !(cap >= 1))
+        return itemWeights;
+    const limit = cap * total / itemWeights.size;
+    const capped = new Map(itemWeights);
+    for (let round = 0; round < 64; round += 1) {
+        let excess = 0;
+        const open = [];
+        for (const [id, weight] of capped) {
+            if (weight > limit) {
+                excess += weight - limit;
+                capped.set(id, limit);
+            }
+            else if (weight < limit)
+                open.push(id);
+        }
+        if (excess <= total * 1e-12)
+            break;
+        const openTotal = open.reduce((sum, id) => sum + capped.get(id), 0);
+        if (!(openTotal > 0))
+            break;
+        for (const id of open)
+            capped.set(id, capped.get(id) + excess * capped.get(id) / openTotal);
+    }
+    return capped;
+}
 function hierarchyBaseWeights(items, familyKey) {
     const list = Array.isArray(items) ? items : [];
     const ids = list.map(item => String(item?.id || ''));
@@ -224,21 +275,25 @@ function hierarchyBaseWeights(items, familyKey) {
             families.set(family, []);
         families.get(family).push(item);
     }
-    const itemWeights = new Map();
-    const familyWeights = new Map();
+    let itemWeights = new Map();
     for (const families of groups.values()) {
         const groupSize = [...families.values()].reduce((sum, members) => sum + members.length, 0);
-        const groupWeight = Math.pow(Math.max(1, groupSize), HIERARCHY_EXPONENT);
+        const groupWeight = Math.pow(Math.max(1, groupSize), THEME_GROUP_EXPONENT);
         const familyRaw = [...families.entries()].map(([key, members]) => [key, members, Math.pow(Math.max(1, members.length), HIERARCHY_EXPONENT)]);
         const familyTotal = familyRaw.reduce((sum, entry) => sum + entry[2], 0) || 1;
-        for (const [key, members, raw] of familyRaw) {
+        for (const [, members, raw] of familyRaw) {
             const familyWeight = groupWeight * raw / familyTotal;
-            familyWeights.set(key, familyWeight);
             const leafRaw = members.map(item => [item, parentIds.has(String(item?.id || '')) ? PARENT_ITEM_FACTOR : 1]);
             const leafTotal = leafRaw.reduce((sum, entry) => sum + entry[1], 0) || 1;
             for (const [item, leaf] of leafRaw)
                 itemWeights.set(item.id, familyWeight * leaf / leafTotal);
         }
+    }
+    itemWeights = capItemWeights(itemWeights, THEME_ITEM_CAP);
+    const familyWeights = new Map();
+    for (const item of list) {
+        const key = familyKey(item);
+        familyWeights.set(key, (familyWeights.get(key) || 0) + (Number(itemWeights.get(item.id)) || 0));
     }
     return { itemWeights, familyWeights };
 }
@@ -254,19 +309,22 @@ function recentDocumentFaceHits(limit = 3) {
         return batchDocumentHits;
     }
 }
-function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = [], groupCooldownEnabled = true) {
-    const recent = new Set(recentIds || []);
+function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], eligibleMisses = {}, favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = [], groupCooldownEnabled = true, cooldown = {}) {
     const groups = new Set(recentGroups || []);
     const hardExcluded = new Set(hardExcludedIds || []);
     const favorites = new Set(favoriteIds || []);
+    const collectionOnly = favoriteMultipliers?.[COLLECTION_ONLY];
+    const explicitFavorites = new Set([...favorites].filter(id => !collectionOnly?.has?.(id)));
     let candidates = [...pool];
     if (hardExcluded.size) {
         const filtered = candidates.filter(x => !hardExcluded.has(x.id));
         if (filtered.length >= count)
             candidates = filtered;
     }
-    if (avoidRepeat) {
-        const filtered = candidates.filter(x => !recent.has(x.id));
+    const cool = cooldownForPool(candidates, count, avoidRepeat ? recentIds : [], cooldown?.ages, { skip: cooldown?.skip, favorites: explicitFavorites, faces: cooldown?.faces });
+    const recent = avoidRepeat ? cool.recent : new Set(recentIds || []);
+    if (cool.blocked.size) {
+        const filtered = candidates.filter(x => !cool.blocked.has(x.id));
         if (filtered.length >= count)
             candidates = filtered;
     }
@@ -308,7 +366,8 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
         }
         const weighted = available
             .map(item => {
-            let weight = 1;
+            const reportFactor = reportLikeFactor(item.id, explicitFavorites);
+            let weight = reportFactor;
             const groupHits = groupExcess(item.group);
             if (avoidRepeat && groupHits)
                 weight *= recentDiversityFactor(groupHits, groupCooldownEnabled ? 0.35 : 0.7, groupCooldownEnabled ? 0.12 : 0.4);
@@ -325,7 +384,7 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
                 weight *= recentDiversityFactor(familyHits, 0.28);
             if (favorites.has(item.id))
                 weight *= favoriteMultiplierFor(item.id, favorites, favoriteMultipliers);
-            weight *= fairnessFactor(eligibleMisses?.[item.id]);
+            weight *= fairnessFactor(Number(eligibleMisses?.[item.id] || 0) * reportFactor);
             return { item, weight };
         });
         const total = weighted.reduce((sum, x) => sum + x.weight, 0);
@@ -355,6 +414,9 @@ function weightedSample(pool, count, recentIds = [], recentGroups = [], avoidRep
 }
 function themeFamilyKey(itemOrId) {
     const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+    const cluster = themeClusterKey(id);
+    if (cluster)
+        return cluster;
     const parts = String(id || '').split('.').filter(Boolean);
     if (parts.length >= 2)
         return `${parts[0]}.${parts[1]}`;
@@ -379,21 +441,25 @@ function pickWeightedEntry(entries, getWeight) {
 function themeFamilyBaseWeight(itemCount) {
     return Math.pow(Math.max(1, Number(itemCount) || 1), 0.6);
 }
-function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = []) {
-    const recent = new Set(recentIds || []);
+function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avoidRepeat = true, hardExcludedIds = [], favoriteIds = [], favoriteMultipliers = {}, recentGroupHitMap = {}, recentFamilyHitMap = {}, immediateFamilyKeys = [], cooldown = {}) {
+    const allRecent = new Set(recentIds || []);
     const recentGroupSet = new Set(recentGroups || []);
-    const recentFamilySet = new Set((recentIds || []).map(themeFamilyKey));
+    const recentFamilySet = new Set([...allRecent].map(themeFamilyKey));
     const hardExcluded = new Set(hardExcludedIds || []);
     const favorites = new Set(favoriteIds || []);
+    const need = Math.max(1, Number(count) || 1);
+    const faces = Math.max(1, Math.floor(Number(cooldown?.faces)) || DEFAULT_COOLDOWN_FACES);
     let workingPool = [...pool];
     if (hardExcluded.size) {
         const filtered = workingPool.filter(item => !hardExcluded.has(item.id));
-        if (filtered.length >= Math.max(1, Number(count) || 1))
+        if (filtered.length >= need)
             workingPool = filtered;
     }
-    if (avoidRepeat && recent.size) {
-        const filtered = workingPool.filter(item => !recent.has(item.id));
-        if (filtered.length >= Math.max(1, Number(count) || 1))
+    const cool = cooldownForPool(workingPool, need, avoidRepeat ? [...allRecent] : [], cooldown?.ages, { skip: cooldown?.skip, favorites, faces });
+    const recent = avoidRepeat ? cool.recent : allRecent;
+    if (cool.blocked.size) {
+        const filtered = workingPool.filter(item => !cool.blocked.has(item.id));
+        if (filtered.length >= need)
             workingPool = filtered;
     }
     const immediateFamilies = avoidRepeat ? immediateFamilySet(immediateFamilyKeys) : new Set();
@@ -412,15 +478,29 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         const key = String(entry.group || '');
         groupWeightTotal.set(key, (groupWeightTotal.get(key) || 0) + (Number(themeFamilyWeights.get(entry.key)) || 0));
     }
-    const recentWindow = Math.max(recent.size, Object.values(recentGroupHitMap || {}).reduce((sum, value) => sum + (Number(value) || 0), 0));
+    const recentWindow = Math.max(allRecent.size, Object.values(recentGroupHitMap || {}).reduce((sum, value) => sum + (Number(value) || 0), 0));
     const excessHits = (hits, share) => Math.max(0, hits - Math.floor(share * recentWindow));
     const groupExcess = group => {
         const key = String(group || '');
         const hits = Number(recentGroupHitMap?.[key] || (recentGroupSet.has(key) ? 1 : 0));
         return excessHits(hits, (groupWeightTotal.get(key) || 0) / familyWeightTotal);
     };
+    const ageOf = id => {
+        const value = Math.floor(Number(cooldown?.ages?.[id]));
+        return value >= 1 ? value : 1;
+    };
+    const clusterCooling = key => {
+        const members = themeClusterMembers(key);
+        const window = members.some(id => favorites.has(id)) ? Math.min(faces, NEAR_COOLDOWN_FACES) : faces;
+        return members.some(id => allRecent.has(id) && ageOf(id) <= window);
+    };
+    const nearFamilyHits = key => [...allRecent].filter(id => themeFamilyKey(id) === key && ageOf(id) <= NEAR_COOLDOWN_FACES).length;
     const familyExcess = entry => {
-        const hits = Number(recentFamilyHitMap?.[entry.key] || (recentFamilySet.has(entry.key) ? 1 : 0));
+        if (isThemeClusterKey(entry.key))
+            return avoidRepeat && clusterCooling(entry.key) ? 1 : 0;
+        const hits = entry.items.some(item => favorites.has(item.id))
+            ? nearFamilyHits(entry.key)
+            : Number(recentFamilyHitMap?.[entry.key] || (recentFamilySet.has(entry.key) ? 1 : 0));
         return excessHits(hits, (Number(themeFamilyWeights.get(entry.key)) || 0) / familyWeightTotal);
     };
     const selected = [];
@@ -494,9 +574,9 @@ function weightedThemeSample(pool, count, recentIds = [], recentGroups = [], avo
         return selected;
     return shuffle(workingPool).slice(0, Math.max(1, Math.min(count, workingPool.length)));
 }
-function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, externalHardExcludedIds = [] }) {
+function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, externalHardExcludedIds = [], cooldown = {} }) {
     if (!externalPoolActive(settings, 'theme')) {
-        return weightedThemeSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys);
+        return weightedThemeSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, cooldown);
     }
     const target = Math.max(0, Number(count) || 0);
     const sourceKinds = [];
@@ -507,13 +587,14 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits
     const builtinCount = sourceKinds.filter(kind => kind === 'builtin').length;
     const externalCount = sourceKinds.length - builtinCount;
     let builtins = builtinCount
-        ? weightedThemeSample(pool, builtinCount, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys)
+        ? weightedThemeSample(pool, builtinCount, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, cooldown)
         : [];
     let externals = externalCount
         ? pickExternalItems(settings, 'theme', externalCount, {
             randomUnit,
             recentIds,
             recentIdHits,
+            recentIdAges: cooldown?.ages,
             hardExcludedIds: externalHardExcludedIds,
             preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
@@ -521,8 +602,9 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits
         : [];
     if (externals.length < externalCount && !sourceMixModeIsExternalOnly(settings)) {
         const deficit = externalCount - externals.length;
-        const extraHard = [...hardExcludedIds, ...builtins.map(item => item.id)];
-        builtins = [...builtins, ...weightedThemeSample(pool, deficit, recentIds, recentGroups, avoidRepeat, extraHard, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys)];
+        const firstIds = builtins.map(item => item.id);
+        const extraHard = [...hardExcludedIds, ...firstIds, ...sameClusterThemeIds(firstIds)];
+        builtins = [...builtins, ...weightedThemeSample(pool, deficit, recentIds, recentGroups, avoidRepeat, extraHard, favoriteIds, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, cooldown)];
     }
     if (builtins.length < builtinCount) {
         const deficit = builtinCount - builtins.length;
@@ -530,6 +612,7 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits
                 randomUnit,
                 recentIds,
                 recentIdHits,
+                recentIdAges: cooldown?.ages,
                 hardExcludedIds: [...externalHardExcludedIds, ...externals.map(item => item.id)],
                 preferredExcludedIds: hardExcludedIds,
                 avoidRepeat,
@@ -546,9 +629,9 @@ function sourceAwareThemeSample({ settings, pool, count, recentIds, recentIdHits
     selected.push(...builtinQueue, ...externalQueue);
     return uniqueById(selected).slice(0, target);
 }
-function sourceAwareFormatSample({ settings, pool, count, recentIds, recentIdHits, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, externalHardExcludedIds = [], presentationKind = 'format' }) {
+function sourceAwareFormatSample({ settings, pool, count, recentIds, recentIdHits, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, externalHardExcludedIds = [], presentationKind = 'format', cooldown = {} }) {
     if (!externalPoolActive(settings, presentationKind)) {
-        return weightedSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled);
+        return weightedSample(pool, count, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, cooldown);
     }
     const target = Math.max(0, Number(count) || 0);
     const sourceKinds = [];
@@ -559,13 +642,14 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentIdHit
     const builtinCount = sourceKinds.filter(kind => kind === 'builtin').length;
     const externalCount = sourceKinds.length - builtinCount;
     let builtinSample = builtinCount
-        ? weightedSample(pool, builtinCount, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled)
+        ? weightedSample(pool, builtinCount, recentIds, recentGroups, avoidRepeat, hardExcludedIds, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, cooldown)
         : { selected: [], eligibleIds: [] };
     let externals = externalCount
         ? pickExternalItems(settings, presentationKind, externalCount, {
             randomUnit,
             recentIds,
             recentIdHits,
+            recentIdAges: cooldown?.ages,
             hardExcludedIds: externalHardExcludedIds,
             preferredExcludedIds: hardExcludedIds,
             avoidRepeat,
@@ -574,7 +658,7 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentIdHit
     if (externals.length < externalCount && !sourceMixModeIsExternalOnly(settings)) {
         const deficit = externalCount - externals.length;
         const extraHard = [...hardExcludedIds, ...builtinSample.selected.map(item => item.id)];
-        const extra = weightedSample(pool, deficit, recentIds, recentGroups, avoidRepeat, extraHard, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled);
+        const extra = weightedSample(pool, deficit, recentIds, recentGroups, avoidRepeat, extraHard, favoriteIds, eligibleMisses, favoriteMultipliers, recentGroupHitMap, recentFamilyHitMap, immediateFamilyKeys, groupCooldownEnabled, cooldown);
         builtinSample = { selected: [...builtinSample.selected, ...extra.selected], eligibleIds: [...new Set([...builtinSample.eligibleIds, ...extra.eligibleIds])] };
     }
     if (builtinSample.selected.length < builtinCount) {
@@ -583,6 +667,7 @@ function sourceAwareFormatSample({ settings, pool, count, recentIds, recentIdHit
                 randomUnit,
                 recentIds,
                 recentIdHits,
+                recentIdAges: cooldown?.ages,
                 hardExcludedIds: [...externalHardExcludedIds, ...externals.map(item => item.id)],
                 preferredExcludedIds: hardExcludedIds,
                 avoidRepeat,
@@ -996,9 +1081,10 @@ function worldBookLotteryResult(settings, faceIndex, scopeKey, longText) {
 function themeItemIsIf(item) {
     return Array.isArray(item?.tags) && item.tags.some(tag => String(tag || '').trim().toLowerCase() === 'if');
 }
-function cooledPool(pool, blockedIds) {
-    const blocked = new Set((blockedIds || []).filter(Boolean));
-    const fresh = (pool || []).filter(item => item?.id && !blocked.has(item.id));
+const MENU_TICKETS = 4;
+function cooledPool(pool, blockedIds, cooldown = {}, favorites = null) {
+    const cool = cooldownForPool((pool || []).filter(item => item?.id), MENU_TICKETS, (blockedIds || []).filter(Boolean), cooldown?.ages, { skip: cooldown?.skip, favorites, faces: cooldown?.faces });
+    const fresh = (pool || []).filter(item => item?.id && !cool.blocked.has(item.id));
     return fresh.length ? fresh : (pool || []).filter(item => item?.id);
 }
 function atmosphereMenuLine(item, summaryLimit = 0) {
@@ -1036,24 +1122,28 @@ function drawAtmosphereBundle(args) {
     const { settings, themePool, formatPool, faceIndex, presentationScopeKey, formalRecent, hardRecent } = args;
     const formatOnly = settings.samplingMode === 'format_only';
     const story = formatOnly || lotteryBucket(presentationScopeKey || 'atmosphere', faceIndex) < atmosphereStoryPercent(settings);
-    const blockedThemes = [...(formalRecent?.themeIds || []), ...(hardRecent?.themeIds || [])];
-    const blockedFormats = [...(formalRecent?.formatIds || []), ...(hardRecent?.formatIds || [])];
+    const blockedThemes = [...(args.recent?.themeIds || formalRecent?.themeIds || []), ...(hardRecent?.themeIds || [])];
+    const blockedFormats = [...(args.recent?.formatIds || formalRecent?.formatIds || []), ...(hardRecent?.formatIds || [])];
+    const themeFavorites = new Set(args.favoriteThemeIds || []);
+    const formatFavorites = explicitFavoriteFormatIds(args.favoriteFormatIds, args.favoriteFormatMultipliers);
+    const themeCooldown = { ages: args.recent?.themeIdAges || {}, faces: cooldownFaces(settings), skip: randomSkipIds('theme', themeFavorites) };
+    const formatCooldown = { ages: args.recent?.formatIdAges || {}, faces: cooldownFaces(settings), skip: randomSkipIds('format', formatFavorites) };
     const drawTicket = (themes, formats, usedThemeIds = [], usedFormatIds = []) => applyDirectiveOrRandom({
         ...args, themePool: themes, formatPool: formats, directive: null, lotteryMethodBypass: true,
         externalExcludedThemeIds: [...(args.externalExcludedThemeIds || []), ...usedThemeIds],
         externalExcludedFormatIds: [...(args.externalExcludedFormatIds || []), ...usedFormatIds],
     });
     if (!story) {
-        const ifPool = cooledPool((themePool || []).filter(themeItemIsIf), blockedThemes);
+        const ifPool = cooledPool((themePool || []).filter(themeItemIsIf), blockedThemes, themeCooldown, themeFavorites);
         if (!ifPool.length)
             return null;
-        const ticket = drawTicket(ifPool, cooledPool(formatPool, blockedFormats));
+        const ticket = drawTicket(ifPool, cooledPool(formatPool, blockedFormats, formatCooldown, formatFavorites));
         if (!ticket || ticket.disabled || ticket.texts?.length || ticket.worldBookEntryId || !ticket.themes?.length)
             return null;
         return { ...ticket, atmosphereBucket: 'if' };
     }
-    const storyThemes = cooledPool((themePool || []).filter(item => formatOnly || !themeItemIsIf(item)), blockedThemes);
-    let storyFormats = cooledPool(formatPool, blockedFormats);
+    const storyThemes = cooledPool((themePool || []).filter(item => formatOnly || !themeItemIsIf(item)), blockedThemes, themeCooldown, themeFavorites);
+    let storyFormats = cooledPool(formatPool, blockedFormats, formatCooldown, formatFavorites);
     const collectionOnly = args.favoriteFormatMultipliers?.[COLLECTION_ONLY];
     const favoriteFormats = new Set((args.favoriteFormatIds || []).filter(id => !collectionOnly?.has?.(id)));
     const nonDocumentFormats = storyFormats.filter(item => !isDocumentFormatId(item.id) || favoriteFormats.has(item.id));
@@ -1064,8 +1154,9 @@ function drawAtmosphereBundle(args) {
     const usedFormats = new Set();
     const usedTickets = new Set();
     const tickets = [];
-    for (let index = 0; index < 4; index += 1) {
-        const themesLeft = storyThemes.filter(item => !usedThemes.has(item.id));
+    for (let index = 0; index < MENU_TICKETS; index += 1) {
+        const sameCluster = new Set(sameClusterThemeIds(usedThemes));
+        const themesLeft = storyThemes.filter(item => !usedThemes.has(item.id) && !sameCluster.has(item.id));
         const formatsLeft = storyFormats.filter(item => !usedFormats.has(item.id) && !(documentTicket && isDocumentFormatId(item.id)));
         const themeExclusions = new Set([...(args.externalExcludedThemeIds || []), ...usedThemes]);
         const formatExclusions = new Set([...(args.externalExcludedFormatIds || []), ...usedFormats]);
@@ -1112,7 +1203,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
     if (!lotteryMethodBypass && standaloneText && settings.mode !== 'off') {
         const texts = pickExternalItems(textSettings, 'text', 1, {
             randomUnit, hardExcludedIds: externalExcludedTextIds, avoidRepeat: settings.avoidRepeat,
-            recentIds: recent.textIds || [], recentIdHits: recent.textIdHits || {},
+            recentIds: recent.textIds || [], recentIdHits: recent.textIdHits || {}, recentIdAges: recent.textIdAges || {},
             preferredExcludedIds: hardRecent.textIds || [],
         });
         if (texts.length)
@@ -1139,7 +1230,10 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
         formatPool = formatPool.filter(item => item.id !== '10.2.2');
     const includeAutoText = (requestedMode === 'auto' || longText) && externalPoolActive(settings, 'text');
     const themeFamilyHitMap = recentFamilyHits(recent.themeIdHits, themeFamilyKey);
-    const formatFamilyHitMap = recentFamilyHits(formalRecent?.formatIdHits, formatFamilyKey);
+    const formatFamilyHitMap = recentFamilyHits(formalRecent?.nearFormatIdHits || formalRecent?.formatIdHits, formatFamilyKey);
+    const explicitFormatFavorites = explicitFavoriteFormatIds(favoriteFormatIds, favoriteFormatMultipliers);
+    const themeCooldown = { ages: recent.themeIdAges || {}, faces: cooldownFaces(settings), skip: randomSkipIds('theme', favoriteThemeIds) };
+    const formatCooldown = { ages: recent.formatIdAges || {}, faces: cooldownFaces(settings), skip: randomSkipIds('format', explicitFormatFavorites) };
     const pickedThemes = directive?.hasThemeRequest
         ? []
         : sourceAwareThemeSample({
@@ -1157,6 +1251,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
             recentFamilyHitMap: themeFamilyHitMap,
             immediateFamilyKeys: previousThemeFamilyKeys,
             externalHardExcludedIds: externalExcludedThemeIds,
+            cooldown: themeCooldown,
         });
     const formatOnly = settings.samplingMode === 'format_only';
     const themes = formatOnly
@@ -1166,7 +1261,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
     const formatSample = directive?.hasFormatRequest
         ? { selected: [], eligibleIds: [] }
         : settings.forceVisualScenery && !combineVisual && !includeAutoText
-            ? weightedSample(formatPool, formatCount, recent.formatIds, formalRecent?.formatGroups || [], settings.avoidRepeat, hardRecent.formatIds, favoriteFormatIds, formatEligibleMisses, favoriteFormatMultipliers, formalRecent?.formatGroupHits || {}, formatFamilyHitMap, previousFormatFamilyKeys, formatGroupCooldownEnabled)
+            ? weightedSample(formatPool, formatCount, recent.formatIds, formalRecent?.formatGroups || [], settings.avoidRepeat, hardRecent.formatIds, favoriteFormatIds, formatEligibleMisses, favoriteFormatMultipliers, formalRecent?.formatGroupHits || {}, formatFamilyHitMap, previousFormatFamilyKeys, formatGroupCooldownEnabled, formatCooldown)
             : sourceAwareFormatSample({
                 settings,
                 pool: formatPool,
@@ -1185,6 +1280,7 @@ function applyDirectiveOrRandom({ settings, directive, themePool, formatPool, th
                 groupCooldownEnabled: formatGroupCooldownEnabled,
                 externalHardExcludedIds: [...externalExcludedFormatIds, ...externalExcludedTextIds],
                 presentationKind: includeAutoText ? 'presentation' : 'format',
+                cooldown: includeAutoText ? { ...formatCooldown, ages: { ...(recent.textIdAges || {}), ...formatCooldown.ages } } : formatCooldown,
             });
     const texts = formatSample.selected.filter(item => item.externalKind === 'text');
     const pickedFormats = formatSample.selected.filter(item => item.externalKind !== 'text');
@@ -1228,7 +1324,7 @@ function comboFromSelection(result, settings, recent, uiReviewFocus = null) {
         forcedVisualScenery: result.presentationMode !== 'text' && visualSceneryEnabled(settings),
         ...presentationModeFields(result),
         ...(result.texts?.length ? { texts: result.texts, textIds: result.texts.map(item => item.id) } : {}),
-        cooldownRounds: settings.cooldownRounds || 10,
+        cooldownRounds: cooldownFaces(settings),
         ...(result.worldBookEntryId ? {
             worldBookEntryId: result.worldBookEntryId,
             worldBookTitle: result.worldBookTitle || '',
@@ -1359,7 +1455,7 @@ function batchRandomSettingsKey(settings, total, favorites, exclusions, directiv
         formatsMin: settings.formatsMin,
         formatsMax: settings.formatsMax,
         avoidRepeat: settings.avoidRepeat,
-        cooldownRounds: settings.cooldownRounds || 10,
+        drawCooldownFaces: cooldownFaces(settings),
         ...(settings.lotteryMethod === 'atmosphere' ? {
             lotteryMethod: 'atmosphere',
             atmosphereStoryPercent: atmosphereStoryPercent(settings),
@@ -1427,8 +1523,8 @@ function batchPlanningIdentity(settings, generationScopeKey, generationContext, 
     };
 }
 function batchPickSnapshot(settings, generationContext, planning) {
-    const formalRecent = getRecentIds(settings.cooldownRounds || 10);
-    const attemptRecent = getRecentGenerationAttemptIds(planning.identity.chatKey, settings.cooldownRounds || 10);
+    const formalRecent = getRecentIds(cooldownFaces(settings));
+    const attemptRecent = getRecentGenerationAttemptIds(planning.identity.chatKey, cooldownFaces(settings));
     const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);
     const excludedThemes = new Set(planning.exclusions.themeIds);
     const excludedFormats = new Set(planning.exclusions.formatIds);
@@ -1461,7 +1557,11 @@ function planBatchFaceCore(settings, snapshot, usedThemeIds, usedFormatIds, coun
     const configured = configuredFaceSelection(settings, snapshot.directive, faceIndex, snapshot.chatKey, presentationScopeKey, snapshot.recent);
     if (configured)
         return { result: configured.result, payload: { combo: configured.combo, last: snapshot.last, directive: null } };
-    const themePool = snapshot.themePool.filter(item => !usedThemeIds.has(item.id));
+    let themePool = snapshot.themePool.filter(item => !usedThemeIds.has(item.id));
+    const sameCluster = new Set(sameClusterThemeIds(usedThemeIds));
+    const apart = sameCluster.size ? themePool.filter(item => !sameCluster.has(item.id)) : themePool;
+    if (apart.length)
+        themePool = apart;
     const formatPool = snapshot.formatPool.filter(item => !usedFormatIds.has(item.id));
     const themeCount = counts ? counts.themeCount : weightedThemeCount(settings);
     const formatCount = counts ? counts.formatCount : weightedFormatCount(settings);
@@ -1476,9 +1576,9 @@ function planBatchFaceCore(settings, snapshot, usedThemeIds, usedFormatIds, coun
         recent: snapshot.recent,
         formalRecent: snapshot.formalRecent,
         hardRecent: {
-            themeIds: [...(snapshot.attemptRecent.themeIds || []), ...snapshot.exclusions.themeIds],
-            formatIds: [...(snapshot.attemptRecent.formatIds || []), ...snapshot.exclusions.formatIds],
-            textIds: snapshot.attemptRecent.textIds || [],
+            themeIds: [...snapshot.exclusions.themeIds],
+            formatIds: [...snapshot.exclusions.formatIds],
+            textIds: [],
         },
         previousThemeFamilyKeys: (snapshot.last?.themeIds || []).map(themeFamilyKey),
         previousFormatFamilyKeys: (snapshot.last?.formatIds || []).map(formatFamilyKey),
@@ -1666,7 +1766,7 @@ export function pickSelfInventSelection(settings, faceIndex = 0, generationConte
     const combo = comboFromSelection({
         themes: [], formats: [],
         ...(longText ? { requestedPresentationMode: 'longtext', presentationMode: 'text', blankLongText: true, themeIds: [], formatIds: [], textIds: [] } : { presentationMode: 'html' }),
-    }, { ...settings, samplingMode: longText ? (settings.samplingMode || 'classic') : 'self_invent', forceVisualScenery: false, visualSceneryCombination: false }, getRecentIds(settings.cooldownRounds || 10));
+    }, { ...settings, samplingMode: longText ? (settings.samplingMode || 'classic') : 'self_invent', forceVisualScenery: false, visualSceneryCombination: false }, getRecentIds(cooldownFaces(settings)));
     combo.forcedVisualScenery = false;
     try {
         clearPendingCombo();
@@ -1749,7 +1849,7 @@ export function pickCombinationForMultifaceResay(settings, resay, generationScop
     const selectedSettings = { ...settings, samplingMode: face.samplingMode || settings.samplingMode, forceVisualScenery: face.forcedVisualScenery === true, visualSceneryCombination: face.visualSceneryCombination === true };
     return { combo: comboFromSelection({ themes, formats, ...(texts.length ? { texts } : {}), ...(face.faceDrawConfigured === true ? { faceDrawConfigured: true, ...(face.faceDrawState ? { faceDrawState: cloneBatchPlan(face.faceDrawState) } : {}) } : {}), ...(isBlankLongTextSelection(face) ? { themeIds: [], formatIds: [], textIds: [] } : {}), ...presentationModeFields(face), ...(resay.preserveVariation ? {} : { previousVariation: face }),
             ...(resay.presentationOverride === 'html' ? { presentationMode: 'html', requestedPresentationMode: 'html', blankLongText: false }
-                : resay.presentationOverride === 'longtext' ? { presentationMode: 'text', requestedPresentationMode: 'longtext' } : {}) }, selectedSettings, getRecentIds(settings.cooldownRounds || 10)), directive: null, last: null };
+                : resay.presentationOverride === 'longtext' ? { presentationMode: 'text', requestedPresentationMode: 'longtext' } : {}) }, selectedSettings, getRecentIds(cooldownFaces(settings))), directive: null, last: null };
 }
 export function pickCombinationBatch(settings, generationScopeKey = '', generationContext = null, faceCount = 1) {
     settings = { ...settings, avoidRepeat: true };
@@ -1825,8 +1925,8 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
     const currentTurn = settings.userDirectivePriority ? getCurrentTurnUserMessage(chatOverride) : null;
     const directive = currentTurn ? parseUserDirective(currentTurn) : null;
     const last = getLastCombo();
-    const formalRecent = getRecentIds(settings.cooldownRounds || 10);
-    const attemptRecent = getRecentGenerationAttemptIds(chatKey, settings.cooldownRounds || 10);
+    const formalRecent = getRecentIds(cooldownFaces(settings));
+    const attemptRecent = getRecentGenerationAttemptIds(chatKey, cooldownFaces(settings));
     const previous = generationContext?.previousVariation;
     const recent = mergeRecent(mergeRecent(formalRecent, attemptRecent), previous || {});
     const batchExcludedThemeIds = Array.isArray(generationContext?.batchExcludedThemeIds)
@@ -1836,9 +1936,9 @@ export function pickCombination(settings, generationScopeKey = '', generationCon
         ? generationContext.batchExcludedFormatIds.map(value => String(value || '')).filter(Boolean)
         : [];
     const hardRecent = {
-        themeIds: [...(attemptRecent.themeIds || []), ...batchExcludedThemeIds, ...(previous?.themeIds || [])],
-        formatIds: [...(attemptRecent.formatIds || []), ...batchExcludedFormatIds, ...(previous?.formatIds || [])],
-        textIds: [...(attemptRecent.textIds || []), ...(previous?.textIds || [])],
+        themeIds: [...batchExcludedThemeIds, ...sameClusterThemeIds(batchExcludedThemeIds), ...(previous?.themeIds || [])],
+        formatIds: [...batchExcludedFormatIds, ...(previous?.formatIds || [])],
+        textIds: [...(previous?.textIds || [])],
     };
     const favorites = withCollectionTaste(getFavoritesState(settings), settings, canonicalFormatId);
     const validFormatIds = PRESENTATION_FORMATS.map(item => String(item?.id || '')).filter(Boolean);

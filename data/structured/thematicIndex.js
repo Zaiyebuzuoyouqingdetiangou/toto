@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../../src/textTable.js?rmv=2.7.0";
+import { rmT as __rmT } from "../../src/textTable.js?rmv=2.8.4";
 export const THEMATIC_CATEGORIES = [
     {
         "id": "A.0",
@@ -399,26 +399,29 @@ export const THEMATIC_CATEGORIES = [
     {
         "id": "B.7.5",
         "group": "B",
-        "title": __rmT("SumM5AgOsNk"),
-        "summary": __rmT("Ic3M17bY6yGovwNgnS5pFRGLNd3U9nvEQtMYOZH7.q2jSs3EyALyDniysG.0U8cAURVpe_WURlme7_5eb1ZTca5LjOpPY2fRNlcgrWIyh_K7lsummJMYc.qmWGQb2eapMihi2cZlGm1arUfmma2llFfm1_4Yf1xofsKdOyLwy2AmIYJtGC9X4sybt5wNmBOlyVurqNHAwXa922UAyw122STdlnN0pz330eE3qrDNKcgo04Mfm00zumQpOGzy7_C4hM..CITwjTz0GGtRx9EIxjHnM.2s7cOL9LyJwPLz"),
+        "title": __rmT("fnlZNmJlZnPnkB.ojiC"),
+        "summary": __rmT("Hhh4xMGqV_Is109NcRivZHEcr2LbXDakIC2MqPQfyQRdpGZZclUwD1kM3OZ.qm4PYgliJxbT81S9.939RjxWR3aVWsjlDSGpSRmS3XiNY0ak7KLyBVlL0f5Atr.Pgk5Yxpj58q90dpeM8abWYJYJ.Rrt1pmOm665LK1cnhBYrHX1.lyowG8y0ezsbz5jWh4BKfbYAKWxaXbAdh"),
         "tags": [
             "emotion",
             "grief",
             "loss",
             "thematic"
         ],
-        "raw": __rmT("pAdVPbOMxogJVjshLWTSraoVGvlz8lCpGpPtT3pwGlGEovzcPnHu9qTWFOTExHM9X3hSdQCfieBwUXSbKnSAyEfKESVoPr4Nlsc4SQmTzwAbllfjLXzSHUHDb_EN4lXi9N5oM_zn7lPcV0F1IGj.EX_bodtfMgiT.iLyFfFyBM9r75_bwoIsYELDavg0p_noM3Xtof")
+        "raw": __rmT("2y5gkAuV_XSWcJQbWBy9YjieqgPU9.0hdGy6Aes.8g8j37V504LoPxUC7ZOfoYqSUYxmER9OaggBaEActPPNb3lpyqf8Uy9q7L.wWEHiP6uXZwFIQSp6OzSI.IYpYNwW4pjxjM8E3BZTnk2GcZjCscaOFbovsINXlHmoGdWZTskFe2Ddgt45andZEmCQh9JwAtICro5ZSPMnY563IKXQ_nsWWGxxyv4qOO5SAO1WbeAHMHzj4fGKx8jvYVPfNucfGV4GFc.yecE"),
+        "aliases": [
+            __rmT("SumM5AgOsNk")
+        ]
     },
     {
         "id": "B.7.6",
         "group": "B",
         "title": __rmT("qZRRNndpv4FiViVU.4C"),
-        "summary": __rmT("ae.zwVJM0qq83bbtcDKllgB77Tq5U29ZEdlvmkenjjzdZuUWSGdQe8ZR03.418NW5FyOo_hqPuPBmfoceRHOFgUkmb3cgctJ5eukJXNi88RlNy4p19pgRl1xXkNvjHOSNuNTKjxWIBYpp86pDeklW2adCEGSIf"),
+        "summary": __rmT("e7.qfaIicCkZK6FLPZOymmAHNnAmpWmFHY8la4kFYCGDh.DmdplWEaipXGJNOykmTWU5LjAl3Tm5QnDLpX2cvs7BymP4llHBbkzTRlm13JHFk2Z6tgY7I8Ut"),
         "tags": [
             "independent",
             "meta"
         ],
-        "raw": __rmT("L1lqXB0zKaj0ySVTOkk8bzNB0wopWR.8cZNrRydtb2ScLt6owJB00d6__ZSWDzCZYDUZYbMJIQkhXrOCrdcwbIKfnPrM9qet8v4iuY0YAcdoSTFMOdgQY81ob6L5xc4.Y_3Lq5HBUfHlokb7XBXo83t5aZrgfMdtANuwZ4B6vp.HK4R91VLZkxZ2XyXh_NPjoHNTLGycY6qnOQi9XfJINlhT")
+        "raw": __rmT("N8_c6DzhxZhNHw9VaCs25wLxgn.85tx._jxvgSwfwFWNmDi1FEWRSwSZvO6OvMJEaAhzmW9d5c0Hwm4tE7Uh2KjRW.GqR6dY5azNg5dLZG7uxfR7u_0zuyBXYZgGGMFrK72qMuA0tjSbafzgNNudcT1tQBYdziY_hLk7SBUc8EfdhzZc7lG")
     },
     {
         "id": "B.8",
@@ -435,12 +438,12 @@ export const THEMATIC_CATEGORIES = [
         "id": "B.9",
         "group": "B",
         "title": __rmT("_urctG0Vulo8KSis"),
-        "summary": __rmT("tuTdsElpMgCAYun.id4uQ7z.Ne64P1KTsPodAbdsA_BkjaNpU77yIEl4VDQhx8EiLjSma8tzyw4AUR6M6FLAa9lU_RsdYEm.dpvjDcRi79s"),
+        "summary": __rmT("Rb5Lyb0G65GsDQVFL1h2BfDqpz1F7FnrXpqvTNwlpqTncFYU1F0msoo_CmR.skEvWsHg8VDLKGzQoJfJESMX7_ksxPgQiRvsdSGTKHfxAG8ysGdM5j92u66Eqty.p7CZd2lL2cAc"),
         "tags": [
             "canon",
             "mystic"
         ],
-        "raw": __rmT("8l.2ZAO4j66CnsX3BLcwQ3mdz3CyI5BEOQFoFqNSHTLbUYu7GQsIudXgkEeImPZbWN0pIMZFCSXDBHlzx2YK1oSZPKUomH9D58jifY9nnmiSEtqumsVgoYB52Y8fgz_3g9LIiBXsgSMhEBNJb_S.KVFL")
+        "raw": __rmT("ZrsV7Q5GVIjzigF9uYrcwZSOCw1.bRyDiahsQtqSD0HQRuMXYs9WAeXuJirLoCmhzS6wHS01iRHX4ZS2BW.VXyJG_ufcMufnBjWdmIcvjmLRjl1FJ3H8e.N4ggF4VM5nvBP47kIIb1FGLaNyOyhmF4NZijPWELK.yEyDjen_w6c2prYqIUxsrT")
     },
     {
         "id": "B.10",

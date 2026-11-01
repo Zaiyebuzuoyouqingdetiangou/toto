@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.7.0";
-import { RUNTIME_VERSION } from './ui/runtime.js?rmv=2.7.0';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.8.4";
+import { RUNTIME_VERSION } from './ui/runtime.js?rmv=2.8.4';
 export const THEATER_SNAPSHOT_PAGE_SIZE = 10;
 const GENERATING_PLACEHOLDER = __rmR("fHMzM4BtaqM2L2tfR0kFG94cofYHtJklITg.EzPL0qURCpVB53Y", "");
 const FAILURE_MARK = __rmR("MgDOkYgsodAHzAgueF5sr.DsJQQYfl8mjLY8npEe1APZEhpt2A1rR9tgRH7tTDkSptjSAxWHyE.i8FXWHRJESicrrrw.TjToUfIMJsRDPqbyooc8I7ehCA4z0T2AvtTigAN7wVqNxoVF7xAM6VJq6Bjgm5vdzNkPdPY12.flzgkjBdtqr8l8dDURM.ICSqbDT0j240Yr6qOSbqG4itNrbROh5YSvtjbMt1KS8ujAvxtNOIGiZ55VMbUiJX9bvAXIwcPXUkiJkPO6YTUwBi3wlV2sL38q0k", "");
@@ -33,6 +33,22 @@ export function snapshotTitleFromHtml(html) {
         .trim()
         .slice(0, 120);
     return title || __rmT("9.JSSv1i");
+}
+export function stripTheaterMarkup(text) {
+    return String(text ?? '').replace(/<toto\b[^>]*(?:data-rabbit-mirror|data-rabbit-hole)=["']true["'][^>]*>[\s\S]*?<\/toto>/gi, '');
+}
+function stripSwipeTheaterText(message, swipe) {
+    if (!message)
+        return;
+    const apply = value => (typeof value === 'string' ? stripTheaterMarkup(value) : value);
+    if (Array.isArray(message.swipes) && typeof message.swipes[swipe] === 'string')
+        message.swipes[swipe] = apply(message.swipes[swipe]);
+    if (currentSwipeId(message) !== swipe)
+        return;
+    if (typeof message.mes === 'string')
+        message.mes = apply(message.mes);
+    if (typeof message.extra?.display_text === 'string')
+        message.extra.display_text = apply(message.extra.display_text);
 }
 export function snapshotPlainText(text) {
     return String(text || '')
@@ -194,7 +210,9 @@ const SNAPSHOT_STYLE = `
 .rm-snap-floor{flex:0 0 auto;min-height:32px;padding:0 10px;border-radius:999px;border:0;background:var(--rh-primary,#ce729c);color:#fff;font-size:12px;font-weight:800}
 .rm-snap-name{flex:1;min-width:0;margin:0;font-size:14px;font-weight:700;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rm-snap-chip{flex:0 0 auto;font-size:11px;font-weight:700;color:#c0504d}
-.rm-snap-jump,.rm-snap-star{flex:0 0 auto;min-height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:transparent;font-size:12px;font-weight:700}
+.rm-snap-jump,.rm-snap-star,.rm-snap-delete{flex:0 0 auto;min-height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--rh-border,rgba(127,127,127,.35));background:transparent;font-size:12px;font-weight:700}
+.rm-snap-delete{border-color:color-mix(in srgb,#c0504d 45%,var(--rh-border,transparent));color:#c0504d}
+.rm-snap-tile .rm-snap-delete{align-self:flex-start}
 .rm-snap-star[aria-pressed="true"]{border-color:var(--rh-primary,#ce729c);color:var(--rh-primary,#ce729c)}
 .rm-snap-stage{position:relative;max-width:100%;overflow:auto;isolation:isolate}
 .rm-snap-error{margin:0;font-size:13px;line-height:1.55;color:var(--rh-muted,inherit)}
@@ -550,13 +568,13 @@ function updateThumbScale(grid) {
 export async function openTheaterSnapshot() {
     const generation = ++openGeneration;
     const [{ applyAppearanceTheme }, api, favorites, persistence, runtime, connection, mount] = await Promise.all([
-        import('./appearanceTheme.js?rmv=2.7.0'),
-        import('./independentApi.js?rmv=2.7.0'),
-        import('./theaterFavorites.js?rmv=2.7.0'),
-        import('./independentApi/persistence.js?rmv=2.7.0'),
-        import('./independentApi/runtime.js?rmv=2.7.0'),
-        import('./independentApi/connection.js?rmv=2.7.0'),
-        import('./independentApi/mount.js?rmv=2.7.0'),
+        import('./appearanceTheme.js?rmv=2.8.4'),
+        import('./independentApi.js?rmv=2.8.4'),
+        import('./theaterFavorites.js?rmv=2.8.4'),
+        import('./independentApi/persistence.js?rmv=2.8.4'),
+        import('./independentApi/runtime.js?rmv=2.8.4'),
+        import('./independentApi/connection.js?rmv=2.8.4'),
+        import('./independentApi/mount.js?rmv=2.8.4'),
     ]);
     const ctx = runtime.getContext?.() || {};
     const chat = Array.isArray(ctx.chat) ? ctx.chat : [];
@@ -591,31 +609,31 @@ export async function openTheaterSnapshot() {
     let applyTextures = () => 0;
     let applySprites = () => 0;
     try {
-        const textures = await import('./materialTexture.js?rmv=2.7.0');
+        const textures = await import('./materialTexture.js?rmv=2.8.4');
         applyTextures = root => textures.applyMaterialTextures(root, undefined, { record: false });
     }
     catch { }
     try {
-        const sprites = await import('./pixelSprites.js?rmv=2.7.0');
+        const sprites = await import('./pixelSprites.js?rmv=2.8.4');
         applySprites = root => sprites.applyPixelSprites(root);
     }
     catch { }
     try {
-        const connection = await import('./independentApi/connection.js?rmv=2.7.0');
+        const connection = await import('./independentApi/connection.js?rmv=2.8.4');
         imageChatKey = String(connection.chatKey(ctx) || '');
     }
     catch {
         imageChatKey = '';
     }
     try {
-        const images = await import('./builtinImage.js?rmv=2.7.0');
+        const images = await import('./builtinImage.js?rmv=2.8.4');
         if (typeof images.restoreSavedBuiltinImages === 'function')
             restoreBuiltinImages = images.restoreSavedBuiltinImages;
     }
     catch { }
     let sessionErrors = [];
     try {
-        const flights = await import('./independentApi/flights.js?rmv=2.7.0');
+        const flights = await import('./independentApi/flights.js?rmv=2.8.4');
         const key = imageChatKey;
         const seen = new Set(domErrors.map(row => row.mesid));
         for (const failure of flights.automaticFailureStops?.values?.() || []) {
@@ -644,26 +662,21 @@ export async function openTheaterSnapshot() {
     let items = collectTheaterSnapshots(chat, { persisted, domErrors: [...domErrors, ...sessionErrors] });
     try {
         const [swipes, faceSwipe] = await Promise.all([
-            import('./swipeVersions.js?rmv=2.7.0'),
-            import('./independentApi/faceSwipe.js?rmv=2.7.0'),
+            import('./swipeVersions.js?rmv=2.8.4'),
+            import('./independentApi/faceSwipe.js?rmv=2.8.4'),
         ]);
-        let archive = new Map();
-        if (imageChatKey && typeof swipes.loadFaceSwipeArchiveRows === 'function') {
-            const rows = await swipes.loadFaceSwipeArchiveRows(imageChatKey).catch(() => null);
-            archive = new Map((rows || []).map(row => [String(row.slot), row.states || {}]));
-        }
         const versionsByKey = new Map();
         for (const item of items) {
-            if (item.kind !== 'ready' || !imageChatKey)
+            if (item.kind !== 'ready')
                 continue;
             const key = `${item.mesid}:${item.swipe}`;
-            const base = `${imageChatKey}:${key}`;
+            const stored = recordFaceSwipes.get(key);
+            if (!stored)
+                continue;
             const states = {};
             for (let face = 0; face < 5; face += 1) {
-                const candidates = [swipes.readFaceSwipe(base, face), recordFaceSwipes.get(key)?.[face], archive.get(base)?.[face]];
-                const state = candidates.map(value => swipes.normalizeSwipeState(value)).filter(value => value.versions.length > 1)
-                    .sort((a, b) => Number(b.touched || 0) - Number(a.touched || 0))[0];
-                if (state)
+                const state = swipes.normalizeSwipeState(stored[face]);
+                if (state.versions.length > 1)
                     states[face] = state;
             }
             if (Object.keys(states).length)
@@ -674,7 +687,7 @@ export async function openTheaterSnapshot() {
     catch { }
     let expandBlocks = value => String(value || '');
     try {
-        const markup = await import('./outputSanitizer/markup.js?rmv=2.7.0');
+        const markup = await import('./outputSanitizer/markup.js?rmv=2.8.4');
         if (typeof markup.expandHtmlDocumentCodeBlocks === 'function')
             expandBlocks = markup.expandHtmlDocumentCodeBlocks;
     }
@@ -713,7 +726,7 @@ export async function openTheaterSnapshot() {
     title.append(count);
     const note = document.createElement('p');
     note.className = 'rm-snap-note';
-    note.textContent = __rmT("nop.kH8jQRoft0YIPL4lgTVPvqHrevwrTfWNn1dATC8wxNJiV4SGD1fJ11z27NJLzhSr4Bun0E181oVNE7YmO28vcbHWNGpC3dnm_kVvmEz_e27MhqTioHWS2.MPU1euIiSK09CyqwMf7hX3DfOn1k");
+    note.textContent = __rmT("oIZWWDjzFdjFyS.THa_XJx1m6NLTP42HdXRo5HoGy8BUCa2Zm1x44daVHANbDjp1rBNCY3z0D_4fMx5lSa6EfnIGjZKSZRVia4HTXLPDNjIRlELDfHhtez1IRJz8CgAi.RhrTiOFdIXuxmqyGPX1p.wDqcs4vhZT1WKug6S3LLJUKnzyAL44BuzPW6SLLhkFiiOxdHMmBFeiUqL_REdmBshT");
     const heading = document.createElement('div');
     heading.style.cssText = 'flex:1;min-width:0;';
     heading.append(title, note);
@@ -789,6 +802,50 @@ export async function openTheaterSnapshot() {
             if (stale)
                 globalThis.toastr?.info?.(`#${mesid}${__rmT("cE1PvuN.p5Dc7X2GggGimx_.vo1PbyRGR78nwQkPKMd1d2DBaid0d7b1RcOxu88iz8BuaiU0krtX8aekcrayyHCKkn9af41ThH9R8jh3dQK8n3o156FcYu9U7lnx9o3xq08AphOswHbIMHZxSECU_pphGaGunoaiBA0n4XBk1Mvkmtj6Cg0HsDJOMqP99rzO")}`, __rmT("9.JSSv1i"));
         });
+    };
+    const forgetSwipe = item => {
+        const ask = globalThis.confirm;
+        if (typeof ask !== 'function')
+            return;
+        const accepted = ask(`${__rmT("NudMVWNuHRG")}${item.mesid}${__rmT("JgmWND0oPAEXlJxKeb0PVCFJMc.SKjJcKbPCcnflyRr5vdDhpAhzm.hHlWrfER8gHJQziBD0Mhq4RGhcyveWG3sPQBVVekJXqMNK897cqn7WobnzQpB6ecQBh2rg3LR45qYepR1z1GuT9vxe81_qPf6lUwmqs_n0Jf4LXda9XE1KABwi0dme6vcbtsPBeh")}`);
+        if (!accepted)
+            return;
+        const ctx = runtime.getContext?.() || {};
+        const message = ctx.chat?.[item.mesid];
+        stripSwipeTheaterText(message, item.swipe);
+        void Promise.resolve()
+            .then(() => persistence.deleteChatSwipeTheater(ctx, item.mesid, item.swipe))
+            .then(result => {
+            if (!result?.ok) {
+                globalThis.toastr?.warning?.(__rmT("iazDWkqVag9pVFzgUHgpUT"));
+                return;
+            }
+            items = items.filter(entry => !(entry.mesid === item.mesid && entry.swipe === item.swipe));
+            if (result.current) {
+                try {
+                    mount.showRemovedSwipeShell(item.mesid);
+                }
+                catch { }
+            }
+            globalThis.toastr?.success?.(__rmT("HC5GERCISft34PHn3ba_yAbWf0Ys.n286JnsXfWdGX959a4MGI6nGW5X"));
+            render();
+        })
+            .catch(error => {
+            globalThis.toastr?.warning?.(String(error?.message || __rmT("iazDWkqVag9pVFzgUHgpUT")));
+        });
+    };
+    const deleteButton = item => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'rm-snap-delete';
+        button.textContent = __rmT("2DihPf");
+        button.setAttribute('aria-label', `${__rmT("NudMVWNuHRG")}${item.mesid}${__rmT("4JStqXebJ1elzorRQmNOji6NX81XbT")}`);
+        button.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            forgetSwipe(item);
+        });
+        return button;
     };
     const refreshStars = () => {
         for (const entry of stars) {
@@ -911,6 +968,8 @@ export async function openTheaterSnapshot() {
         jumpButton.textContent = __rmT("wcZG.k");
         jumpButton.addEventListener('click', () => jump(item.mesid, item.stale));
         bar.append(jumpButton);
+        if (item.html)
+            bar.append(deleteButton(item));
         const closer = document.createElement('button');
         closer.type = 'button';
         closer.className = 'rm-snap-close';
@@ -1038,6 +1097,8 @@ export async function openTheaterSnapshot() {
                 name.className = 'rm-snap-tile-name';
                 name.textContent = `${item.title}${item.versionLabel ? ` · ${item.versionLabel}` : ''}${item.stale ? __rmT("7aqU1yteCfJnMFxdcip") : ''}${item.failed ? __rmT("4b8RjaFytbpNytue") : ''}`;
                 tile.append(plate, name);
+                if (item.html)
+                    tile.append(deleteButton(item));
                 list.append(tile);
             }
             requestAnimationFrame(() => {
@@ -1086,6 +1147,8 @@ export async function openTheaterSnapshot() {
             jumpButton.textContent = __rmT("wcZG.k");
             jumpButton.addEventListener('click', () => jump(item.mesid, item.stale));
             bar.append(jumpButton);
+            if (item.html)
+                bar.append(deleteButton(item));
             const stage = document.createElement('div');
             stage.className = 'rm-snap-stage';
             stage.setAttribute('data-rm-snapshot-stage', 'true');

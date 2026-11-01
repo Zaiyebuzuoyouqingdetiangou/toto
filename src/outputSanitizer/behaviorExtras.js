@@ -1,6 +1,6 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.7.0";
-import { normalizeShowToken } from './behaviorResults.js?rmv=2.7.0';
-import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.7.0';
+import { rmR as __rmR } from "../textTable.js?rmv=2.8.4";
+import { normalizeShowToken } from './behaviorResults.js?rmv=2.8.4';
+import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.8.4';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],
@@ -12,7 +12,8 @@ const GROUP = '[data-rm-ui]';
 const SANDBOX = '[data-rm-quiet-feedback]';
 let H = null;
 export function configureBehaviorExtras(helpers) { H = helpers; }
-const inSandbox = group => Boolean(group.closest?.(SANDBOX));
+const PROBE_HOST = '[data-rabbit-mirror-maintenance-checked-sandbox]';
+const inSandbox = group => Boolean(group.closest?.(SANDBOX)) || Boolean(group.getRootNode?.()?.host?.matches?.(PROBE_HOST));
 const seconds = (group, name, fallback) => { const value = Number(group.getAttribute(name)); return Number.isFinite(value) && value > 0 ? value : fallback; };
 const controlSeconds = (group, control, name, fallback) => {
     if (group.hasAttribute(name))
@@ -235,12 +236,13 @@ function slideTo(state, index, smooth = true) {
     return true;
 }
 function slideAction(state, control) {
+    const smooth = !inSandbox(state.group);
     if (control.hasAttribute('data-rm-goto'))
-        return slideTo(state, Math.round(H.finite(control.getAttribute('data-rm-goto'), state.index)) - 1);
+        return slideTo(state, Math.round(H.finite(control.getAttribute('data-rm-goto'), state.index)) - 1, smooth);
     if (control.hasAttribute('data-rm-next'))
-        return slideTo(state, state.index);
+        return slideTo(state, state.index, smooth);
     if (control.hasAttribute('data-rm-prev'))
-        return slideTo(state, state.index - 2);
+        return slideTo(state, state.index - 2, smooth);
     return false;
 }
 function slideSync(state) {
@@ -254,6 +256,25 @@ function slideSync(state) {
         H.setFlag(item, 'data-rm-active', items.indexOf(item) + 1 === state.index);
     }
     H.setFlag(group, 'data-rm-done', items.length > 0 && items.every(item => state.seen.has(item)));
+    for (const control of H.own(group, '[data-rm-prev], [data-rm-next]')) {
+        const edge = control.hasAttribute('data-rm-next') ? state.index >= items.length : state.index <= 1;
+        markEdge(control, edge);
+    }
+    for (const control of H.own(group, '[data-rm-goto]')) {
+        const on = Math.round(H.finite(control.getAttribute('data-rm-goto'), -1)) === state.index;
+        control.setAttribute('aria-pressed', String(on));
+        H.setFlag(control, 'data-rm-active', on);
+    }
+}
+export function markEdge(control, edge) {
+    if (edge) {
+        control.setAttribute('aria-disabled', 'true');
+        control.setAttribute('data-rm-edge', '');
+    }
+    else if (control.hasAttribute('data-rm-edge')) {
+        control.removeAttribute('aria-disabled');
+        control.removeAttribute('data-rm-edge');
+    }
 }
 function slideKeys(state, keys) {
     keys.add(String(state.index));

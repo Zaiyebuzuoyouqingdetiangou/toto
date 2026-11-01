@@ -1,8 +1,9 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.7.0";
+import { rmT as __rmT } from "../textTable.js?rmv=2.8.4";
 export const MISSING_INDEPENDENT_RETRY_SHELL_LIMIT = 10;
 export const MISSING_SHELL_SCAN_RANGE_ALL = 'all';
 export const MISSING_SHELL_SCAN_RANGE_OPTIONS = [10, 20, 'all'];
 export const MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE = __rmT("xwkATr7sQOW0obJ.vtPXaTk3qtg03tWn3cR3liLkptcg32j26.4VWc8dKQvViHqi_TixrRwwJuYHFHaBM3SIR_An19cN2EOJVnaAFRgHc.Jmk0NQZPlrw8LUF6cTRpArwuLxsGvdS6vNIgKZW0r55VWorKDFWGTnsHXkakdED1G");
+export const REMOVED_SWIPE_THEATER_MESSAGE = __rmT("aUyWyiEpgLS3yx_nxZNPxJrSn8Pk_e5.9fMoL5Qww..WmpmCz1bQQRb0q6dD81dbY84HamRvRWyEkSuEX48Asek7gdssA4YO");
 export const SAFETY_VALVE_SHELL_PREFIX = __rmT("kls8q6VkrYU5KsopQ3mt9YWYhM2YZh");
 export function safetyValveShellMessage(reason) {
     return `${SAFETY_VALVE_SHELL_PREFIX}${__rmT("7ys")}${String(reason || __rmT("kBft.abe4UwGV6ajz9ivTh"))}${__rmT("nlxA.HNd9VvM72saFzxpgM7FLDrAhWD3iew0aK10AKAnVZhuCPTeT.N97K67RzxlrZtwnBl.taAfIGT4dm18BVfeoyd.52bot9eYzNHmnKaLwpqJ8YHpNufxT__NpsAmaLOCcUAc")}`;

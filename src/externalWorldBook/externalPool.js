@@ -1,4 +1,4 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.7.0";
+import { rmT as __rmT } from "../textTable.js?rmv=2.8.4";
 const MIX_MODES = Object.freeze({
     BUILTIN_ONLY: 'builtin-only',
     BUILTIN_PREFERRED: 'builtin-preferred',
@@ -252,7 +252,7 @@ export function chooseExternalSource(settings, kind, randomUnit, builtinAvailabl
         return true;
     return Number(randomUnit?.() ?? 0) < share;
 }
-function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidRepeat = true, preferredExcludedIds = [], recentIdHits = {}) {
+function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidRepeat = true, preferredExcludedIds = [], recentIdHits = {}, recentIdAges = null) {
     const hard = new Set(Array.isArray(hardExcludedIds) ? hardExcludedIds : []);
     const recent = new Set(Array.isArray(recentIds) ? recentIds : []);
     let base = kindLibraries(kind).map(library => ({
@@ -272,8 +272,31 @@ function filteredLibraryPools(kind, hardExcludedIds = [], recentIds = [], avoidR
         libraryId: library.libraryId,
         ids: library.ids.filter(id => !recent.has(id)),
     })).filter(library => library.ids.length);
-    if (fresh.length)
+    const count = libraries => libraries.reduce((sum, library) => sum + library.ids.length, 0);
+    const roomy = Math.max(1, Math.ceil(count(base) / 3));
+    if (fresh.length && (!recentIdAges || typeof recentIdAges !== 'object' || count(fresh) >= roomy))
         return fresh;
+    if (recentIdAges && typeof recentIdAges === 'object') {
+        const ageOf = id => {
+            const value = Math.floor(Number(recentIdAges[id]));
+            return value >= 1 ? value : 1;
+        };
+        const oldest = Math.max(1, ...[...recent].map(ageOf));
+        for (let window = oldest - 1; window >= 1; window -= 1) {
+            const opened = base.map(library => ({
+                libraryId: library.libraryId,
+                ids: library.ids.filter(id => !recent.has(id) || ageOf(id) > window),
+            })).filter(library => library.ids.length);
+            if (count(opened) >= roomy)
+                return opened;
+        }
+        const lastOnly = base.map(library => ({
+            libraryId: library.libraryId,
+            ids: library.ids.filter(id => !recent.has(id) || ageOf(id) > 1),
+        })).filter(library => library.ids.length);
+        if (lastOnly.length)
+            return lastOnly;
+    }
     const weighted = base.map(library => {
         const weights = library.ids.map(id => {
             const value = Number(Object.prototype.hasOwnProperty.call(recentIdHits, id) ? recentIdHits[id] : 1);
@@ -337,7 +360,7 @@ export function pickExternalItems(settings, kind, count, options = {}) {
     const usedLibraries = new Set();
     while (selected.length < target) {
         const dynamicHard = [...hardExcluded, ...selected.map(item => item.id)];
-        const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false, options.preferredExcludedIds, options.recentIdHits || {});
+        const libraries = filteredLibraryPools(kind, dynamicHard, recentIds, options.avoidRepeat !== false, options.preferredExcludedIds, options.recentIdHits || {}, options.recentIdAges || null);
         if (!libraries.length)
             break;
         const library = weightedLibraryPick(libraries, randomUnit, libraryHits, usedLibraries);
