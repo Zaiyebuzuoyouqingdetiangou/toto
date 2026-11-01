@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.11.0";
-import { spritePaths } from '../pixelSprites.js?rmv=2.11.0';
+import { rmT as __rmT } from "../textTable.js?rmv=2.11.1";
+import { spritePaths } from '../pixelSprites.js?rmv=2.11.1';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const SCENE_H = 30;
 const BASE_W = 42;
@@ -338,9 +338,15 @@ export function buildWaitingArt(doc, { dark = false, now = globalThis.performanc
     art.setAttribute('aria-hidden', 'true');
     if (dark)
         art.setAttribute('data-rm-gp-dark', 'true');
-    art.style.setProperty('--rm-wait-phase', `${-((Number(now) || 0) % WAIT_CYCLE_MS) / 1000}s`);
+    setWaitPhase(art, now);
     art.append(template.cloneNode(true));
     return art;
+}
+export function setWaitPhase(art, now = globalThis.performance?.now?.() ?? Date.now()) {
+    art?.style?.setProperty('--rm-wait-phase', `${-((Number(now) || 0) % WAIT_CYCLE_MS) / 1000}s`);
+}
+export function waitArtSelector() {
+    return `:scope > .${WAIT_ART_CLASS}, :scope > details > .rabbit-mirror-external-placeholder-body > .${WAIT_ART_CLASS}`;
 }
 export function buildWaitingRabbit(doc) {
     const svg = svgOf(doc, BASE_W, 'rm-gp-scene rm-gp-scene-wait');

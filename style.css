@@ -1262,9 +1262,10 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   pointer-events:none !important;
 }
 
-.rabbit-mirror-external-shell:not([data-rm-state="loading"]) > .rabbit-mirror-external-wait-art,
-.rabbit-mirror-external-shell > .rabbit-mirror-generation-progress ~ .rabbit-mirror-external-wait-art,
-.rabbit-mirror-external-shell > .rabbit-mirror-external-wait-art:has(~ .rabbit-mirror-generation-progress){ display:none !important; }
+.rabbit-mirror-external-placeholder-body > .rabbit-mirror-external-wait-art{ margin:10px 0 2px !important; }
+
+.rabbit-mirror-external-shell:not([data-rm-state="loading"]) .rabbit-mirror-external-wait-art,
+.rabbit-mirror-external-shell:has(> .rabbit-mirror-generation-progress) .rabbit-mirror-external-wait-art{ display:none !important; }
 .rabbit-mirror-external-wait-art svg.rm-gp-scene{ display:block !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; }
 .rm-gp-scene .rm-gp-wait-hand{ opacity:0; animation:rm-gp-quarter 2.4s steps(1,end) infinite; animation-delay:var(--rm-wait-phase, 0s); }
 .rm-gp-scene .rm-gp-wait-hand-1{ animation-delay:calc(var(--rm-wait-phase, 0s) - 1.8s); }
