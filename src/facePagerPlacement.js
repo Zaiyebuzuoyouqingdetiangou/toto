@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.13.2";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.14.0";
 const footersByFace = new WeakMap();
 const facesByFooter = new WeakMap();
 const FOOTER = '[data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"]';

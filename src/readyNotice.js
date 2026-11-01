@@ -1,9 +1,9 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.13.2";
-import { getSettings } from './settings.js?rmv=2.13.2';
+import { rmT as __rmT } from "./textTable.js?rmv=2.14.0";
+import { getSettings } from './settings.js?rmv=2.14.0';
 const CHIP_ATTR = 'data-rm-ready-chip';
 const TITLE_MARK_OK = '🐇 ';
 const TITLE_MARK_FAIL = '🐇❌ ';
-const ICON = '<svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 16C4 2 11 1 14 14M18 14C20 1 27 2 23 16M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg>';
+const ICON = '<svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path class="rm-chip-ear rm-chip-ear-l" d="M10 16C4 2 11 1 14 14"/><path class="rm-chip-ear rm-chip-ear-r" d="M18 14C20 1 27 2 23 16"/><path d="M9 16c-7 11 3 15 9 14s13-8 5-14c-4-3-10-3-14 0Z"/><path d="M12 22h1m6 0h1m-6 4 2 1 2-1"/></svg>';
 const SEEN_THRESHOLDS = [0, 0.01, 0.05, 0.1, 0.2, 0.3];
 let chip = null;
 let targets = [];
