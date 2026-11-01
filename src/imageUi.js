@@ -1,15 +1,15 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.1";
-import { describeLocalStorageUsage } from './storageUsage.js?rmv=2.9.1';
-import { getSettings } from './settings.js?rmv=2.9.1';
-import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=2.9.1';
-import { imageBackendName } from './imageBackendName.js?rmv=2.9.1';
-import { phoneScenePrompt } from './iphonieImage.js?rmv=2.9.1';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft, mirrorImagePromptCleanupRevision, MIRROR_IMAGE_PROMPTS_CLEARED_EVENT } from './imageStore.js?rmv=2.9.1';
-import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.9.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.9.1';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.1';
-import { draftFromSavedImage } from './chatu8Image.js?rmv=2.9.1';
-import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=2.9.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.9.2";
+import { describeLocalStorageUsage } from './storageUsage.js?rmv=2.9.2';
+import { getSettings } from './settings.js?rmv=2.9.2';
+import { getImageBackendStatus, getImageCharacters, generateMirrorImage } from './baibaiImage.js?rmv=2.9.2';
+import { imageBackendName } from './imageBackendName.js?rmv=2.9.2';
+import { phoneScenePrompt } from './iphonieImage.js?rmv=2.9.2';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, mirrorImageOwnerReceipt, saveMirrorImageForOwner, loadMirrorImage, loadMirrorImageDraft, saveMirrorImageDraft, mirrorImagePromptCleanupRevision, MIRROR_IMAGE_PROMPTS_CLEARED_EVENT } from './imageStore.js?rmv=2.9.2';
+import { applyAppearanceTheme } from './appearanceTheme.js?rmv=2.9.2';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.9.2';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.2';
+import { draftFromSavedImage } from './chatu8Image.js?rmv=2.9.2';
+import { listBuiltinImageFrames, rerollBuiltinImage, showBuiltinImageVersion, builtinImageReady, builtinImageReusable } from './builtinImage.js?rmv=2.9.2';
 const jobs = new Set();
 const pendingSaves = new Set();
 const sessionDrafts = new Set();
@@ -852,7 +852,7 @@ function buildBuiltinSection(doc, root, initial) {
                     catch { }
                 } } });
             message = saveError
-                ? `${__rmT("xbNtSbEc")}${painted ? __rmT("7QeST865Wt_OmBFixnCuCKU7ie7eHz8hnlf") : ''}${__rmT("DV_f1A7K.QQqy2cWkRsbn6W3m6wlcT")}${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? __rmT("kudkyIBewsuq4LIF") : String(saveError?.message || __rmT("AQ96ALbkGU_")).slice(0, 60)}${__rmT("7os")}${describeLocalStorageUsage()}${__rmT("qsvnJ9GvalHaHg1JIiyaRQJsCdfeaUmcJVPWa1GD.1up7ErNSSJdVbncGnYLXSnXUSzj4_hznRhobh")}${provider() === __rmT("lo7wSMYV") ? __rmT("YbY6hO3dWu81ci2x8nQGZw5ObNs") : provider() === __rmT("s3XFEC__") ? __rmT("C_6.imemd68Bao2x8nQGZw5ObNs") : __rmT("7eHmOQmA3I52h0FA1tkQc7EI")}` : painted ? __rmT("2GvWLJbEvlt2rMM4Slc8H.thaBs1ZQcE2j.pcoD2OdL.bh") : __rmT("KY9lVngg.MkQG8F9KDHlcMX1xVp9HxobYy.LugjmPnTGZSh_9JUZ7wBq9WfKmKza7vdXG77KY3Y");
+                ? `${__rmT("xbNtSbEc")}${painted ? __rmT("7QeST865Wt_OmBFixnCuCKU7ie7eHz8hnlf") : ''}${__rmT("DV_f1A7K.QQqy2cWkRsbn6W3m6wlcT")}${/quota/i.test(String(saveError?.name || saveError?.message || '')) ? __rmT("kudkyIBewsuq4LIF") : String(saveError?.message || __rmT("AQ96ALbkGU_")).slice(0, 60)}${__rmT("7os")}${describeLocalStorageUsage()}${__rmT("qsvnJ9GvalHaHg1JIiyaRQJsCdfeaUmcJVPWa1GD.1up7ErNSSJdVbncGnYLXSnXUSzj4_hznRhobh")}${provider() === __rmT("lo7wSMYV") ? __rmT("YbY6hO3dWu81ci2x8nQGZw5ObNs") : provider() === __rmT("KFgLaN_B4l0MSpRh0eLXdub_7bh") ? __rmT("ttd9kYdS955H09YYF8yVHcbshBwwjJVBdHmQxyD2OdL.bh") : __rmT("7eHmOQmA3I52h0FA1tkQc7EI")}` : painted ? __rmT("2GvWLJbEvlt2rMM4Slc8H.thaBs1ZQcE2j.pcoD2OdL.bh") : __rmT("KY9lVngg.MkQG8F9KDHlcMX1xVp9HxobYy.LugjmPnTGZSh_9JUZ7wBq9WfKmKza7vdXG77KY3Y");
         }
         catch (error) {
             message = controller.signal.aborted ? __rmT("qwLkkacs7oaTlfyt9l62bC49RD1rrk") : `${__rmT("WzGbtYADP_xF5i4vZh0Miiczb13TwUmK29E")}${String(error?.message || '').slice(0, 120)}`;
