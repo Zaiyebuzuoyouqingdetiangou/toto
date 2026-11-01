@@ -1,13 +1,13 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.6.3";
-import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.6.3';
-import { normalizePresentationModes } from './presentationMode.js?rmv=2.6.3';
-import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.6.3';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.6.7";
+import { normalizeNameMaskRules, normalizeNameMaskCardRules } from './nameMask.js?rmv=2.6.7';
+import { normalizePresentationModes } from './presentationMode.js?rmv=2.6.7';
+import { normalizeFaceDrawRules, normalizeFaceDrawPresets } from './faceDrawRules.js?rmv=2.6.7';
 import { extension_settings } from '../../../../extensions.js';
 import { saveSettingsDebounced } from '../../../../../script.js';
-import { independentGenerationTiming } from './independentTiming.js?rmv=2.6.3';
-import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.6.3';
-import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.6.3';
-import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.6.3';
+import { independentGenerationTiming } from './independentTiming.js?rmv=2.6.7';
+import { AUTOMATIC_REROLL_DEFAULT, AUTOMATIC_REROLL_IDLE_DEFAULT_SECONDS, normalizeAutomaticRerollIdleSeconds, normalizeAutomaticRerollMax } from './automaticReroll.js?rmv=2.6.7';
+import { DEFAULT_INDEPENDENT_MAX_REQUEST_CHARS, normalizeIndependentMaxRequestChars } from './independentRequestBudget.js?rmv=2.6.7';
+import { normalizeMissingShellScanRange } from './independentApi/missingRetryShell.js?rmv=2.6.7';
 export const MODULE_NAME = 'rabbit_mirror_theater';
 export const VISUAL_PROMPT_MAX_CHARS = 5000;
 export const VISUAL_EXTRA_PROMPT_MAX_CHARS = 1000;
@@ -358,7 +358,25 @@ function restoreSettingsDroppedByOtherVersion(settings) {
         catch { }
     }
 }
+let normalizedSettingsMemo = null;
+let settingsMemoReleaseQueued = false;
+function releaseSettingsMemo() { normalizedSettingsMemo = null; settingsMemoReleaseQueued = false; }
+function rememberNormalizedSettings(settings) {
+    normalizedSettingsMemo = settings;
+    if (settingsMemoReleaseQueued)
+        return;
+    settingsMemoReleaseQueued = true;
+    try {
+        Promise.resolve().then(releaseSettingsMemo);
+    }
+    catch {
+        releaseSettingsMemo();
+    }
+}
 export function getSettings() {
+    const memo = normalizedSettingsMemo;
+    if (memo && extension_settings[MODULE_NAME] === memo)
+        return memo;
     const newInstallation = !Object.prototype.hasOwnProperty.call(extension_settings, MODULE_NAME);
     if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
         extension_settings[MODULE_NAME] = cloneDefaultSettings();
@@ -606,6 +624,7 @@ export function getSettings() {
     settings.memoryMaxChars = Math.max(600, Math.min(6000, Number(settings.memoryMaxChars) || defaultSettings.memoryMaxChars));
     settings.richFormatBias = false;
     settings.depth = Number(settings.depth) || 0;
+    rememberNormalizedSettings(settings);
     return settings;
 }
 export function syncExternalReferenceVisibility(settings) {
@@ -846,6 +865,7 @@ export function updateSettings(patch) {
         changedCount: changedKeys.length,
     });
     Object.assign(settings, safePatch);
+    normalizedSettingsMemo = null;
     if (Object.prototype.hasOwnProperty.call(safePatch, 'externalWorldBookRandomEnabled'))
         syncExternalReferenceVisibility(settings);
     if (String(settings.independentConnectionProfileId || '').trim())
@@ -854,6 +874,7 @@ export function updateSettings(patch) {
     saveSettingsDebounced();
 }
 export function resetSettings() {
+    normalizedSettingsMemo = null;
     extension_settings[MODULE_NAME] = cloneDefaultSettings();
     syncExternalReferenceVisibility(extension_settings[MODULE_NAME]);
     saveSettingsDebounced();

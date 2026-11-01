@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.3";
-import { layoutRect } from './faceZoomMetrics.js?rmv=2.6.3';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.7";
+import { layoutRect } from './faceZoomMetrics.js?rmv=2.6.7';
 function getSettings() {
     try {
         return globalThis.SillyTavern?.getContext?.()?.extensionSettings?.rabbit_mirror_theater || {};

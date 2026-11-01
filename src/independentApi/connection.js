@@ -1,17 +1,17 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.3";
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=2.6.3';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, } from '../settings.js?rmv=2.6.3';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=2.6.3';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=2.6.3';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=2.6.3';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=2.6.3';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=2.6.3';
-import { CONTEXT_TOTAL_BUDGET, CONTEXT_TRANSCRIPT_BUDGET, RUNTIME_VERSION, getContext, hashText, } from './runtime.js?rmv=2.6.3';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=2.6.3';
-import { OWNER_LOCK_STORE_KEY, apiProfileKey, historyEntriesForSlot, normalizedConfiguredTemperature, persistedOwnerForMessage, readApiProfileStore, readStore, writeApiProfileStore, writePersistedOwner, writeStore, } from './persistence.js?rmv=2.6.3';
-import { hasExplicitSourceReplacementEvidence, independentStoredHtmlLightRestorable, independentStoredHtmlRestorable, } from './geometry.js?rmv=2.6.3';
-import { activeIndependentFlightForBase, messageSourceRevisions, parseMessageIndexFromOwnerKey, passiveObservedIdentity, runtimeMode, showIndependentUnsavedOutput, } from './mount.js?rmv=2.6.3';
-import { hostGenerationHintStartedAt, hostGenerationInProgress, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, } from './lifecycle.js?rmv=2.6.3';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.6.7";
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=2.6.7';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, } from '../settings.js?rmv=2.6.7';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=2.6.7';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=2.6.7';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=2.6.7';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=2.6.7';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=2.6.7';
+import { CONTEXT_TOTAL_BUDGET, CONTEXT_TRANSCRIPT_BUDGET, RUNTIME_VERSION, getContext, hashText, } from './runtime.js?rmv=2.6.7';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=2.6.7';
+import { OWNER_LOCK_STORE_KEY, apiProfileKey, historyEntriesForSlot, normalizedConfiguredTemperature, persistedOwnerForMessage, readApiProfileStore, readStore, writeApiProfileStore, writePersistedOwner, writeStore, } from './persistence.js?rmv=2.6.7';
+import { hasExplicitSourceReplacementEvidence, independentStoredHtmlLightRestorable, independentStoredHtmlRestorable, } from './geometry.js?rmv=2.6.7';
+import { activeIndependentFlightForBase, messageSourceRevisions, parseMessageIndexFromOwnerKey, passiveObservedIdentity, runtimeMode, showIndependentUnsavedOutput, } from './mount.js?rmv=2.6.7';
+import { hostGenerationHintStartedAt, hostGenerationInProgress, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, } from './lifecycle.js?rmv=2.6.7';
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 export const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
@@ -239,10 +239,19 @@ catch {
 } }
 function writeOwnerLockStore(value) {
     try {
-        const entries = Object.entries(value || {}).sort((a, b) => Number(b[1]?.ts || 0) - Number(a[1]?.ts || 0)).slice(0, 240);
+        const entries = Object.entries(value || {}).map(([base, lock]) => [base, confirmedOwnerLock(base, lock)])
+            .sort((a, b) => Number(b[1]?.ts || 0) - Number(a[1]?.ts || 0)).slice(0, 240);
         localStorage.setItem(OWNER_LOCK_STORE_KEY, JSON.stringify(Object.fromEntries(entries)));
     }
     catch { }
+}
+const ownerLockConfirmations = new Map();
+function confirmedOwnerLock(base, lock) {
+    const confirmed = lock ? ownerLockConfirmations.get(base) : null;
+    if (!confirmed || confirmed.slot !== String(lock.slot || '') || confirmed.sourceHash !== String(lock.sourceHash || '')
+        || confirmed.runtime !== String(lock.runtime || '') || confirmed.ts <= Number(lock.ts || 0))
+        return lock;
+    return { ...lock, ts: confirmed.ts };
 }
 function ownerLockStoreForAccess() { return activeOwnerLockBatch || readOwnerLockStore(); }
 export function withOwnerLockStoreBatch(run) {
@@ -264,13 +273,22 @@ export function withOwnerLockStoreBatch(run) {
             writeOwnerLockStore(store);
     }
 }
-export function ownerLockForBase(baseSlot = '') { const key = String(baseSlot || ''); return key ? ownerLockStoreForAccess()[key] || null : null; }
-export function setOwnerLockForBase(baseSlot, slot, sourceHash = '') {
+export function ownerLockForBase(baseSlot = '') { const key = String(baseSlot || ''); return key ? confirmedOwnerLock(key, ownerLockStoreForAccess()[key] || null) : null; }
+export function setOwnerLockForBase(baseSlot, slot, sourceHash = '', { passive = false } = {}) {
     const base = String(baseSlot || '');
     const exact = String(slot || '');
     if (!base || !exact)
         return;
     const store = ownerLockStoreForAccess();
+    const current = store[base];
+    if (passive && current?.slot === exact && String(current.sourceHash || '') === String(sourceHash || '') && current.runtime === RUNTIME_VERSION) {
+        ownerLockConfirmations.delete(base);
+        ownerLockConfirmations.set(base, { slot: exact, sourceHash: String(sourceHash || ''), runtime: RUNTIME_VERSION, ts: Date.now() });
+        while (ownerLockConfirmations.size > 600)
+            ownerLockConfirmations.delete(ownerLockConfirmations.keys().next().value);
+        return;
+    }
+    ownerLockConfirmations.delete(base);
     store[base] = { slot: exact, sourceHash: String(sourceHash || ''), ts: Date.now(), runtime: RUNTIME_VERSION };
     if (activeOwnerLockBatch)
         activeOwnerLockBatchDirty = true;
@@ -281,6 +299,7 @@ export function clearOwnerLockForBase(baseSlot = '') {
     const base = String(baseSlot || '');
     if (!base)
         return;
+    ownerLockConfirmations.delete(base);
     const store = ownerLockStoreForAccess();
     if (!Object.prototype.hasOwnProperty.call(store, base))
         return;
@@ -307,16 +326,19 @@ export function remapOwnerLockSlots(mapSlot) {
             continue;
         }
         changed = true;
+        ownerLockConfirmations.delete(base);
         if (target && targetSlot)
             moved.push([target, { ...lock, slot: targetSlot }]);
     }
-    for (const [base, lock] of moved)
+    for (const [base, lock] of moved) {
+        ownerLockConfirmations.delete(base);
         next[base] = lock;
+    }
     if (changed)
         writeOwnerLockStore(next);
     return changed;
 }
-export function lockedIndependentRecordForBase(baseSlot, store = readStore(), { lightweight = false } = {}) {
+export function lockedIndependentRecordForBase(baseSlot, store = readStore(), { lightweight = false, keepWhenMissing = false } = {}) {
     const lock = ownerLockForBase(baseSlot);
     if (!lock?.slot)
         return null;
@@ -327,7 +349,7 @@ export function lockedIndependentRecordForBase(baseSlot, store = readStore(), { 
     const history = historyEntriesForSlot(String(lock.slot || '')).find(entry => entry?.html && valid(entry.html));
     if (history?.html)
         return { record: history, lock };
-    if (!lightweight)
+    if (!lightweight && !keepWhenMissing)
         clearOwnerLockForBase(baseSlot);
     return null;
 }
@@ -1104,11 +1126,24 @@ export function savedIndependentRecordForOwner(ctx, index, msg, store, observed 
     const persisted = persistedOwnerForMessage(ctx, index, msg);
     if (persisted?.deleted)
         return null;
-    const locked = lockedIndependentRecordForBase(messageBaseSlotKey(ctx, index, msg), store)?.record;
+    const locked = lockedIndependentRecordForBase(messageBaseSlotKey(ctx, index, msg), store, { keepWhenMissing: !!persisted?.html })?.record;
     return [findSavedRecord(store, observed.slot, observed.legacySlots || []), locked, persisted]
         .filter(record => record?.html && savedRecordMatchesObserved(record, observed) && independentStoredHtmlRestorable(record.html))
         .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)
         || Number(b.ownerLineage?.observedAt || 0) - Number(a.ownerLineage?.observedAt || 0))[0] || null;
+}
+export function sameIndependentRecordVersion(a, b) {
+    if (!a?.html || !b?.html)
+        return false;
+    if (a === b)
+        return true;
+    const initial = record => { const value = String(record.initialHtml || ''); return value === String(record.html) ? '' : value; };
+    return String(a.html) === String(b.html) && initial(a) === initial(b)
+        && Number(a.ts || 0) === Number(b.ts || 0)
+        && String(a.sourceHash || '') === String(b.sourceHash || '') && String(a.bodyHash || '') === String(b.bodyHash || '')
+        && String(a.ownerLineage?.id || '') === String(b.ownerLineage?.id || '')
+        && String(a.ownerLineage?.acceptedBodyHash || '') === String(b.ownerLineage?.acceptedBodyHash || '')
+        && Number(a.ownerLineage?.observedAt || 0) === Number(b.ownerLineage?.observedAt || 0);
 }
 export function savedRecordMatchesObserved(saved, observed) {
     if (!saved?.html || !observed)

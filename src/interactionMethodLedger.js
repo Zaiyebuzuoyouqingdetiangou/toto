@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.3";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.6.7";
 const LEDGER_KEY = 'rabbitMirrorInteractionMethodLedger';
 const LEDGER_LIMIT = 30;
 function readLedger() {
@@ -36,7 +36,8 @@ export function interactionMethodsFromRecord(record) {
     const selected = record.m[record.pick - 1];
     return cleanMethods(typeof selected === 'string' ? [selected] : selected);
 }
-export function recordInteractionMethods(details) {
+const FRESH_MS = 12 * 60 * 60 * 1000;
+export function recordInteractionMethods(details, { fallbackAt = 0 } = {}) {
     if (!details?.getAttribute)
         return;
     const raw = details.getAttribute('data-rm-vs') || details.querySelector?.(':scope > :not(summary)[data-rm-vs], :scope > * > [data-rm-vs]')?.getAttribute('data-rm-vs');
@@ -53,14 +54,25 @@ export function recordInteractionMethods(details) {
     const art = cleanArt(record?.a);
     if (!methods.length && !art)
         return;
+    let at = 0;
+    try {
+        const stamp = JSON.parse(details.getAttribute('data-rm-generated') || 'null');
+        if (Number.isFinite(Number(stamp?.t)) && Number(stamp.t) > 0)
+            at = Number(stamp.t);
+    }
+    catch { }
+    if (!at && Number.isFinite(Number(fallbackAt)) && Number(fallbackAt) > 0)
+        at = Number(fallbackAt);
+    if (!at || Date.now() - at > FRESH_MS)
+        return;
     const key = details.getAttribute('data-rabbit-mirror-owner-key') || `vs:${raw.length}:${raw.slice(0, 80)}`;
     const ledger = readLedger();
     if (ledger.some(item => item.key === key))
         return;
-    ledger.push({ key, methods, at: Date.now(), ...(Number.isInteger(record.pick) && record.pick >= 1 && record.pick <= 3 ? { pick: record.pick } : {}), ...(art ? { art } : {}) });
+    ledger.push({ key, methods, at, ...(Number.isInteger(record.pick) && record.pick >= 1 && record.pick <= 3 ? { pick: record.pick } : {}), ...(art ? { art } : {}) });
+    ledger.sort((a, b) => (Number(a.at) || 0) - (Number(b.at) || 0));
     writeLedger(ledger);
 }
-const FRESH_MS = 12 * 60 * 60 * 1000;
 function freshLedger() {
     const now = Date.now();
     return readLedger().filter(item => Number.isFinite(Number(item.at)) && now - Number(item.at) <= FRESH_MS);

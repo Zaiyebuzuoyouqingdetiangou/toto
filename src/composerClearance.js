@@ -1,5 +1,5 @@
-import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=2.6.3';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=2.6.3';
+import { recordTtSurface, ttSurfaceNow } from './ttSurfaceDiagnostics.js?rmv=2.6.7';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from './hostCompatibility.js?rmv=2.6.7';
 let active = null;
 export function composerOverlap(chat, composer, viewportBottom) {
     if (!chat || !composer || composer.width <= 0 || composer.height <= 0
@@ -37,7 +37,7 @@ export function initRabbitMirrorComposerClearance() {
         return;
     let frame = 0, stopped = false, spacer = null, lastHeight = 0;
     let observedForm = null, footerOwner = null, footerHeight = 0;
-    let unsubscribeManaged = null, managedDebounce = 0, lastInset = -1, lastFormHeight = -1;
+    let unsubscribeManaged = null, managedDebounce = 0, lastInset = -1, lastFormHeight = -1, lastViewportBottom = -1;
     const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
         const entry = entries?.[0];
         const target = entry?.target;
@@ -119,6 +119,7 @@ export function initRabbitMirrorComposerClearance() {
         const formStyle = form && getComputedStyle(form);
         const shown = form && formStyle.display !== 'none' && formStyle.visibility !== 'hidden';
         const bottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+        lastViewportBottom = Math.round(bottom);
         const rawHeight = hasMirror && shown ? composerOverlap(chat.getBoundingClientRect(), form.getBoundingClientRect(), bottom) : 0;
         const height = ownsChat && rawHeight > 0 ? Math.ceil(rawHeight / 16) * 16 : rawHeight;
         if (ownsChat) {
@@ -209,6 +210,9 @@ export function initRabbitMirrorComposerClearance() {
         if (stopped)
             return;
         if (!chatSurfaceOwnsChat()) {
+            if (sourceName === 'viewport-scroll' && viewport && lastViewportBottom >= 0
+                && Math.abs(Math.round(viewport.offsetTop + viewport.height) - lastViewportBottom) < 16)
+                return;
             recordTtSurface('clearance-schedule', { source: sourceName });
             if (!frame)
                 frame = requestAnimationFrame(measure);
