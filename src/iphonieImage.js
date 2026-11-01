@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.9.1";
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.1';
-import { persistImage } from './chatu8Image.js?rmv=2.9.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.9.2";
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.9.2';
+import { persistImage } from './chatu8Image.js?rmv=2.9.2';
 function failure(code, message, extra = {}) {
     return Object.assign(new Error(message), { code }, extra);
 }
@@ -15,18 +15,18 @@ function phoneApi() {
 export function iphonieStatus() {
     const api = phoneApi();
     if (!globalThis.stIphonie)
-        return { configured: false, reason: __rmT("3cXLESG83idbojD1UfM0RjAd77JOScJ9frHlHxKrMvZNDc2l8KaBipOwLyGIF2b9SmEmIfk5dwEobh") };
+        return { configured: false, reason: __rmT("GPzipAGgIL8941e3le4ldJWTrKc2gIdmTEnuxherPrwob2yaLxeX_Gjn.vFdNutHFTEc9mNKKxqP61VDBfoUJ1BYjN8uUnYO") };
     if (!api)
-        return { configured: false, reason: __rmT("Dhohox6wRtGnaNjxklZ5TqQwYCuqT7L97NliMpwz1jMJnCfFP5vjyfkMMX6AZ4yuUky1VdmSzvOr4Ad.vsdBwKJMkfdP71_gANA") };
+        return { configured: false, reason: __rmT("1NthNmgGK5GcDDxFZqhtBY_qnzgm3sW5WppqR60T7JJScZpWz2m3qWv.EiuisSa4H_PRbbeBjTKMRhNIpgm_lUK.Mo6FaHq24Y5GCse0hDF4s.9Mc1GYzq.WV9QifGEr_uwuhcAc") };
     let status = null;
     try {
         status = api.drawStatus();
     }
     catch (error) {
-        return { configured: false, reason: `${__rmT("_D8r0cR2G9UpT.PTLeeinEEXyHXPMTbY")}${String(error?.message || error)}` };
+        return { configured: false, reason: `${__rmT("aWMWs7CGGO5rVMbfppwZmN9odaz9ymElfLYhwjbqyCc2ZnIZxAh")}${String(error?.message || error)}` };
     }
     if (!status?.ready)
-        return { configured: false, reason: String(status?.missing || __rmT("FGM0DKvudsMJThsKTUzUBs3.aVvTUUxYbz4pYBLbWZgxYzQX")) };
+        return { configured: false, reason: String(status?.missing || __rmT("m0C4XadImJoofinUG_FwP57QqyGiYla90v2DJTwC.YTXZqNir6AGU6.ypJkFKS8OWUE")) };
     return { configured: true, engine: String(status.engine || ''), style: String(status.style || ''), free: status.free };
 }
 function characterNames(plan) {
@@ -98,29 +98,29 @@ export async function generateViaIphonie(plan, { signal, size, assertCurrent, on
         if (error?.cancelled || signal?.aborted)
             throw failure('aborted', __rmT("lG.pz2TnT_Yo4if1"));
         if (error?.code === 'PAID')
-            throw failure('paid_declined', __rmT("BHqhRLNqEf_0.NTuBy.1mBeOX4EsHvcP.X0DfiUxIZgFEBopYhAqQAdvttC9uT"));
+            throw failure('paid_declined', __rmT("8armaCqs4I7vcgTFcET91JtXrdUZcPjEGHM3ciC5gKeWcFHvdePA4_WF_nV.hxhLyHf_UZdAAlhYrlH9"));
         if (error?.code === 'NOT_READY')
-            throw failure('not_configured', String(error?.message || __rmT("Dmf3l.Ka5Lnq1QSXK4op7VsR8BPrrk")));
+            throw failure('not_configured', String(error?.message || __rmT("hRJBfB6X_ghswQOPbKsgY5JpWaDs1FVcnIDJwyJGO0aVKSQX")));
         if (error?.code === 'NO_PROMPT')
             throw failure('invalid_args', __rmT("_9PW67Dt9BEjosNqPvSrOk8eFuKZ6JB7MGav9LDB31FOHYRRq8_"));
-        throw failure('provider_error', `${__rmT("Dmf3l.KaM18dIea3tRPsHs1uBGjocT")}${String(error?.message || error)}${__rmT("OLaPUKejSYCsa9_xvnFrnH6ZbNs")}`);
+        throw failure('provider_error', `${__rmT("hRJBfB6X_ghswQOPbKsgY5JpWaDuIYIESn1zYuHgryCrXn9x")}${String(error?.message || error)}${__rmT("OLaPUKejSYCsa9_xvnFrnH6ZbNs")}`);
     }
     let path = sitePath(picture?.url);
     let dataUrl = '';
     let saveFailed = false;
     if (!path) {
         if (!(picture?.blob instanceof Blob))
-            throw failure('invalid_result', __rmT("g9WOq7l3NWzm_I.bG7cz98nEFuXGJNGOCBlldZgBFjkZZ7xIq8_"));
+            throw failure('invalid_result', __rmT("lPRZYh7xKv254ONWPO22aQeq1tkz7tPUDcqyGd35NvoeGSSJC_2Wv8ZM7fULFGlKZ.VY3h"));
         try {
             onProgress?.({ phase: 'saving' });
         }
         catch { }
-        const stored = await persistImage(await blobToDataUrl(picture.blob), { label: __rmT("s3XFEC__") });
+        const stored = await persistImage(await blobToDataUrl(picture.blob), { label: __rmT("KFgLaN_B4l0MSpRh0eLXdub_7bh") });
         path = stored.path || '';
         dataUrl = stored.dataUrl || '';
         saveFailed = stored.saveFailed === true;
         if (!path && !dataUrl)
-            throw failure('invalid_result', __rmT("HqjvpjtTo2xmIQeVuhXB1Vwkhk_x7blOgRh2HBbmNFaGfpyl6AP3d9kXzBG"));
+            throw failure('invalid_result', __rmT("w5twcBQfYGnIJx72iavL40M6g1jymhg5P75Ss3B9oNfH2rojWZDZ1l4dexbVFbDhUwxktt2GC.pobh"));
     }
     return {
         url: path || dataUrl, path: path || null, dataUrl, prompt, provider: 'st-iphonie',
