@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.11.2";
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.12.0";
 export const CONTINUATION_DIRECTION_MAX_CHARS = 2000;
 export function normalizeContinuationDirection(value) {
     return String(value ?? '')

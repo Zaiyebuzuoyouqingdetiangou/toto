@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.11.2";
-import { spritePaths } from '../pixelSprites.js?rmv=2.11.2';
+import { rmT as __rmT } from "../textTable.js?rmv=2.12.0";
+import { spritePaths } from '../pixelSprites.js?rmv=2.12.0';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const SCENE_H = 30;
 const BASE_W = 42;
@@ -14,6 +14,9 @@ const COLORS = Object.freeze({
     D: ['hole', '#343947'], d: ['hole-dk', '#1f222b'], n: ['streak', '#6e6878'], m: ['hole-mark', '#4d4855'],
     v: ['grass', '#8fb573'], V: ['grass-dk', '#6c8f55'], u: ['soil', '#c7a07a'], U: ['soil-dk', '#8c6a4c'], z: ['pit', '#2a2530'],
     l: ['bubble', '#eef6f9'],
+    x: ['tape', '#d65a50'], X: ['tape-dk', '#a8413a'], c: ['sand', '#e3bf6a'], s: ['pouch', '#c49166'], S: ['pouch-dk', '#8e6644'],
+    i: ['slate', '#7d8692'], I: ['slate-dk', '#59616c'], w: ['thread', '#c97a8a'], f: ['case', '#b4774e'], F: ['case-dk', '#80522f'],
+    j: ['drop', '#8fc3e6'],
 });
 const BIG = '.....kk...k/....kpRk.kR/....kprk.kprk/....kprk.kprk/....kprk.kprk/....kprkkkprk/...kkrrrrrrrkk/..krrrrrrrrrrrk/.krrrrrrrrrrrRRk/.kreerrrrrrrrRRk/krrekrrrrrrrrRRk/kprrrrrrrrrrrRRk/.kbbrrrrrrrrRRk/..kkrrrrrrrRRkk/...krrrrrrrRRRk/..krrrrrrrrRRRRk/.krrrrrrrrrRRRRk/.krrrrrrrrrRRRRRk/.krrrrrrrrRRRRRkk/..kkrrrrrRRRRRkrk/....kkkkkkkkkkkk';
 const SMALL = '...kk..kk/..kpk.kpRk/..kpk.kprk/..kprkkprk/.kkrrrrrrkk/krrrrrrrrrRk/kreerrrrrrRk/kreerrrrrRRk/kbbrrrrrrRRk/.kkrrrrrrRRRk/..krrrrrrRRRk/.krrrrrrRRRRk/.krrkrrRRRRkrk/..kkkkkkkkkk';
@@ -49,22 +52,22 @@ const spriteHeight = sprite => rowsOf(sprite).length;
 const MIRROR_CY = 7;
 const MIRROR_RX = 4;
 const MIRROR_RY = 5;
-function mirror(cells, cx, { glow = false, crack = false } = {}) {
-    const cy = MIRROR_CY, rx = MIRROR_RX, ry = MIRROR_RY;
+function mirror(cells, cx, { glow = false, crack = false, cy = MIRROR_CY, unlit = false } = {}) {
+    const rx = MIRROR_RX, ry = MIRROR_RY;
     for (let y = cy - ry - 2; y <= cy + ry + 2; y += 1) {
         for (let x = cx - rx - 2; x <= cx + rx + 2; x += 1) {
             const outer = ((x - cx) / (rx + 1.5)) ** 2 + ((y - cy) / (ry + 1.5)) ** 2;
             const frame = ((x - cx) / (rx + 0.5)) ** 2 + ((y - cy) / (ry + 0.5)) ** 2;
             const glass = ((x - cx) / (rx - 0.6)) ** 2 + ((y - cy) / (ry - 0.6)) ** 2;
             if (glass <= 1)
-                put(cells, x, y, glow ? (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 0.35 ? 'y' : 'Y') : 'a');
+                put(cells, x, y, glow ? (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < 0.35 ? 'y' : 'Y') : unlit ? (x + y) % 5 === 0 ? 'I' : 'i' : 'a');
             else if (frame <= 1)
                 put(cells, x, y, x < cx || y < cy ? 'g' : 'G');
             else if (outer <= 1)
                 put(cells, x, y, 'k');
         }
     }
-    if (!glow && !crack) {
+    if (!glow && !crack && !unlit) {
         put(cells, cx - rx + 2, cy - ry + 2, 'h');
         put(cells, cx - rx + 2, cy - ry + 3, 'h');
         put(cells, cx - rx + 3, cy - ry + 2, 'h');
@@ -381,3 +384,7 @@ export function sceneKey(scene) {
         return `search:${clampMirrorCount(scene.mirrors)}`;
     return `found:${clampMirrorCount(scene.mirrors)}:${Number(scene.chosen) || 0}`;
 }
+export const sceneKit = Object.freeze({
+    SCENE_H, BASE_W, MIRROR_RX, MIRROR_RY, grid, put, blit, mirror, room, waitGround, svgOf, group, rowsOf, spriteWidth, spriteHeight,
+    BIG, SMALL, JUMP, STAR, QUESTION, BANG, WAIT_EYES,
+});

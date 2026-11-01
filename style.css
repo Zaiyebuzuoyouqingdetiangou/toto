@@ -1267,6 +1267,18 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 }
 .rabbit-mirror-external-error-art svg.rm-gp-scene{ display:block !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; }
 
+.rm-gp-scene .rm-gp-err-frame,
+.rm-gp-scene .rm-gp-err-stars{ opacity:0; }
+.rm-gp-scene .rm-gp-err-stars{ animation:rm-gp-err-2 .8s steps(1,end) infinite; }
+.rabbit-mirror-external-error-art[data-rm-err-rest]{ cursor:pointer !important; }
+.rabbit-mirror-external-error-art[data-rm-err-rest] *{ animation:none !important; }
+.rabbit-mirror-external-error-art[data-rm-err-rest] .rm-gp-err-frame-0,
+.rabbit-mirror-external-error-art[data-rm-err-rest] .rm-gp-fail-1,
+.rabbit-mirror-external-error-art[data-rm-err-rest] .rm-gp-err-stars-0{ opacity:1 !important; }
+@keyframes rm-gp-err-2{ 0%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
+@keyframes rm-gp-err-3{ 0%{opacity:1} 33.333%{opacity:0} 100%{opacity:0} }
+@keyframes rm-gp-err-4{ 0%{opacity:1} 25%{opacity:0} 100%{opacity:0} }
+
 .rabbit-mirror-external-wait-art{
   display:flex !important;
   justify-content:center !important;
@@ -1296,6 +1308,8 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   .rm-gp-scene .rm-gp-fall-0,
   .rm-gp-scene .rm-gp-found-3,
   .rm-gp-scene .rm-gp-fail-1,
+  .rm-gp-scene .rm-gp-err-frame-0,
+  .rm-gp-scene .rm-gp-err-stars-0,
   .rm-gp-scene .rm-gp-wait-hand-0{ opacity:1 !important; }
 }
 @keyframes rm-gp-frame-a{ 0%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
