@@ -1,14 +1,16 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.11.1";
-import { spritePaths } from '../pixelSprites.js?rmv=2.11.1';
-import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.11.1';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.11.1';
-import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, waitArtSelector } from './mirrorScene.js?rmv=2.11.1';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.11.2";
+import { spritePaths } from '../pixelSprites.js?rmv=2.11.2';
+import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.11.2';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.11.2';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, waitArtSelector } from './mirrorScene.js?rmv=2.11.2';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';
 const MINI_CLASS = 'rabbit-mirror-generation-progress-mini';
 const PLACEHOLDER_SELECTOR = ':scope > details.rabbit-mirror-external-placeholder';
 const RESAY_STATUS_SELECTOR = ':scope > [data-rabbit-mirror-resay-status="true"]';
+const PLACEHOLDER_BODY_CLASS = 'rabbit-mirror-external-placeholder-body';
+export const PROGRESS_CARD_SELECTOR = `:scope > [${GENERATION_PROGRESS_ATTR}], :scope > details.rabbit-mirror-external-placeholder > .${PLACEHOLDER_BODY_CLASS} > [${GENERATION_PROGRESS_ATTR}]`;
 const MAX_LINES = 5;
 const isPinnedLine = line => line.key === 'self' || line.key === 'ticket' || (line.key === 'think' && line.state === 'note');
 function progressPicks(face, state, menuIndex) {
@@ -820,24 +822,38 @@ function applyCommon(node, view) {
         node.dataset.rmGpPhase = view.phase;
 }
 const OWNER_ATTR = 'data-rm-gp-owner';
+const AUTO_OPEN_ATTR = 'data-rm-gp-auto-opened';
 const ownedByNewer = (node, owner) => Number(node?.getAttribute?.(OWNER_ATTR)) > Number(owner || 0);
 export function renderProgressCard(host, view, doc = host?.ownerDocument, owner = 0, dark = false) {
     const placeholder = host?.querySelector?.(PLACEHOLDER_SELECTOR);
     if (!placeholder || !doc)
         return null;
-    let card = host.querySelector(`:scope > [${GENERATION_PROGRESS_ATTR}]`);
+    let card = host.querySelector(PROGRESS_CARD_SELECTOR);
     if (ownedByNewer(card, owner))
         return null;
     if (!card)
         card = buildCard(doc);
+    let body = placeholder.querySelector(`:scope > .${PLACEHOLDER_BODY_CLASS}`);
+    if (!body) {
+        body = makeElement(doc, 'div', PLACEHOLDER_BODY_CLASS);
+        placeholder.append(body);
+    }
     if (owner)
         card.setAttribute(OWNER_ATTR, String(owner));
     if (dark)
         card.setAttribute('data-rm-gp-dark', 'true');
     else
         card.removeAttribute('data-rm-gp-dark');
-    if (card.previousElementSibling !== placeholder)
-        placeholder.after(card);
+    if (card.parentNode !== body)
+        body.append(card);
+    for (const node of [...body.childNodes])
+        if (node.nodeType === 3)
+            node.remove();
+    if (host.getAttribute(AUTO_OPEN_ATTR) !== String(owner || 'x')) {
+        host.setAttribute(AUTO_OPEN_ATTR, String(owner || 'x'));
+        if (!placeholder.open)
+            placeholder.setAttribute('open', '');
+    }
     for (const art of host.querySelectorAll(waitArtSelector()))
         art.remove();
     if (view.phase !== 'preparing') {
@@ -897,7 +913,7 @@ export function renderProgressMini(status, view, doc = status?.ownerDocument, ow
 export function removeGenerationProgress(host, owner = 0) {
     if (!host?.querySelectorAll)
         return;
-    host.querySelectorAll(`:scope > [${GENERATION_PROGRESS_ATTR}], :scope > [data-rabbit-mirror-resay-status="true"] > [${GENERATION_PROGRESS_MINI_ATTR}]`).forEach(node => {
+    host.querySelectorAll(`${PROGRESS_CARD_SELECTOR}, :scope > [data-rabbit-mirror-resay-status="true"] > [${GENERATION_PROGRESS_MINI_ATTR}]`).forEach(node => {
         if (!owner || node.getAttribute(OWNER_ATTR) === String(owner))
             node.remove();
     });
@@ -907,7 +923,7 @@ export function dropGenerationProgressUnlessLoading(host) {
         return;
     if (host.dataset?.rmState === 'loading' && host.querySelector(PLACEHOLDER_SELECTOR))
         return;
-    host.querySelector(`:scope > [${GENERATION_PROGRESS_ATTR}]`)?.remove();
+    host.querySelectorAll(PROGRESS_CARD_SELECTOR).forEach(node => node.remove());
 }
 let controllerSequence = 0;
 const IDLE_TICKS_BEFORE_DORMANT = 90;
@@ -961,7 +977,7 @@ export function startGenerationProgress({ getHost, faceCount = 1, dark = false, 
             watchVisibility(null);
             return false;
         }
-        const placed = host.querySelector(`:scope > [${GENERATION_PROGRESS_ATTR}]`) || host.querySelector(RESAY_STATUS_SELECTOR)?.querySelector(`:scope > [${GENERATION_PROGRESS_MINI_ATTR}]`);
+        const placed = host.querySelector(PROGRESS_CARD_SELECTOR) || host.querySelector(RESAY_STATUS_SELECTOR)?.querySelector(`:scope > [${GENERATION_PROGRESS_MINI_ATTR}]`);
         if (placed && placed === observed && placed.getAttribute('data-rm-gp-offscreen') === 'true' && Number(placed.getAttribute(OWNER_ATTR)) === owner)
             return true;
         const view = progressView(state, clock());
@@ -973,7 +989,7 @@ export function startGenerationProgress({ getHost, faceCount = 1, dark = false, 
             node = renderProgressCard(host, view, doc, owner, dark);
         }
         else {
-            const card = host.querySelector(`:scope > [${GENERATION_PROGRESS_ATTR}]`);
+            const card = host.querySelector(PROGRESS_CARD_SELECTOR);
             if (card && !ownedByNewer(card, owner))
                 card.remove();
             const status = host.querySelector(RESAY_STATUS_SELECTOR);

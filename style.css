@@ -1084,7 +1084,8 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   opacity:.76 !important;
 }
 
-#chat .rabbit-mirror-external-shell > .rabbit-mirror-generation-progress{
+#chat .rabbit-mirror-external-shell > .rabbit-mirror-generation-progress,
+#chat .rabbit-mirror-external-shell > details > .rabbit-mirror-external-placeholder-body > .rabbit-mirror-generation-progress{
   --rm-gp-bg:var(--SmartThemeBlurTintColor, #f7f5f2);
   --rm-gp-text:var(--SmartThemeBodyColor, #2b2628);
   --rm-gp-line:color-mix(in srgb, var(--SmartThemeBorderColor, #8a8086) 55%, transparent);
@@ -1111,11 +1112,23 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   box-shadow:none !important;
   cursor:default !important;
 }
-#chat .rabbit-mirror-external-shell > .rabbit-mirror-generation-progress[data-rm-placeholder-theme="dark"]{
+#chat .rabbit-mirror-external-shell > .rabbit-mirror-generation-progress[data-rm-placeholder-theme="dark"],
+#chat .rabbit-mirror-external-shell > details > .rabbit-mirror-external-placeholder-body > .rabbit-mirror-generation-progress[data-rm-placeholder-theme="dark"]{
   --rm-gp-bg:#202329;
   --rm-gp-text:#eceef2;
   --rm-gp-line:#636b78;
   color-scheme:dark;
+}
+
+#chat .rabbit-mirror-external-shell > details > .rabbit-mirror-external-placeholder-body > .rabbit-mirror-generation-progress{
+  max-width:none !important;
+  margin:0 !important;
+  padding:0 0 2px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:inherit !important;
+  white-space:normal !important;
 }
 .rabbit-mirror-generation-progress .rm-gp-meta{
   display:flex !important;
@@ -1265,7 +1278,7 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-external-placeholder-body > .rabbit-mirror-external-wait-art{ margin:10px 0 2px !important; }
 
 .rabbit-mirror-external-shell:not([data-rm-state="loading"]) .rabbit-mirror-external-wait-art,
-.rabbit-mirror-external-shell:has(> .rabbit-mirror-generation-progress) .rabbit-mirror-external-wait-art{ display:none !important; }
+.rabbit-mirror-external-shell:has(.rabbit-mirror-generation-progress) .rabbit-mirror-external-wait-art{ display:none !important; }
 .rabbit-mirror-external-wait-art svg.rm-gp-scene{ display:block !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; }
 .rm-gp-scene .rm-gp-wait-hand{ opacity:0; animation:rm-gp-quarter 2.4s steps(1,end) infinite; animation-delay:var(--rm-wait-phase, 0s); }
 .rm-gp-scene .rm-gp-wait-hand-1{ animation-delay:calc(var(--rm-wait-phase, 0s) - 1.8s); }
