@@ -1,9 +1,12 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.15.1";
-import { compareRabbitMirrorVersions, fetchWithTimeout, hostRequestHeaders, ownExtensionFolder, reloadTavernPage, } from './extensionUpdater.js?rmv=2.15.1';
-export { backupSettingsBeforeVersionSwitch } from './settings.js?rmv=2.15.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.15.2";
+import { compareRabbitMirrorVersions, fetchWithTimeout, hostRequestHeaders, ownExtensionFolder, reloadTavernPage, } from './extensionUpdater.js?rmv=2.15.2';
+export { backupSettingsBeforeVersionSwitch } from './settings.js?rmv=2.15.2';
 const UPDATER_URL = new URL('./extensionUpdater.js', import.meta.url).href;
 const VERSION_BRANCH = /^(?:remotes\/)?(?:origin\/)?v(\d{1,3}\.\d{1,4}\.\d{1,4})$/;
 export const ROLLBACK_SINCE = '2.2.0';
+export const ROLLBACK_MIN = '2.10.0';
+let rollbackMin = ROLLBACK_MIN;
+export function setRollbackMinVersion(value = ROLLBACK_MIN) { rollbackMin = String(value ?? ''); }
 function failure(status, action) {
     if (status === 401 || status === 403)
         return `${__rmT("rcHBrewjgUp")}${action}${__rmT("clzU1onoMhYYP2vYh6_00aArj2T00UcKb3EZPEkZkV67EXREQ3mp2AkdJMs2tpevIIKK7x3OY3Y")}`;
@@ -31,7 +34,7 @@ export async function resolveOwnInstall({ fetchImpl = globalThis.fetch.bind(glob
         throw new Error(__rmT("XPhmMi06FCg84peSvkQUFZDacIyEUhNGX.vngR6U69EXhLIREaDK_zh5zBG"));
     return { folder, global: entry.type === 'global' };
 }
-export function rollbackChoices(branches) {
+export function rollbackChoices(branches, { minVersion = rollbackMin } = {}) {
     const list = Array.isArray(branches) ? branches : [];
     const byVersion = new Map();
     let current = '';
@@ -40,7 +43,7 @@ export function rollbackChoices(branches) {
         if (branch?.current && name)
             current = name;
         const match = name.match(VERSION_BRANCH);
-        if (!match)
+        if (!match || (minVersion && compareRabbitMirrorVersions(match[1], minVersion) < 0))
             continue;
         const remote = /^(?:remotes\/)?origin\//.test(name);
         const known = byVersion.get(match[1]);
