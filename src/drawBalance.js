@@ -1,5 +1,5 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.13.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.13.1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.15.1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.15.1';
 export const DEFAULT_COOLDOWN_FACES = 30;
 export const NEAR_COOLDOWN_FACES = 10;
 const CATCH_ALL_THEME_IDS = ['A.0', 'B.0', 'C.0', 'E.0', 'F.0', 'G.0'];

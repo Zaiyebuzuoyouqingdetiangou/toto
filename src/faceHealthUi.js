@@ -1,13 +1,14 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.13.1";
-import { getContext, RUNTIME_VERSION } from './independentApi/runtime.js?rmv=2.13.1';
-import { chatKey, swipeId } from './independentApi/connection.js?rmv=2.13.1';
-import { chatPersistedOwnerKeys, persistedOwnerForMessage } from './independentApi/persistence.js?rmv=2.13.1';
-import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.13.1';
-import { messageStampSeconds } from './messageStamp.js?rmv=2.13.1';
-import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=2.13.1';
-import { readGenerationStamp } from './generationStamp.js?rmv=2.13.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.13.1';
-import { analyzeStoredFace, splitStoredFaces, formatNameOf, faceHasSelfInvent, summarizeFaceHealth, buildFaceHealthText, uiName, HUE_NAMES, BRIGHTNESS_NAMES, healthDay } from './faceHealth.js?rmv=2.13.1';
+import { rmT as __rmT } from "./textTable.js?rmv=2.15.1";
+import { getContext, RUNTIME_VERSION } from './independentApi/runtime.js?rmv=2.15.1';
+import { chatKey, swipeId } from './independentApi/connection.js?rmv=2.15.1';
+import { chatPersistedOwnerKeys, persistedOwnerForMessage } from './independentApi/persistence.js?rmv=2.15.1';
+import { getRabbitMirrorRecipe } from './blacklist.js?rmv=2.15.1';
+import { messageStampSeconds } from './messageStamp.js?rmv=2.15.1';
+import { scanRabbitMirrorHtml } from './visualScanner.js?rmv=2.15.1';
+import { readGenerationStamp } from './generationStamp.js?rmv=2.15.1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.15.1';
+import { analyzeStoredFace, splitStoredFaces, formatNameOf, faceHasSelfInvent, summarizeFaceHealth, buildFaceHealthText, uiName, HUE_NAMES, BRIGHTNESS_NAMES, healthDay } from './faceHealth.js?rmv=2.15.1';
+import { setBusyRabbit } from './ui/busyRabbit.js?rmv=2.15.1';
 const PANEL_ATTR = 'data-rabbit-mirror-face-health';
 const HUE_DOTS = { red: '#d9534f', orange: '#e8914a', yellow: '#e2c044', green: '#5fae6e', cyan: '#4fb7b7', blue: '#5b84d6', purple: '#9b6cd1', pink: '#e08ab3', neutral: '#9a9a9a' };
 let builtinFormatIds = null;
@@ -356,6 +357,7 @@ export async function openFaceHealthReport({ limit = 30, ctx = getContext() } = 
         exportButton.disabled = true;
         body.replaceChildren(status);
         status.textContent = __rmT("nHLZzQpT.OaTfskj");
+        setBusyRabbit(status, true);
         try {
             const wanted = Number(select.value) || 0;
             const collected = await collectChatFaces(ctx, { limit: wanted, onProgress: (done, all) => { if (mine === run)

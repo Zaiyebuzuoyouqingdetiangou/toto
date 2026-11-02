@@ -1,16 +1,17 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.13.1";
-import { getSettings } from './settings.js?rmv=2.13.1';
-import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.13.1';
-import { imageBackendName } from './imageBackendName.js?rmv=2.13.1';
-import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.13.1';
-import { getContext, hashText } from './independentApi/runtime.js?rmv=2.13.1';
-import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.13.1';
-import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.13.1';
-import { imageLlmConfigured } from './imageLlm.js?rmv=2.13.1';
-import { tidyImagePayload } from './imageTagTidy.js?rmv=2.13.1';
-import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.13.1';
-import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.13.1';
-import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.13.1';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.1";
+import { getSettings } from './settings.js?rmv=2.15.1';
+import { generateMirrorImage, getImageCharacters } from './baibaiImage.js?rmv=2.15.1';
+import { imageBackendName } from './imageBackendName.js?rmv=2.15.1';
+import { captureMirrorImageOwner, mirrorImageOwnerSourceKey, mirrorImageOwnerMatchesKey, saveMirrorImageForOwner, findUnambiguousBuiltinImageKey, imagePromptFingerprint, mirrorImageChatLoading, removeMirrorImage, builtinImageKeysCompatible, findBuiltinImageKeyFromOtherChat, findCompatibleBuiltinImageKey, findShiftedBuiltinImageKey, builtinImageKeysShifted, loadMirrorImage, replaceMirrorImageVersions } from './imageStore.js?rmv=2.15.1';
+import { getContext, hashText } from './independentApi/runtime.js?rmv=2.15.1';
+import { readMessageRecord } from './independentApi/messageRecords.js?rmv=2.15.1';
+import { freshDrawSlotIdentity } from './freshDrawSlots.js?rmv=2.15.1';
+import { imageLlmConfigured } from './imageLlm.js?rmv=2.15.1';
+import { tidyImagePayload } from './imageTagTidy.js?rmv=2.15.1';
+import { isRabbitMirrorLinkedAvatarFrame, prepareRabbitMirrorAvatarFrame } from './chatAvatars.js?rmv=2.15.1';
+import { rabbitMirrorAvatarPromptIdentity } from './chatAvatarPromptReady.js?rmv=2.15.1';
+import { explicitGenderStatements, isExplicitGenderStatement } from './characterWorldBook.js?rmv=2.15.1';
+import { buildDrawWaitArt, drawWaitPhase, syncDrawWaitArt, releaseDrawWaitArt, DRAW_WAIT_ART_CLASS } from './drawWaitScenes.js?rmv=2.15.1';
 const inflight = new Map();
 const waiters = new Map();
 const progress = new Map();
@@ -638,7 +639,11 @@ function paint(frame, record, root = null, key = '') {
         promptNode.hidden = true;
     hideFrameExtraMedia(frame);
     hideSiblingSubstituteImages(frame);
-    frame.querySelector?.('[data-rm-draw-status]')?.remove();
+    const status = frame.querySelector?.('[data-rm-draw-status]');
+    if (status) {
+        releaseDrawWaitArt(status);
+        status.remove();
+    }
     let image = frame.querySelector?.('img[data-rm-draw-result]');
     if (!image) {
         image = frame.ownerDocument.createElement('img');
@@ -651,14 +656,45 @@ function paint(frame, record, root = null, key = '') {
     watchImageLoad(frame, image, record, root, key);
     return true;
 }
-function note(frame, text, root = null) {
+function note(frame, text, root = null, { progress = false } = {}) {
     if (isRabbitMirrorLinkedAvatarFrame(frame))
         return;
-    frame.querySelector?.('[data-rm-draw-status]')?.remove();
+    const old = frame.querySelector?.('[data-rm-draw-status]');
+    if (progress && !root && old?.getAttribute('data-rm-draw-progress') === 'true') {
+        const line = old.querySelector(':scope > p');
+        if (line && line.textContent !== text)
+            line.textContent = text;
+        const art = old.querySelector(`:scope > .${DRAW_WAIT_ART_CLASS}`);
+        if (art)
+            syncDrawWaitArt(art, drawWaitPhase(text));
+        return;
+    }
+    if (old) {
+        releaseDrawWaitArt(old);
+        old.remove();
+    }
     const doc = frame.ownerDocument;
     const box = doc.createElement('div');
     box.setAttribute('data-rm-draw-status', '1');
-    box.style.cssText = 'margin:0;padding:12px;font-size:12px;line-height:1.45;display:grid;gap:8px;align-content:center;height:100%;box-sizing:border-box;';
+    box.style.cssText = 'margin:0;padding:12px;font-size:12px;line-height:1.45;display:grid;gap:8px;align-content:center;justify-items:center;text-align:center;height:100%;box-sizing:border-box;';
+    if (progress && !root) {
+        box.setAttribute('data-rm-draw-progress', 'true');
+        let frameHeight = 0;
+        try {
+            frameHeight = frame.getBoundingClientRect?.().height || 0;
+        }
+        catch {
+            frameHeight = 0;
+        }
+        if (!(frameHeight > 0 && frameHeight < 120)) {
+            try {
+                box.append(buildDrawWaitArt(doc, drawWaitPhase(text), { dark: getSettings().darkVisualMode === true }));
+            }
+            catch { }
+        }
+    }
+    else
+        box.style.justifyItems = 'start', box.style.textAlign = 'left';
     const line = doc.createElement('p');
     line.textContent = text;
     line.style.cssText = 'margin:0;opacity:.72;';
@@ -719,7 +755,7 @@ function reportProgress(key, text) {
             catch { }
         }
         if (!quiet && frame.isConnected && isCurrent())
-            note(frame, text);
+            note(frame, text, null, { progress: true });
     }
 }
 async function imageCharacters(floor) {
@@ -1157,7 +1193,7 @@ async function withCardAppearance(people, frame, tagsOnly) {
     }
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.15.1');
     const merged = people.map(person => ({ ...person }));
     const others = [...new Set([...names, charName, personaName].filter(Boolean))];
     for (const name of pending) {
@@ -1254,7 +1290,7 @@ function readWorldCast(names) {
     const hit = worldCastCache.get(key);
     if (hit && Date.now() - hit.at < 60000)
         return hit.promise;
-    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.13.1'), import('./independentApi/connection.js?rmv=2.13.1')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
+    const promise = Promise.all([import('./characterWorldBook.js?rmv=2.15.1'), import('./independentApi/connection.js?rmv=2.15.1')]).then(([module, connection]) => module.readCharacterWorldBookContext(ctx, {
         disabledBooks: disabled, focusText: names.join('\n'), onlyMentioned: true, maxChars: 4000,
         filterContent: value => connection.stripExcludedTagsFromReference(value),
     })).then(result => String(result?.text || '')).catch(() => { worldCastCache.delete(key); return ''; });
@@ -1272,7 +1308,7 @@ async function withWorldBookAppearance(people, frame, tagsOnly, signal = null) {
         throw Object.assign(new Error(__rmT("lG.pz2TnT_Yo4if1")), { name: 'AbortError', code: 'aborted' });
     if (!cast)
         return people;
-    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.13.1');
+    const { appearanceFromCast } = await import('./characterWorldBook.js?rmv=2.15.1');
     const merged = people.map(person => ({ ...person }));
     let others = names;
     try {
@@ -1327,8 +1363,10 @@ function drawnLooksOnly(text, tagsOnly = false) {
     const kept = splitLookClauses(source).filter(clause => lookFieldsOf(clause).length || (HAIRSTYLE_KIND && hasKindText(HAIRSTYLE_KIND, clause)));
     return withoutSceneText(kept.join(__rmT("Yis")), clothing).replace(/\s{2,}/g, ' ').trim().slice(0, 400);
 }
-export function rememberDrawnLooks(people, tagsOnly, metadata) {
+export function rememberDrawnLooks(people, tagsOnly, metadata, owner = null) {
     if (!metadata || typeof metadata !== 'object' || getSettings().imageLooksDrawn === false)
+        return false;
+    if (chatMetadataNow() !== metadata)
         return false;
     const book = metadata[DRAWN_LOOKS_KEY] && typeof metadata[DRAWN_LOOKS_KEY] === 'object' && metadata[DRAWN_LOOKS_KEY].people ? metadata[DRAWN_LOOKS_KEY] : { version: 1, people: {} };
     let changed = false;
@@ -1354,13 +1392,59 @@ export function rememberDrawnLooks(people, tagsOnly, metadata) {
     if (!changed)
         return false;
     metadata[DRAWN_LOOKS_KEY] = book;
+    if (owner?.msg && Number.isInteger(owner.mes))
+        requestDrawnLooksSave(owner.mes, owner.msg, 'drawn-looks');
+    return true;
+}
+function requestDrawnLooksSave(index, msg, reason) {
+    void import('./independentApi/persistence.js?rmv=2.15.1')
+        .then(module => { try {
+        module.requestSafeChatSave(getContext(), index, msg, reason);
+    }
+    catch { } })
+        .catch(() => { });
+}
+export function clearDrawnLooks(metadata = chatMetadataNow()) {
+    const count = Object.keys(drawnLooksPeople(metadata)).length;
+    if (!metadata || typeof metadata !== 'object' || !(DRAWN_LOOKS_KEY in metadata))
+        return 0;
+    delete metadata[DRAWN_LOOKS_KEY];
     try {
-        const ctx = getContext();
-        if (chatMetadataNow() === metadata)
-            (ctx?.saveMetadataDebounced || ctx?.saveMetadata)?.call(ctx);
+        const chat = Array.isArray(getContext()?.chat) ? getContext().chat : [];
+        const index = chat.length - 1;
+        if (index >= 0 && chatMetadataNow() === metadata)
+            requestDrawnLooksSave(index, chat[index], 'drawn-looks-clear');
     }
     catch { }
-    return true;
+    return count;
+}
+async function sourceCoverage(frame, prompt, tagsOnly, signal = null) {
+    const settings = getSettings();
+    const use = { library: settings.imageLooksLibrary !== false, card: settings.imageLooksCard !== false, myriad: settings.imageLooksMyriad !== false, world: settings.imageLooksWorldBook !== false };
+    let cast = readCharacters(frame).map(person => ({ ...person, text: '', modelTag: '' }));
+    if (use.library)
+        cast = await withLibraryAppearance(cast, prompt, frame, tagsOnly);
+    if (use.card)
+        cast = await withCardAppearance(cast, frame, tagsOnly);
+    if (use.myriad)
+        cast = await withMyriadAppearance(cast, frame, tagsOnly);
+    if (use.world)
+        cast = await withWorldBookAppearance(cast, frame, tagsOnly, signal);
+    return new Map(cast.map(person => [person.name, { fields: new Set(person.looksFields || []), source: String(person.looksSource || '') }]));
+}
+function withoutCoveredLooks(name, text, tag, fields) {
+    const temp = { name, text: String(text || ''), modelTag: String(tag || '') };
+    if (fields?.size)
+        stripModelLooks(temp, fields);
+    return { name, text: temp.text, tag: temp.modelTag };
+}
+function drawnLooksWithout(name, looks, fields) {
+    const source = String(looks || '');
+    if (!fields?.size || !source)
+        return source;
+    const isTags = !/[\u3400-\u9fff]/.test(source) && /,/.test(source);
+    const stripped = withoutCoveredLooks(name, isTags ? '' : source, isTags ? source : '', fields);
+    return isTags ? stripped.tag : stripped.text;
 }
 function withDrawnAppearance(people, frame, tagsOnly, metadata) {
     const names = frameCastNames(frame);
@@ -1465,7 +1549,7 @@ function planInOrder(key, run) {
     queue.tail = turn;
     return turn;
 }
-async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, otherScenes = []) {
+async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, otherScenes = [], signal = null) {
     try {
         const details = frame?.closest?.('details');
         const bridge = globalThis.__rabbitMirrorIndependentActionsV1;
@@ -1496,7 +1580,7 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const myriadRelevant = [];
         let cleanRef = value => value;
         try {
-            cleanRef = (await import('./independentApi/connection.js?rmv=2.13.1')).stripExcludedTagsFromReference;
+            cleanRef = (await import('./independentApi/connection.js?rmv=2.15.1')).stripExcludedTagsFromReference;
         }
         catch { }
         for (const person of myriad) {
@@ -1512,10 +1596,40 @@ async function planWithImageLlm(frame, onProgress, promptFormat, isCurrent, othe
         const publicCharacters = [...publicFirst, ...otherLibrary.slice(0, Math.max(0, BUDGET - publicFirst.length - myriadCharacters.length))];
         if (!isCurrent())
             throw staleImageRequest();
-        const drawnCharacters = looksSettings.imageLooksDrawn !== false ? drawnCharactersFor() : [];
-        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters: looksSettings.imageLooksModel !== false ? readCharacters(frame) : [], publicCharacters, myriadCharacters, drawnCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
+        const tagsOnly = promptFormat === 'nai45-tags';
+        let coverage = new Map();
+        try {
+            coverage = await sourceCoverage(frame, faceText, tagsOnly, signal);
+        }
+        catch (error) {
+            if (error?.name === 'AbortError')
+                throw error;
+            coverage = new Map();
+        }
+        if (!isCurrent())
+            throw staleImageRequest();
+        const sceneCharacters = looksSettings.imageLooksModel !== false ? readCharacters(frame).map(person => {
+            const fields = coverage.get(person.name)?.fields;
+            if (!fields?.size)
+                return person;
+            const stripped = withoutCoveredLooks(person.name, person.text, person.modelTag, fields);
+            return { ...person, text: stripped.text, modelTag: stripped.tag };
+        }) : [];
+        const drawnCharacters = looksSettings.imageLooksDrawn !== false ? drawnCharactersFor()
+            .map(person => ({ ...person, looks: drawnLooksWithout(person.name, person.looks, coverage.get(person.name)?.fields) }))
+            .filter(person => person.looks.trim()) : [];
+        const plan = await target.plan({ focus, frameCaption: frameCaption(frame), sceneCharacters, publicCharacters, myriadCharacters, drawnCharacters, promptFormat, otherScenes }, { builtin: true, onProgress });
         if (!plan || !String(plan.prompt || plan.flatPrompt || plan.nl || '').trim())
             throw planningFailure();
+        const names = [...new Set([...readCharacters(frame).map(person => person.name), ...drawnCharacters.map(person => person.name), ...myriadCharacters.map(person => person.name),
+                ...relevantLibrary.map(libraryName)].filter(Boolean))];
+        const looksSources = Object.fromEntries(names.map(name => {
+            const labels = [coverage.get(name)?.source || '', drawnCharacters.some(person => person.name === name) ? __rmT("xbBcjmCR") : '',
+                sceneCharacters.some(person => person.name === name && String(person.text || '').trim()) ? __rmT("NJVecsmDkMT") : ''].filter(Boolean);
+            return [name, labels.length ? [...new Set(labels.flatMap(label => label.split(__rmT("eos"))))].join(__rmT("eos")) : __rmT("hMzO0YrSdjI9kSEwR66c8Fc1")];
+        }));
+        Object.defineProperty(plan, 'sourceCoverage', { value: coverage, enumerable: false });
+        Object.defineProperty(plan, 'looksSources', { value: looksSources, enumerable: false });
         return plan;
     }
     catch (error) {
@@ -1556,14 +1670,15 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
                 if (isCurrent() && phase === 'response-chunk') {
                     reportProgress(key, __rmT("ZGTCeTrSS45g0GpYGGtHC4nQ2atQbIusRQCfTk1.N6rQ2h"));
                 }
-            }, settings.imagePromptFormat, isCurrent, otherScenes);
+            }, settings.imagePromptFormat, isCurrent, otherScenes, options.signal || null);
         }) : null);
         if (!isCurrent())
             throw staleImageRequest();
         const provider = imageBackendName(settings.imageBackend);
         reportProgress(key, `${withLlm ? __rmT(".TFGufFok4ZBcjFukCA") : ''}${__rmT("J94acmgjj9f")}${provider}${__rmT("8bBlOU.2")}`);
         let tidy = { promptIsTags: true, flatTagLines: 'none' };
-        let looksSources = options.looksSources && typeof options.looksSources === 'object' ? options.looksSources : null;
+        let looksSources = options.looksSources && typeof options.looksSources === 'object' ? options.looksSources
+            : planned?.looksSources && typeof planned.looksSources === 'object' ? planned.looksSources : null;
         const drawnMetadata = chatMetadataNow();
         let drawnPeople = null;
         const payload = planned ? {
@@ -1599,7 +1714,10 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
             const appearanceOf = person => tagsOnly ? person.text : [...new Set([person.text, tagOf(person)].filter(Boolean))].join('; ');
             const appearance = people.map(person => `${person.name}: ${appearanceOf(person)}`).join('\n');
             looksSources = Object.fromEntries(people.map(person => [person.name, person.looksSource || __rmT("NJVecsmDkMT")]));
-            drawnPeople = { tagsOnly, people: modelCast };
+            drawnPeople = { tagsOnly, people: modelCast.map(original => {
+                    const merged = cast.find(person => person.name === original.name);
+                    return withoutCoveredLooks(original.name, original.text, original.tag, new Set(merged?.looksFields || []));
+                }) };
             prompt = reconcileSceneAppearance(prompt, people, tagsOnly);
             const tags = tagsOnly ? '' : reconcileSceneAppearance(readTags(frame), people, true);
             return {
@@ -1645,12 +1763,14 @@ function startJob(key, prompt, frame, isCurrent, options = {}) {
         });
         if (!options.direct) {
             try {
+                const drawnOwner = resolveFrameOwner(frame);
                 if (planned && !options.reuse && settings.imageLooksModel !== false) {
                     const plannedTags = (planned.promptFormat || settings.imagePromptFormat) === 'nai45-tags';
-                    rememberDrawnLooks(readCharacters(frame).map(person => ({ name: person.name, text: plannedTags && /[\u3400-\u9fff]/.test(person.text) && person.modelTag ? person.modelTag : person.text, tag: person.modelTag })), plannedTags, drawnMetadata);
+                    const coverage = planned.sourceCoverage instanceof Map ? planned.sourceCoverage : await sourceCoverage(frame, prompt, plannedTags, options.signal || null).catch(() => new Map());
+                    rememberDrawnLooks(readCharacters(frame).map(person => withoutCoveredLooks(person.name, plannedTags && /[\u3400-\u9fff]/.test(person.text) && person.modelTag ? person.modelTag : person.text, person.modelTag, coverage.get(person.name)?.fields)), plannedTags, drawnMetadata, drawnOwner);
                 }
                 else if (drawnPeople)
-                    rememberDrawnLooks(drawnPeople.people, drawnPeople.tagsOnly, drawnMetadata);
+                    rememberDrawnLooks(drawnPeople.people, drawnPeople.tagsOnly, drawnMetadata, drawnOwner);
             }
             catch { }
         }
@@ -1801,7 +1921,7 @@ async function fillFrame(root, frame, { manual = false } = {}) {
     const waiter = { frame, isCurrent };
     nodes.add(waiter);
     if (progress.has(key))
-        note(frame, progress.get(key));
+        note(frame, progress.get(key), null, { progress: true });
     try {
         const record = await startJob(key, prompt, frame, isCurrent, { manual });
         unreadable.delete(key);
@@ -1849,7 +1969,7 @@ async function joinInflight(root, frame, key, isCurrent, capturedEntry = null) {
     const waiter = { frame, isCurrent };
     nodes.add(waiter);
     if (progress.has(key))
-        note(frame, progress.get(key));
+        note(frame, progress.get(key), null, { progress: true });
     try {
         const record = await entry.job;
         if (attempt)

@@ -1,42 +1,42 @@
-import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.13.1";
-import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=2.13.1';
-import { isDocumentFormat, looksLikeDocument } from './documentFormats.js?rmv=2.13.1';
-import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer, isObjectDriver, OFFER_LIMITS_187 } from './interactionMethods.js?rmv=2.13.1';
-import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo, signatureUsageForCombo } from './interactionUsageOffer.js?rmv=2.13.1';
-import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=2.13.1';
-import { recentInteractionMethods, recentDesignPicks, recentFollowPicks, rememberFollowPicks, recentArtDirections, recentSelfInventedForms } from './interactionMethodLedger.js?rmv=2.13.1';
-import { gameplayRuleFor } from './gameplayRules.js?rmv=2.13.1';
-import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=2.13.1';
-import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=2.13.1';
-import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=2.13.1';
-import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=2.13.1';
-import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=2.13.1';
-import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=2.13.1';
-import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=2.13.1';
-import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=2.13.1';
-import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=2.13.1';
-import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=2.13.1';
-import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE, VISUAL_SCENERY_SUBJECT_BY_PICK } from '../data/raw/visualSceneryRules.js?rmv=2.13.1';
-import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=2.13.1';
-import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay, pickSelfInventSelection } from './picker.js?rmv=2.13.1';
-import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=2.13.1';
-import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=2.13.1';
-import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=2.13.1';
-import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=2.13.1';
-import { materialTextureRule } from './materialTexture.js?rmv=2.13.1';
-import { webFontRule } from './webFonts.js?rmv=2.13.1';
-import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=2.13.1';
-import { assignFaceHueFamilies, hueFamilyInstruction, userDirectsColor, HUE_FAMILY_NAMES } from './paletteAssignment.js?rmv=2.13.1';
-import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=2.13.1';
-export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=2.13.1';
-import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=2.13.1';
-import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=2.13.1';
-import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=2.13.1';
-import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=2.13.1';
-import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=2.13.1';
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.13.1';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.13.1';
-import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=2.13.1';
+import { rmT as __rmT, rmTpl as __rmTpl, rmR as __rmR } from "./textTable.js?rmv=2.15.1";
+import { INTERACTION_SAMPLING_RULE, designCandidatePick, drawDesignCandidate } from './interactionSampling.js?rmv=2.15.1';
+import { isDocumentFormat, looksLikeDocument } from './documentFormats.js?rmv=2.15.1';
+import { driverContractLines, drawDriverOffer, interactionMethodNames, matchDriversToUsages, normalizeDriverOffer, isObjectDriver, OFFER_LIMITS_187 } from './interactionMethods.js?rmv=2.15.1';
+import { drawUsageOffer, normalizeUsageOffer, relatedUsagesForCombo, signatureUsageForCombo } from './interactionUsageOffer.js?rmv=2.15.1';
+import { drawContinuation, normalizeContinuation } from './continuationCache.js?rmv=2.15.1';
+import { recentInteractionMethods, recentDesignPicks, recentFollowPicks, rememberFollowPicks, recentArtDirections, recentSelfInventedForms } from './interactionMethodLedger.js?rmv=2.15.1';
+import { gameplayRuleFor } from './gameplayRules.js?rmv=2.15.1';
+import { usesModelOriginalColors, withoutPaletteRecipe, GUIDED_VISUAL_FLOOR, COMMON_VISUAL_DRAWING } from './visualDesign.js?rmv=2.15.1';
+import { getRecentDiversityHistory, parseVisualFamilySkeleton, visualFamilyForCooldown } from './storage.js?rmv=2.15.1';
+import { attachPaletteRecipes, paletteRecipeFor, observedPaletteFamilyLabels } from './paletteRecipes.js?rmv=2.15.1';
+import { isNearWhitePalette, isNearWhiteContentSurface } from './paletteObservation.js?rmv=2.15.1';
+import { observedOperationFamiliesFor, observedMechanismsFor } from './compositionFingerprint.js?rmv=2.15.1';
+import { TAROT_IMAGE_RULES } from '../data/raw/tarotImageRules.js?rmv=2.15.1';
+import { expandShuffledOptions } from '../data/raw/rawSegmentLookup.js?rmv=2.15.1';
+import { TOUCH_THEATER_RULES } from '../data/raw/touchTheaterRules.js?rmv=2.15.1';
+import { buildBehaviorRuleBlock } from './behaviorRules.js?rmv=2.15.1';
+import { buildBatchInteractionDiversityRule } from './batchInteractionDiversity.js?rmv=2.15.1';
+import { VISUAL_SCENERY_CONSTRUCTION_RULES, VISUAL_SCENERY_MOTION_RULES, VISUAL_SCENERY_EXPRESSION_RULE, VISUAL_SCENERY_VS_GUIDANCE, VISUAL_SCENERY_SUBJECT_BY_PICK } from '../data/raw/visualSceneryRules.js?rmv=2.15.1';
+import { DYNAMIC_VISUAL_RULES } from '../data/raw/dynamicVisualRules.js?rmv=2.15.1';
+import { buildPureOrderSelection, pickCombination, pickCombinationBatch, pickCombinationForMultifaceResay, pickSelfInventSelection } from './picker.js?rmv=2.15.1';
+import { getComboHistory, getActivePaletteCooldown, retargetSingleAttemptFormat } from './storage.js?rmv=2.15.1';
+import { strongVisualDiversityRule, darkVisualGenerationRule, softLightVisualGenerationRule, visualDiversityExecutionLock, recentPaletteExecutionReminder, recentPaletteHueFamilies, describeHueFamilies } from './visualDiversityPolicy.js?rmv=2.15.1';
+import { withoutInteractionRecipe, observedInteractionRecipesFor } from './interactionRecipes.js?rmv=2.15.1';
+import { selectGenerationPalettes, buildGenerationPaletteRule, buildPostGenerationColorRule } from './generationPalettes.js?rmv=2.15.1';
+import { materialTextureRule } from './materialTexture.js?rmv=2.15.1';
+import { webFontRule } from './webFonts.js?rmv=2.15.1';
+import { buildPaletteCooldownRule, buildPaletteCooldownExecutionLock } from './paletteCooldown.js?rmv=2.15.1';
+import { assignFaceHueFamilies, hueFamilyInstruction, userDirectsColor, HUE_FAMILY_NAMES } from './paletteAssignment.js?rmv=2.15.1';
+import { readSelectedMemoryForPrompt } from './memoryScanner.js?rmv=2.15.1';
+export { prepareSelectedMemoryForPrompt, memoryRequestSettingsKey, assertMemoryRequestSettings } from './memoryScanner.js?rmv=2.15.1';
+import { resolveRawForItem, resolveRawSnippetForItem } from '../data/raw/rawSegmentLookup.js?rmv=2.15.1';
+import { externalSummaryForSending } from './externalWorldBook/summary.js?rmv=2.15.1';
+import { isTextPresentation, presentationModeFields, visualSceneryEnabled } from './presentationMode.js?rmv=2.15.1';
+import { faceDrawMetadataFields } from './faceDrawRules.js?rmv=2.15.1';
+import { DEFAULT_VISUAL_COLOR_RULES, DEFAULT_VISUAL_PROMPT, VISUAL_AVOID_PROMPT_MAX_CHARS, VISUAL_EXTRA_PROMPT_MAX_CHARS, VISUAL_PROMPT_MAX_CHARS, normalizeIndependentContextExcludedTags } from './settings.js?rmv=2.15.1';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.15.1';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.15.1';
+import { rabbitMirrorAvatarPromptRule } from './chatAvatars.js?rmv=2.15.1';
 const THEME_ITEMS = new Map(THEMATIC_CATEGORIES.map(item => [item.id, item]));
 const FORMAT_ITEMS = new Map(PRESENTATION_FORMATS.map(item => [item.id, item]));
 function hasAtmosphereMenu(combo) {
@@ -945,14 +945,14 @@ function imageLlmReady(settings) {
         && !!String(settings.imageLlmModel || '').trim();
 }
 const CANON_APPEARANCE_RULE = __rmT("u.Vtv18mqtR9ll1RFmfuYlqiC2U32h5qsv7Ba40T1n4GVhzdmHG76pqj.vufKnkoyHfFgvIz4a7SFDRuTVt8CNQ.At_4dJbP3EwnlY6EEQsNJFyZZSGWSJnFzFU6WpsvZ8nRy9o_AhG.LDlq.QId2SjQ9.mvpW7Fl_22e1hyYXvZUm70BbU7Wbu9yyEt1xHFXeU9RZEkeQoTd3U8eHcyfAyysrE5TRbeSCyFNqmmga_1hVDZrJ0vSROazvPUSRjwUBjnUAlyOfTT7d3I7SU5OKXYa2wmO.RPuDVJudO9x_hbY6xGqCWCBcboPcfzMCBXbGPSHIQKJzlbqWRuwok8EM_mqTLSGy0Rwr3aIzCygr2Uj4DHBpuu6YHpE0McclEMiviEpOOH16Idj0g4FfuNV3snJNPbO2P.6qvDcDl5Hp7OE6il9l5IYJ4UpfOxfUz9QtcEBDgOWgvzByDJnlKRo.OJWV_3viNj");
-const ACTION_ANCHOR_RULE = __rmT("tD6ttVOenkdBdinnvjUwHYwxKD8UGykhrD2Y0fFIn2wQmxjs2ww5TpBdFYhsRLwlJb2ACJcDC0mak1lClIx4h9sbcSjznC81iU.Ey.f9i6Y3hAC92NDWrwdrK1mPG4aXzp7iXgYSKahJi70H5ItUgJTu4iEGl9hVMf2jg.Va.E_jANa1sz0X6pZGpblNOgPE8p8W5ZtdsgetsiIWdNAivtH9XrmIjaon0zt6ozqm5oYeYbw.OnUrt7pUmSEJ_La406X.Q7hdF9J3XhjT.W3jZk3iT_OTMwBWkgXshhwF2pDB.d0T.YQh71kWsifXT60GyFd1aqSwuzafxDH6UbM5MQOu0jVg9El3Y8W2gJPUjNofiC5CEv2aj_W.EQdM7EmPlRc_2fX_69MTvgCulrz5P6Ceogp4omfufTaRM5qXBAgZxbeas1b_7_bgvle.PzHyJnmRAQizUt5AOZCTXqtEA0i.zChhLwVM8XvGSgu68qmWqW7yNIeh4DbZ3L0vixq8i6VXu0PRdJ2Ctk");
+const ACTION_ANCHOR_RULE = __rmT("PY3BJ5SVSqrDUEOfDXf.tB69KEZB6HyoIS5RKIxaqrr9YG.Et8qCz72aXvHtDyw4.rB4n_T9.8QRcfrOfpDeJFllWJRl2bUX.B68Wdgiy6DiZbEdr0dO6JGC9v1ar2sOAm0CiGOUS8ZyjwHYnIn_jEzrK27VXf9dDBBiYgd5pU03sohEMS8EYmCAKZ3kMePcPt1CE.a9GlcPx8jQHLP19Tr9aLaR8Telj8azCUXWuno.ydvMNFFiJAt0wcs1VzrzgKL3wKkaciaxqJe0UGapGhflGck3PK6Yhb1m8o.P4X9rZoxUa6SgSQ2yJLqeDMMpDH0nRFEFoOySx96Ap1bBIh9cQ4H1sU9ITIG.gddLCTj8B5Md7uLY9RTtxTRVn9tX59UO99fpJBqEDB.SrlwDl9yLC.T7fQ9.QX7vnaifDkYDljILeWVw8z0ouS3pMkUa6paJCJu2LBP4C9lvVBrazhlJt00rjkNDnDG8pPSSgd9m7YkACTwm1FeZkbZNksYcL0LGg8Kbj19KSa26cXP_9Mof7maHiskCYTH6jT");
 function builtinImageFrameRule(settings) {
     if (settings?.builtinImageEnabled !== true)
         return '';
     const imagePromptByLlm = settings.builtinImageLlmReady === true;
     const tagsOnly = settings.imagePromptFormat === 'nai45-tags';
     const directPrompt = tagsOnly
-        ? __rmT("qIThKWrv54LF65pGx9uv_VU_3j8Pmu7mxKitevzNjADWejc1ihYN0DYmYc3fzER8ZZcJQvxZodkU7cZzGWydEyuAgrcO7upzsfSqJDzD.Rma1rsWDKXOETbidUxUgmhCEcDA0BpmBWQPMIDKbN6UepH82kDlhbeBcYYyw_G_oI5wtlgbz.fk.RuNv9jQ5cH5WLwmoPvfkQ9RmDvxmdHHC21qx6k47bbD.Ii7XdO8OePw.XBizIeu4gF0EbgcfBk72HD9EFZf3Pq65kFsE2zJXM_EM3K5GvWB0An.pPVvzBuGFIbfVHgoNDKjc2zj5IHnjM5bPAPPsEtmn2mPlDGPwkbHZQ0mIMzsYnM1k9_zsojy_fmgj2.dWoxb.jDvFvlJGYQ_IiRkyXplBanL.B1pYDLe2_eQuHsL3eq05qPT4e8TznQxezZXGJwR.iN7d.1AUEmjZjERhQlkCR9FuyxLigB29LWQjKGv4TsQYUXX35G0mz56339FXY4lsnyE8MXb.bbx6ioCPAlTugKos2zVBCsScH8vKMLlVb.Z6MymTVsUmfDWDieMV6CUBVJrV.0rvZJMNsTQMmmpq_f6p3Y4gjDFYJbgPYFxHzSW9ufzUzKD5SBiT9t5xrYok6kJVKzfNSpR.SOQN8ZOXOBMuXWT5jpSwDilIIZ2j36DEEzwfY84BF2TmagjZlPxcp_trnbQpNQrwmchrGzz6_vNkqesliZjxXywbmof1WZvUitPAKOHPWgmoPB1bh6d5qmYp6jBWq7PP5EPLvSUYTFtczFA4x7BX._4OQ8K4oJDl5jSqf8Kw2_ZU6YUl_wYayjfbuD1XfzaD6y.4gZAiCR50YmaAt1py_RVjxIk1hJSCEVrXpCrAk") : __rmT("xggEVRaAmgOGrifzYD1aAUdyeKhneks2xeQwaQD0Dp340o_Mk_IrfHV2hhpU8L.MD2xoa83yHBzOwR5KXwNhSUhOszpJVVP_YbkhCJClnTwQzsN4PxFAwWb0cYb0wBZqRi0Sov_SnVOUay.I62QN.6M4ENcl7BZnJZivAklI3yXaVL9WbHzNeg79Y6Mu7LLbfFL.zEjrpT6er_YsAUJ4gRWhSJAaa2nyYoRkUKXBfjiWhUOrqC7bOPYePnksskLdAyr.jwhpF20Pw6qUEXrvp24a.6BySuqDrCMpd_y2BL739CzzrRivXLXqpXRTWtBBNwgc330HHby9eDqMCgDAY9GOoLk1HWTHeehK6x5FwDCzAbvVABx5kM7dcFma2RzpyCCQ10P4dksy5dsYNu2yBWur2HZISCSzPAG8T5xn7piAdMSqWp7TXfg_R8vP_XWL.KygQTt45.hmfcLEFAg4JL6hzJHUQN0D.y.j.x_t5c2wLp715iOJRE8KJvI7Zi3s9WOHgcCmw4e8tFeV3gwiRlpasJn6my2E5sjbfbOjyPv8rVhjzxj.xogrDpSBvBgGzmobEnrLHqEu2ojha_pYMfcgsh0p.x.JEsN4dYYVDLwhKgL9Vf0F9VzC8pB0RG1RiqLeqnUiKWtO8Ai2VM2bfEw0uFDQNlu_gcpmGruIGJjZ2dPOwV_35HOMgKOYE_ocCuNndN7Z47KJXDQWkAXNDoYMZLfbGczl3Q63wr6eeepJGlaWfSkjeB0coASLd3bsSzkC4deU5EMGGm09hCzQBfc7F1SYvS4S_m.RbeEmfCiM1_qfPj8syVnxYlxGkTbTfoPeuaZlbDgUz5yvTQ5DaJO.e6x4Hi3uQ1JNoqNoY05lBb4AjWmU2emwM31niw4y1ma.Xw8cMNqY5c74SmbeKfhVceGIYAQqpl2eOP_NPMISy4wvaTBK5hNJx4hb92e6AANQ3Csizy1X4nQrtYDpVwJV5Jo_otGLxCzbcYhU2hSuxnSVu4ulfbLsDaQ16KMR0g0Qk9XPz68ZIzzSXfYSYm.Q4Ed7l5A.ac02IXnQ8pTL1wp8fzot5dSaB3f637J6C463FxLcORs2fpX73LtNmUA0xTm2PURG");
+        ? __rmT(".6wj1QE5c49JZLO7iAG.ds2XlvZkCJoIrQ.glma84WJhkaYPxIJVwZqI2WUZisbMcS.eXUGlFihCr6cUbHG82c2.0vzA_19QKAbeKDVgBEOPLRVOmZ4wGNP3k6QDbskmCS_TPU5L8He9v5y6NfjqIvuWgWzpzacNvCNgc21HieQ0dLZYQi5UjTvpF8bBjSNTKIbcJKLikJz2p23q4Z2Oz0JZcM.GpUHcVDkKUJgZJYKe0c8JezHBuXVUP3VaS8xu1BHitT_NHpIalwvGi64HfwqhbL5bNbRSFTsUEiwfIgTAGs4GIFtTPpfaQL4W6dlI2gyehlfL9_RQncrRlcArarTUjoN4OLGckUxibISPpfGnZeGQCpmnXJdPkd.OwJw_lyzNkNMNxEfzxjiVRh_N8BXYqDt6AOfyQnZGtxasre_zsK0lgSFhcxev3yfaehRfgUphVTggIU6HkWV0C4j01AQ5ag3n812MUJgOmdWGZd_c1x2jVa_YQnB_o2xqC4GjJ4k8n_qZFKYmjWQcNHUz4F5SLLwgG_AtrTknDnQLUqIf4IaYtEUeh69cD69yTuJt8f9QirCVxg.GMOWNjUVTifK6qjBow4HuydW3vmf9UcGYTEO1S6r3GWBHNuxMPRRXVGw.TS2PkoVIkIDUqE1AvV3nTeg4dkBMdFHSBDfj8JyB5b5CZTdTsU0z2KNXRa_k_g_CtzmrhJmAb0z6V55dtI3ExKyy8dEsxM8lCoiBqkD8dC1UbXDGcZhkHzPvVUT_EYk.cLkGxs5u6R79HFapfwIQUIPFL5U_2aFmIWQCwZI_BxU5UwfG1VkU3_0sWJwnM8QQAJdhWpoXmlw13RQETGivHlKxyiHQmQLWjwIdOKunQPn.kvVh87O.N2l") : __rmT("WAyjqcaSB5D0AeKEgfF6FUA.75jdD5qKmLJ4H9LHRSuAteTFjkWFk7RcyGIF6IEvp.ZtxbWLcnlHhZ8cgVZeIzxmeUzujZ64UTGneVxGd7qDH1vNaBBK3r36hgR_Ys6Laq6x3pUlZylWsJUG9s4X.7F.cIcSkTxbmSEOBETcUVXmS8ZfuyusRDEra259RVklyIDqlK55kBScGsRtZnsuSo4tgYwhTxQ37DydvSbDbeVW7SqlvmeJdaE7VAc0lkd5IbMOBUqHNqF3ti5wdfQbzoSMoBiAbRs0ZowyUiS7LS2AJNsO_oKOGfs5z1rsFJBPi0zCpfuOaU1yXazeV5vzQ.P0M55urPl2e2RaO_vuup6GT3ZEtLUrclc2y817TaGvcMMxeecXOr9g_jWhPmPAtVZh6R1RsggKvbQkuaCbAafOSDtyzaLEmprhUi_UZyte.jrlQe.6Mi.RVM7Cup.wo6dV1_v03MtFwPszG_z2FDcd2jLTqg4d_IUhS8LWf4Lw9t80RwAnDA9WrmGbfq0W4.v.hOfsKpzWYapNozCDAse6JYSEu_qL5jPnaf9asi7xlPKfAzGpVvt3aE_0vVzYCq6MO657VTuXR2kNfCRz0SGSZGQVCREYnQtpD126bgatkFikijofRkr9HnfXtLDmEngH7YDGcYtGucI5ITRTI6swpI8AqdT7ZP.wTu9L5STp479U_MoJlljvKjdvyOKEPIBFsI1E087LQVU3uZB9auT4gkmVjvShqmREnzt3s.z7heIfLAsrZTno6Cn6zs9xKFw3C16JHEojQiTmWEOExem6zMQxd28CH9lLQd8mUELSIIUECqd85z2QuQnHmqZnTJK4mxAWm1hwFHrzU0BSaBWuBVc5FlrUzKVFCvFXr03HpBMkrTbn1FKc8j1ndlBfU09XqUG2CtiVCjtYWRXORYwNSN_D_ozV1lNidc4xl4iYPW1J8Jjiu8wd_K55saEmEafSNGRMPMqqh.BgsF3vdOoevnOTh75nj6iiHP8eL_pSB3iIqf6ts7oLVuiCxm0.WQgY75IqzIZKD7_weVrXu2FiXncqpZCi0aRrXPsnJO4U75uecQrBy5_wJkYaFwEOPwhmaOTLGGngl19Clzx0GETrKT");
     const directCharacters = tagsOnly
         ? __rmT("_iaHsJZJ5AbhW.B8lS0ZjnG.s7hUfuU7u9RGXBM1mDjlUwaCHSZUdWLqTHYiXjLWAP67VJjCuxhqOodoP4S6ERdOkjFCMNGD7ODH_1lKjTr79YxNp.KuVjXKwADKK8khVxdS.wWmRxDCuxoPpngHDiw82adh.F4TT5i.LJR1sQzjD8RzVamlTwGLlv87Jtr3zgREXrODLctdi0a7U9vaA_V5cgfkijv6FsWtnRa7HQfFZ9ZLZaZsLSKZEMY7aGyhbbHsdKrEQRdyhEfBZ.MEWiE4.jDfxXaGcsKQI2Yvj32deZ.Fx8ZErVsUc9bPx5yr3O9waihKzuhrpLy9ptYNCjsZZpo8AyhtFPnZjiYBvY8Osa1yOcdEz3RI8R19cAn3ruSRCKqSHBzkBC8Ff8604Nghuvw26s6BdhK9g.5c.pmijR5bYUWmv6TdeP2S9_oxEwKTT2E64ibVvfP9kP6Ou.pRg7mAjvKAmMfpIBONZT71rPghpuUkCmIKb1jhTNsMCZHDu9OLevvfVDzmV0SVAp2_2j5mjRYxhw.su.Bc0gAFsJU9CfyXeRkSj8WGe9AbIMfokStH9Hd8FxpiwV85Cw81hPPoKigfqGx4nj.j4dVTJo3E9hlziS6y.rRjzHFoVa.a7JYMRz7elcoRwluX.C6cvG00XqeveMbkMmomFrScLODQ43JNyAD_uWqJB9.W.noH1EuXsC3qLD4IlMAQlB1LtSpP0jKk8ODsSZAWSi3p9AgHTStcQDipXd1aJUHHEaJHlRs9fUhDhZkKqh977hA1nC8Fs6dV_JlzTTDG2m3ot.5f925XOwq4k4iiZ_uF.rAWASoaReXgH2ELQO4TWpKG7NKuxTWAm8WOBmJMpWF8GsM3LdycnGWPP0W9dkM_1mmDx4RxAEbzv015bi41NTa9u.KGBzZTs2CLf.81mhCArqP4BJG") + ACTION_ANCHOR_RULE + __rmT("7os") + CANON_APPEARANCE_RULE + __rmT("c_4VnyHMOF4tmdpYOHs0fRbTjNUcHmZIfKMnzHPQYZr1nQA79fQCQIG3E9sTFe7vqhNQyzb6Y3Y")
         : __rmT("fqkKlg7bZ740YJ0A27atAOWnboJjMwmAo5tFwqKJljkyzW5VTYNx55Cc0jKqlXd60eUqL2BvtYK_UfuvnYl9pt2cjrNh__QwuHzq93lvWpKE1BjJDLo_iXFbURtjZMcXVLLhfUT_e5nxWlKe4LmBhy6DI4K8Zng8MDosrbyfAs2_t.Yn96UXzHTbPVsUPyzxrXAQd6v8X4Ett51YCPIv0rNvUgexRWUXyjoavZ4j0gmG2s7adHE3ajEeypiptadAR4rSwYAbSkHuLuDx1ZE1zMBBHwqLgB05Q_8s9RLgjq2l3K_Yhk1wuOsqOVQmCR3TQT82.TJhixnMOWbPPiuEIbPgY3b6ezqGfb6KwkCcihdpR8xZjAiyeZvirTZ98UJi5Vxit0on7Ouk1qqoVzlBe30c0H7QR1z8NAGkZQEE4y8UGhIK1RYpXnqAUeQfv64FSmy8RGr38EDtlizQKsMCN4rQ6jwqZntaC50X4xHwNqgs8QBi4hvSSOSu0aumn1yP.NgpBQeDpWx6IsSur47Ku11N1HIG.Wd2_uVGuCdCM1vw6Z8fucwhINYFJ6eVdma5T3JthRNbyYrSeZi0_j0ni_F1BLi0VaXeGtm37ibtIkzbvox03BYDfXsmvd2byh7QOhsWYal1yQI3zd70NILOQCkFPtxYry121ZEzkr.5QmUOtGVZlwci6D4Fu2Ud4761NwPI60.jO3TtVRS_DTm9CqpBIC1f0dglkt_FALaYSiFDuvB6gR_X6FE.nFTP0aKEK09b7tdlzyegZLFttFs7FFX1KEnvGLjyYz0tByYZ0Hqy9YI_XQ1IF6Wt2iBsfLZJTeHhG74C1K18j1_Gas.xbMODpKhyzLrmTJ1cAqUmu9xdEbpYZKoZBzUFSA5wICFJdC8qztPTQ9DQKgpNHF2k3DH6lz2T3QN0RwmUK7exB6WZfkVqGW7crvBYvPiZrEROkr80zGm2ngPLmtsOpKlDA4Bz2Cld1xKJpThF0gfG8.qket.RS3S3Qh7Qy95F5RPpprpS90l82C3maJj1euXNI_N4j1bYPNqa7daVQdyTI2orwO3OSNG") + ACTION_ANCHOR_RULE + __rmT("7os") + CANON_APPEARANCE_RULE + __rmT("PlEEGRUqwxyAkq578ZB_8IlfPcc9OMqe9Kf2Mn2F9vD2_FZlb68jdBfLxuqyEeNW2nJtVPN.pq3v85ye5s3LGW721mWwxaS9g6GHt_0_B2QpBtvmtRn3iI7LujQGibpzss2Rh1KNU27aH8g8rjOKpqWBC_4pG3gfoDd2aossco7f8AhfBtCib_P6eRaUHo6CTwygyo7Ca2jqbAiqByFjfsvLGOJbETpz7ZcFSEOX");
