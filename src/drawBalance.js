@@ -1,6 +1,6 @@
-import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.15.4';
-import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.15.4';
-import { DEFAULT_COOLDOWN_FACES, NEAR_COOLDOWN_FACES } from './drawCooldown.js?rmv=2.15.4';
+import { THEMATIC_CATEGORIES } from '../data/structured/thematicIndex.js?rmv=2.15.5';
+import { PRESENTATION_FORMATS } from '../data/structured/presentationIndex.js?rmv=2.15.5';
+import { DEFAULT_COOLDOWN_FACES, NEAR_COOLDOWN_FACES } from './drawCooldown.js?rmv=2.15.5';
 export { DEFAULT_COOLDOWN_FACES, NEAR_COOLDOWN_FACES };
 const CATCH_ALL_THEME_IDS = ['A.0', 'B.0', 'C.0', 'E.0', 'F.0', 'G.0'];
 const emptySummary = item => !String(item?.summary || '').trim();

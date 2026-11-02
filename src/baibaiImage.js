@@ -1,10 +1,10 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.15.4";
-import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=2.15.4';
-import { iphonieStatus, generateViaIphonie } from './iphonieImage.js?rmv=2.15.4';
-import { getSettings } from './settings.js?rmv=2.15.4';
-import { getContext } from './independentApi/runtime.js?rmv=2.15.4';
-import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=2.15.4';
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.15.4';
+import { rmT as __rmT } from "./textTable.js?rmv=2.15.5";
+import { chatu8Status, generateViaChatu8 } from './chatu8Image.js?rmv=2.15.5';
+import { iphonieStatus, generateViaIphonie } from './iphonieImage.js?rmv=2.15.5';
+import { getSettings } from './settings.js?rmv=2.15.5';
+import { getContext } from './independentApi/runtime.js?rmv=2.15.5';
+import { getChatu8ImageCharacters } from './imageCharacterPresets.js?rmv=2.15.5';
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.15.5';
 function failure(code, message) { return Object.assign(new Error(message), { code }); }
 function imageApi() {
     const api = globalThis.STBaiBaiImage;

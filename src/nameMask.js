@@ -1,5 +1,5 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.4";
-import { NAME_MASK_MAX_RULES, normalizeNameMaskRules, normalizeNameMaskCardRules, normalizeNameMaskRulesWithin } from './nameMaskRules.js?rmv=2.15.4';
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.5";
+import { NAME_MASK_MAX_RULES, normalizeNameMaskRules, normalizeNameMaskCardRules, normalizeNameMaskRulesWithin } from './nameMaskRules.js?rmv=2.15.5';
 export { NAME_MASK_MAX_RULES, normalizeNameMaskRules, normalizeNameMaskCardRules };
 const USER_ALIAS = __rmT("f8eJ7k");
 const CHAR_ALIAS = __rmT("f8jIuf");

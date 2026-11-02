@@ -1,18 +1,18 @@
-import { rmT as __rmT } from "../textTable.js?rmv=2.15.4";
-import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.15.4';
-import { presentationModeFields } from '../presentationMode.js?rmv=2.15.4';
-import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.15.4';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.15.4';
-import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.15.4';
-import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, } from '../swipeVersions.js?rmv=2.15.4';
-import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.15.4';
-import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.15.4';
-import { clearEphemeralFaceFailure, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.15.4';
-import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.15.4';
-import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.15.4';
-import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.15.4';
-import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.15.4';
-import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.15.4';
+import { rmT as __rmT } from "../textTable.js?rmv=2.15.5";
+import { noteRabbitMirrorChatSave } from '../lagCheck.js?rmv=2.15.5';
+import { presentationModeFields } from '../presentationMode.js?rmv=2.15.5';
+import { atmosphereSelectionFields } from '../atmosphereChoice.js?rmv=2.15.5';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.15.5';
+import { refreshRabbitMirrorToolsInScope } from '../outputSanitizer.js?rmv=2.15.5';
+import { FACE_SWIPE_FULL_MESSAGE, FACE_SWIPE_MAX, canAppendSwipe, selectSwipeIndex, deleteCurrentSwipe, restoreCurrentSwipeInitial, currentSwipeEntry, readFaceSwipe, mutateFaceSwipe, multifaceFacePagerView, snapshotFaceSwipes, compactSwipeState, restoreFaceSwipeSnapshot, faceSwipeSnapshotStored, loadFaceSwipeArchive, saveFaceSwipeArchive, faceSwipeArchiveReadState, faceSwipeArchiveRecordStored, faceSwipeArchiveWritePending, remapFaceSwipeSlots, remapFaceSwipeArchive, faceSwipeArchiveRemapSettled, faceSwipeStorageSlot, saveHistoryArchive, loadHistoryArchive, dropHistoryArchive, dropLegacyFaceSwipeKeys, compactFaceSwipeStoreForQuota, FACE_SWIPE_LOCAL_STORE_KEY, } from '../swipeVersions.js?rmv=2.15.5';
+import { RUNTIME_VERSION, byteLength, getContext, hashText } from './runtime.js?rmv=2.15.5';
+import { remapMirrorImageSlots, slimMirrorImagesForQuota, dropMirrorImageCopiesSavedInChat } from '../imageStore.js?rmv=2.15.5';
+import { clearEphemeralFaceFailure, faceDetailsListFromHtml, hasEphemeralFaceFailure, independentSwipeDetails, independentSwipeFaceIndex, mergeFaceDetailsIntoHtml, independentSwipeSlot, seedIndependentFaceSwipesFromIdentity, writeIndependentOwnerHtml, } from './faceSwipe.js?rmv=2.15.5';
+import { API_PROFILE_STORE_KEY, assistantMessages, chatKey, clearOwnerLockForBase, copyIndependentOwnerLineage, lockedIndependentRecordForBase, messageBaseSlotKey, normalizeBase, normalizeIndependentConnectionText, observeMessageSourceRevision, saveRecordForSlot, savedRecordMatchesObserved, savedIndependentRecordForOwner, sameIndependentRecordVersion, setOwnerLockForBase, swipeId, remapOwnerLockSlots, hostGenerationLooksActive, legacyChatKey, messageSourceFingerprint, } from './connection.js?rmv=2.15.5';
+import { stampExternalDetailsOwnership, restampExternalHostsAfterMessageDeletion } from './request.js?rmv=2.15.5';
+import { copyIndependentReplacementReceipt, ensureExternalTools, extractReadyDetails, independentStoredHtmlRestorable, interactionStatePollutionScore, markExternalDetails, normalizeSavedInteractionRecord, recoverSavedRecord, replaceExternalMultifaceFace, } from './geometry.js?rmv=2.15.5';
+import { clearSavedIndependentOutputNotices, externalFaceDetails, resolveIndependentActionIdentity, scheduleIndependentReadyPostprocess, showMultifaceFace, showIndependentUnsavedOutput, clearIndependentHistorySaveNotice } from './mount.js?rmv=2.15.5';
+import { messageRecordSwipes, readMessageRecord, writeMessageRecord } from './messageRecords.js?rmv=2.15.5';
 const STORE_KEY = 'rabbit_mirror_independent_outputs_v1';
 export const INTERACTION_STATE_MIGRATION_KEY = 'rabbit_mirror_independent_interaction_state_migration_securityfix2_v2';
 export const OWNER_LOCK_STORE_KEY = 'rabbit_mirror_independent_owner_locks_v1';
@@ -624,7 +624,7 @@ try {
     globalThis.__rabbitMirrorCoveredStorageStats = coveredStorageStats;
 }
 catch { }
-function trimHistoryForQuota() {
+function trimHistoryForQuota({ quiet = false } = {}) {
     let history;
     try {
         history = legacyHistoryStore();
@@ -656,7 +656,8 @@ function trimHistoryForQuota() {
         return false;
     try {
         localStorage.setItem(HISTORY_STORE_KEY, JSON.stringify(keep));
-        warnStorageTrimmed();
+        if (!quiet)
+            warnStorageTrimmed();
         return true;
     }
     catch {
@@ -667,6 +668,56 @@ try {
     globalThis.__rabbitMirrorTrimHistoryForQuota = trimHistoryForQuota;
 }
 catch { }
+let coveredCleanupTimer = 0;
+export function scheduleCoveredLocalCacheCleanup(delayMs = 20000) {
+    if (typeof localStorage === 'undefined')
+        return;
+    clearTimeout(coveredCleanupTimer);
+    coveredCleanupTimer = setTimeout(() => {
+        coveredCleanupTimer = 0;
+        const run = () => { try {
+            compactCoveredLocalCaches();
+        }
+        catch { } };
+        if (typeof globalThis.requestIdleCallback === 'function')
+            globalThis.requestIdleCallback(run, { timeout: 15000 });
+        else
+            run();
+    }, Math.max(0, Number(delayMs) || 0));
+}
+function legacyLocalCacheChars() {
+    let total = 0;
+    for (const key of [STORE_KEY, HISTORY_STORE_KEY, FACE_SWIPE_LOCAL_STORE_KEY]) {
+        try {
+            total += String(localStorage.getItem(key) || '').length;
+        }
+        catch { }
+    }
+    return total;
+}
+export function compactCoveredLocalCaches() {
+    if (legacyLocalCacheChars() < 200)
+        return false;
+    let changed = false;
+    try {
+        if (compactCoveredOutputsForQuota(0))
+            changed = true;
+    }
+    catch { }
+    try {
+        if (trimHistoryForQuota({ quiet: true }))
+            changed = true;
+    }
+    catch { }
+    try {
+        if (compactFaceSwipeStoreForQuota([0]))
+            changed = true;
+    }
+    catch { }
+    if (changed)
+        globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.coveredLocalCachesCompacted', { chars: legacyLocalCacheChars() });
+    return changed;
+}
 function freeHistoryRoomFor(serialized) {
     let history;
     try {
@@ -1244,6 +1295,48 @@ function compactDirectiveCounts(metadata) {
     return Object.fromEntries(['customThemeCount', 'customFormatCount', 'customRequestCount'].filter(key => Number(metadata?.[key]) > 0)
         .map(key => [key, Math.min(1000, Math.max(1, Math.floor(Number(metadata[key]))))]));
 }
+const scrubbedFacesByHtml = new Map();
+const SCRUBBED_FACES_CACHE_MAX = 24;
+function scrubbedFacesOf(html) {
+    const key = String(html || '');
+    if (!key)
+        return {};
+    let faces = scrubbedFacesByHtml.get(key);
+    if (!faces) {
+        faces = {};
+        try {
+            for (const face of faceDetailsListFromHtml(key))
+                faces[Number(face.index)] = String(face.detailsHtml || '');
+        }
+        catch {
+            faces = {};
+        }
+        if (scrubbedFacesByHtml.size >= SCRUBBED_FACES_CACHE_MAX)
+            scrubbedFacesByHtml.delete(scrubbedFacesByHtml.keys().next().value);
+        scrubbedFacesByHtml.set(key, faces);
+    }
+    return faces;
+}
+export function trivialFaceSwipeStack(state, recordHtml, faceIndex) {
+    const compact = compactSwipeState(state);
+    if (compact.versions.length !== 1)
+        return false;
+    const [entry] = compact.versions;
+    if (!entry?.html || (entry.initialHtml && entry.initialHtml !== entry.html))
+        return false;
+    return scrubbedFacesOf(recordHtml)[Number(faceIndex)] === entry.html;
+}
+function compactFaceSwipesForChat(faceSwipes, html) {
+    if (!faceSwipes || typeof faceSwipes !== 'object')
+        return null;
+    const kept = {};
+    for (const [key, state] of Object.entries(faceSwipes)) {
+        if (!/^[0-4]$/.test(key) || trivialFaceSwipeStack(state, html, Number(key)))
+            continue;
+        kept[key] = compactSwipeState(state);
+    }
+    return Object.keys(kept).length ? kept : null;
+}
 function compactChatPersistedRecord(value) {
     if (!independentRecordWithinBudget(value))
         return null;
@@ -1251,12 +1344,13 @@ function compactChatPersistedRecord(value) {
     if (!record?.html)
         return null;
     const initialHtml = String(value.initialHtml || record.initialHtml || '');
+    const chatFaceSwipes = compactFaceSwipesForChat(value.faceSwipes, String(record.html || ''));
     const diagnostic = value?.apiRequest && typeof value.apiRequest === 'object' ? value.apiRequest : null;
     const faces = Array.isArray(diagnostic?.faces) && diagnostic.faces.length >= 2 && diagnostic.faces.length <= 5
         ? diagnostic.faces.map((face, faceIndex) => ({ faceIndex, samplingMode: String(face?.samplingMode || ''), themeIds: Array.isArray(face?.themeIds) ? face.themeIds.map(String).slice(0, 12) : [], formatIds: Array.isArray(face?.formatIds) ? face.formatIds.map(String).slice(0, 12) : [], themeLabels: Array.isArray(face?.themeLabels) ? face.themeLabels.map(String).slice(0, 12) : [], formatLabels: Array.isArray(face?.formatLabels) ? face.formatLabels.map(String).slice(0, 12) : [], forcedVisualScenery: face?.forcedVisualScenery === true, ...compactExternalSourceNote(face), ...presentationModeFields(face), ...compactDirectiveCounts(face), ...atmosphereSelectionFields(face) }))
         : null;
     return {
-        ...(value.faceSwipes ? { faceSwipes: Object.fromEntries(Object.entries(value.faceSwipes).filter(([key]) => /^[0-4]$/.test(key)).map(([key, state]) => [key, compactSwipeState(state)])) } : {}),
+        ...(chatFaceSwipes ? { faceSwipes: chatFaceSwipes } : {}),
         html: String(record.html || ''), initialHtml: initialHtml && initialHtml !== String(record.html || '') ? initialHtml : '', sourceHash: String(record.sourceHash || ''), bodyHash: String(record.bodyHash || ''),
         displayHash: String(record.displayHash || ''), reasoningHash: String(record.reasoningHash || ''), ts: Number(record.ts || Date.now()),
         model: String(record.model || ''), runtime: String(record.runtime || RUNTIME_VERSION), executionLockChars: Number(record.executionLockChars || 0),
@@ -1424,8 +1518,10 @@ export function independentHistoryDurable(base, states) {
     const copies = fileCopiesForOwner(ctx, index, { swipe_id: swipe });
     if (!copies.length || copies[0].deleted === true || chatOwnerPending(ctx, chatOwnerKey(index, swipe)))
         return false;
-    const want = Object.entries(states || {}).map(([face, state]) => [face, JSON.stringify(compactSwipeState(state))]);
-    return copies.some(raw => want.every(([face, signature]) => JSON.stringify(compactSwipeState(raw.faceSwipes?.[face])) === signature));
+    const want = Object.entries(states || {}).map(([face, state]) => [face, JSON.stringify(compactSwipeState(state)), state]);
+    return copies.some(raw => want.every(([face, signature, state]) => raw.faceSwipes?.[face]
+        ? JSON.stringify(compactSwipeState(raw.faceSwipes[face])) === signature
+        : trivialFaceSwipeStack(state, raw.html, Number(face))));
 }
 export async function migrateLocalStoresToArchive() {
     if (!globalThis.indexedDB || typeof localStorage === 'undefined')
@@ -1550,14 +1646,23 @@ function runSafeChatSave() {
     safeSaveRequest = null;
     const state = chatSaveState(request.metadata);
     const snapshot = state ? { pending: new Map(state.pending), allGen: state.allGen } : null;
-    let saving = null;
+    let legacyCovered = [];
+    try {
+        legacyCovered = legacyOwnersCoveredByCells(live);
+    }
+    catch {
+        legacyCovered = [];
+    }
+    let saving = null, wholeChat = false;
     try {
         try {
             noteRabbitMirrorChatSave(request.reasons?.length ? request.reasons.join(__rmT("jvk")) : (request.reason || __rmT("ni2SEPTw")));
         }
         catch { }
-        if (typeof live.saveChat === 'function')
+        if (typeof live.saveChat === 'function') {
             saving = live.saveChat();
+            wholeChat = true;
+        }
         else if (typeof live.saveMetadata === 'function')
             saving = live.saveMetadata();
         else
@@ -1568,9 +1673,74 @@ function runSafeChatSave() {
         return;
     }
     if (saving && typeof saving.then === 'function') {
-        Promise.resolve(saving).then(() => confirmChatSave(request, snapshot), error => console.debug(__rmT("W9_mcaMXA_XkYyfBxstcFbBe.VbPkXejy7nOV5aNOc4oL4UWFVYN7muXPWIExP7Cjb2QybVEqqLjOXhhlTy6imfi6FA.zh"), error));
+        Promise.resolve(saving).then(() => {
+            confirmChatSave(request, snapshot);
+            if (wholeChat && legacyCovered.length)
+                confirmLegacyOwnersSaved(request, snapshot, legacyCovered);
+        }, error => console.debug(__rmT("W9_mcaMXA_XkYyfBxstcFbBe.VbPkXejy7nOV5aNOc4oL4UWFVYN7muXPWIExP7Cjb2QybVEqqLjOXhhlTy6imfi6FA.zh"), error));
     }
 }
+function legacyOwnersCoveredByCells(ctx) {
+    const covered = [];
+    const owners = chatMetadataObject(ctx)?.[CHAT_OUTPUT_METADATA_KEY]?.owners;
+    if (!owners || typeof owners !== 'object')
+        return covered;
+    for (const [key, raw] of Object.entries(owners)) {
+        if (!raw || typeof raw !== 'object' || raw.deleted === true || !raw.html)
+            continue;
+        const parsed = parseChatOwnerKey(key);
+        if (!parsed)
+            continue;
+        const real = messageForOwner(ctx, parsed.index, null);
+        if (!real)
+            continue;
+        const cell = readMessageRecord(real, parsed.swipe);
+        if (!cell || typeof cell !== 'object' || cell.deleted === true || !cell.html)
+            continue;
+        const sameHtml = String(cell.html) === String(raw.html);
+        const newerSameBody = !!String(cell.sourceHash || '') && String(cell.sourceHash || '') === String(raw.sourceHash || raw.bodyHash || '') && Number(cell.ts || 0) >= Number(raw.ts || 0);
+        if (sameHtml || newerSameBody)
+            covered.push({ key, html: String(raw.html), cellHtml: String(cell.html) });
+    }
+    return covered;
+}
+function confirmLegacyOwnersSaved(request, snapshot, covered) {
+    let live = null;
+    try {
+        live = getContext();
+    }
+    catch {
+        live = null;
+    }
+    if (!live || live.chat !== request.chat || chatMetadataObject(live) !== request.metadata || chatKey(live) !== request.key)
+        return 0;
+    const state = chatSaveState(request.metadata);
+    if (state && snapshot && state.allGen !== snapshot.allGen)
+        return 0;
+    const metadata = request.metadata;
+    const bucket = metadata?.[CHAT_OUTPUT_METADATA_KEY];
+    if (!bucket?.owners || typeof bucket.owners !== 'object')
+        return 0;
+    let dropped = 0;
+    for (const item of covered) {
+        const raw = bucket.owners[item.key];
+        if (!raw || raw.deleted === true || String(raw.html || '') !== item.html)
+            continue;
+        const parsed = parseChatOwnerKey(item.key);
+        const real = parsed ? messageForOwner(live, parsed.index, null) : null;
+        const cell = real ? readMessageRecord(real, parsed.swipe) : undefined;
+        if (!cell || typeof cell !== 'object' || String(cell.html || '') !== item.cellHtml)
+            continue;
+        delete bucket.owners[item.key];
+        dropped += 1;
+    }
+    if (dropped && !Object.keys(bucket.owners).length && Object.keys(bucket).every(key => key === 'version' || key === 'owners'))
+        delete metadata[CHAT_OUTPUT_METADATA_KEY];
+    if (dropped)
+        globalThis.__rabbitMirrorPerfDiag?.mark?.('independent.legacyOwnersDropped', { count: dropped });
+    return dropped;
+}
+export const legacyOwnerCleanupForTests = Object.freeze({ legacyOwnersCoveredByCells, confirmLegacyOwnersSaved });
 function chatOwnerKey(index, swipe = 0) {
     const i = Number(index), s = Number(swipe);
     return Number.isInteger(i) && i >= 0 && Number.isInteger(s) && s >= 0 ? `${i}:${s}` : '';

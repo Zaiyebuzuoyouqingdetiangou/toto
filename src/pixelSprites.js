@@ -1,4 +1,4 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.15.4";
+import { rmR as __rmR } from "./textTable.js?rmv=2.15.5";
 const SPRITE_ATTR = 'data-rm-sprite';
 const PALETTE_ATTR = 'data-rm-palette';
 const AT_ATTR = 'data-rm-at';

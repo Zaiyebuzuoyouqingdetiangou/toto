@@ -1,4 +1,4 @@
-import { buildSewingSprite } from '../independentApi/generationProgress.js?rmv=2.15.4';
+import { buildSewingSprite } from '../independentApi/generationProgress.js?rmv=2.15.5';
 const BUSY_ATTR = 'data-rm-busy-rabbit';
 export const BUSY_RABBIT_CLASS = 'rm-busy-rabbit';
 function rabbitBefore(element) {
