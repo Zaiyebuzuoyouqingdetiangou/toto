@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.17.2');
+@import url('./settings-ui.css?rmv=2.17.3');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2606,4 +2606,22 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-sw
 [data-rm-continue-chooser] button:focus-visible{ outline: 2px solid var(--rmc-accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce){
   [data-rm-continue-chooser] .rmc-caret{ animation: none; }
+}
+
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[data-rm-title-chrome="true"]{
+  width:fit-content !important;
+  max-width:100% !important;
+  min-height:38px !important;
+  padding:5px 8px 5px 12px !important;
+  flex-wrap:nowrap !important;
+  gap:4px 6px !important;
+  border-radius:12px !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[data-rm-title-chrome="true"] > span[data-rm-title-label]{
+  flex:0 1 auto !important;
+  min-width:4em !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > summary[data-rm-title-chrome="true"] .rabbit-mirror-face-favorite-star{
+  width:30px !important;
+  height:30px !important;
 }
