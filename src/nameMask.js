@@ -1,5 +1,6 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.3";
-export const NAME_MASK_MAX_RULES = 50;
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.4";
+import { NAME_MASK_MAX_RULES, normalizeNameMaskRules, normalizeNameMaskCardRules, normalizeNameMaskRulesWithin } from './nameMaskRules.js?rmv=2.15.4';
+export { NAME_MASK_MAX_RULES, normalizeNameMaskRules, normalizeNameMaskCardRules };
 const USER_ALIAS = __rmT("f8eJ7k");
 const CHAR_ALIAS = __rmT("f8jIuf");
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION', 'NOSCRIPT', 'TEMPLATE', 'CODE', 'PRE']);
@@ -58,25 +59,7 @@ function bindHostEvents(ctx) {
     }
 }
 const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
-export function normalizeNameMaskRules(value) {
-    return normalizeRules(value, NAME_MASK_MAX_RULES);
-}
-function normalizeRules(value, limit) {
-    const list = Array.isArray(value) ? value : [];
-    const seen = new Set();
-    const out = [];
-    for (const item of list) {
-        const find = clean(typeof item === 'string' ? item : item?.find).slice(0, 40);
-        const replace = clean(typeof item === 'string' ? '' : item?.replace).slice(0, 40);
-        if (!find || seen.has(find))
-            continue;
-        seen.add(find);
-        out.push({ find, replace });
-        if (out.length >= limit)
-            break;
-    }
-    return out;
-}
+const normalizeRules = normalizeNameMaskRulesWithin;
 function hostContext() {
     try {
         return globalThis.SillyTavern?.getContext?.() || null;
@@ -587,18 +570,6 @@ export function assertNameMaskRestorable(root) {
     for (const node of touched.keys())
         if (root === node || root.contains?.(node))
             originalOf(node);
-}
-export function normalizeNameMaskCardRules(value) {
-    const out = {};
-    if (!value || typeof value !== 'object' || Array.isArray(value))
-        return out;
-    for (const [key, list] of Object.entries(value).slice(-200)) {
-        const name = String(key || '').trim().slice(0, 300);
-        const rules = normalizeNameMaskRules(list);
-        if (name && rules.length)
-            out[name] = rules;
-    }
-    return out;
 }
 export function nameMaskRulesFor(settings, cardKey) {
     const card = cardKey ? normalizeNameMaskRules(settings?.nameMaskRulesByCard?.[cardKey]) : [];

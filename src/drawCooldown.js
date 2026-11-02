@@ -1,0 +1,2 @@
+export const DEFAULT_COOLDOWN_FACES = 30;
+export const NEAR_COOLDOWN_FACES = 10;

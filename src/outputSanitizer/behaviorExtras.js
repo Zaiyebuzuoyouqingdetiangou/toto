@@ -1,6 +1,6 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.15.3";
-import { normalizeShowToken } from './behaviorResults.js?rmv=2.15.3';
-import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.15.3';
+import { rmR as __rmR } from "../textTable.js?rmv=2.15.4";
+import { normalizeShowToken } from './behaviorResults.js?rmv=2.15.4';
+import { toLayoutPx, insideDesktopZoomFace, faceZoomEvents, evaluateMediaForVirtualPhone } from '../faceZoomMetrics.js?rmv=2.15.4';
 export const EXTRA_TYPES = Object.freeze(['slide', 'timer', 'swipe', 'rhythm', 'peek', 'spoiler', 'sense']);
 export const EXTRA_CONTROLS = Object.freeze({
     slide: ['prev', 'next', 'goto'], timer: ['play'], swipe: ['left', 'right'], rhythm: ['tap', 'charge', 'qte'],
@@ -317,10 +317,13 @@ function startTimer(state) {
         const done = state.elapsed >= state.duration;
         if (done || now - (state.lastRefresh || 0) >= 100) {
             state.lastRefresh = now;
+            state.lastProgressWrite = now;
             H.refreshResults(state);
         }
-        else
+        else if (state.duration <= 30 || now - (state.lastProgressWrite || 0) >= 100) {
+            state.lastProgressWrite = now;
             H.style(state, state.group, '--rm-p', (state.duration > 0 ? H.clamp(state.elapsed / state.duration, 0, 1) : 1).toFixed(4));
+        }
         if (done) {
             state.running = false;
             return;
@@ -546,7 +549,15 @@ function startQte(state) {
         last = now;
         const phase = ((now - begin) % period) / period;
         state.qteP = phase < 0.5 ? phase * 2 : 2 - phase * 2;
-        H.refreshResults(state);
+        if (now - (state.qteRefreshAt || 0) >= 100) {
+            state.qteRefreshAt = now;
+            H.refreshResults(state);
+        }
+        else {
+            H.style(state, state.group, '--rm-qte', state.qteP.toFixed(4));
+            if (state.qteDrivesProgress)
+                H.style(state, state.group, '--rm-p', state.qteP.toFixed(4));
+        }
         frame(state.group, tick);
     };
     frame(state.group, tick);
@@ -670,6 +681,7 @@ function rhythmSync(state) {
         group.setAttribute('data-rm-count-now', String(state.tapCount));
     }
     if (hasQte) {
+        state.qteDrivesProgress = !hasCharge && !hasTap;
         H.style(state, group, '--rm-qte', state.qteP.toFixed(4));
         if (!hasCharge && !hasTap)
             H.style(state, group, '--rm-p', state.qteP.toFixed(4));

@@ -1,4 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.15.3";
+import { rmT as __rmT } from "./textTable.js?rmv=2.15.4";
+import { registerQuotaReliever } from './quotaRelief.js?rmv=2.15.4';
 export const FACE_SWIPE_MAX = 5;
 export const FACE_SWIPE_FULL_MESSAGE = __rmT(".m0by1h9qE.UYxirWf9m0aUMvUR_h5GXdIk");
 const STORE_KEY = 'rabbit_mirror_face_swipes_v1';
@@ -843,3 +844,4 @@ export function remapFaceSwipeArchive(prefix, mapSlot, retargetRecord = record =
     archiveRemapGate = run.catch(() => false);
     return run;
 }
+registerQuotaReliever('faceSwipes', limits => compactFaceSwipeStoreForQuota(limits));

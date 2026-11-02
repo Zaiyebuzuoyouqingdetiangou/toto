@@ -1,5 +1,5 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.15.3";
-import { getSettings } from './settings.js?rmv=2.15.3';
+import { rmT as __rmT } from "./textTable.js?rmv=2.15.4";
+import { getSettings } from './settings.js?rmv=2.15.4';
 const CHIP_ATTR = 'data-rm-ready-chip';
 const TITLE_MARK_OK = '🐇 ';
 const TITLE_MARK_FAIL = '🐇❌ ';
@@ -9,6 +9,8 @@ let chip = null;
 let targets = [];
 let seenObserver = null;
 let watchTimer = 0;
+let watchStartedAt = 0;
+let unwatchLayout = null;
 let titleMark = '';
 let titleListening = false;
 function settingsOn(key) {
@@ -60,8 +62,13 @@ function markTitle(failed) {
     }
 }
 function removeChip() {
-    clearInterval(watchTimer);
+    clearTimeout(watchTimer);
     watchTimer = 0;
+    try {
+        unwatchLayout?.();
+    }
+    catch { }
+    unwatchLayout = null;
     try {
         seenObserver?.disconnect();
     }
@@ -188,17 +195,69 @@ function watchTargets() {
             catch { }
         }
     }
-    clearInterval(watchTimer);
-    watchTimer = setInterval(() => {
-        if (!chip) {
-            clearInterval(watchTimer);
-            watchTimer = 0;
+    try {
+        unwatchLayout?.();
+    }
+    catch { }
+    unwatchLayout = watchLayout();
+    clearTimeout(watchTimer);
+    watchStartedAt = Date.now();
+    const period = seenObserver ? CHIP_FALLBACK_CHECK_MS : 2000;
+    const tick = () => {
+        watchTimer = 0;
+        if (!chip)
+            return;
+        if (Date.now() - watchStartedAt > CHIP_MAX_LIFETIME_MS) {
+            removeChip();
             return;
         }
-        dropSeen();
+        if (!globalThis.document?.hidden)
+            dropSeen();
         if (chip)
-            placeChip(chip);
-    }, 2000);
+            watchTimer = setTimeout(tick, period);
+    };
+    watchTimer = setTimeout(tick, period);
+}
+const CHIP_FALLBACK_CHECK_MS = 10000;
+const CHIP_MAX_LIFETIME_MS = 10 * 60 * 1000;
+function watchLayout() {
+    const doc = globalThis.document;
+    let frame = 0;
+    const replace = () => {
+        if (frame)
+            return;
+        frame = (globalThis.requestAnimationFrame || (fn => setTimeout(fn, 16)))(() => { frame = 0; if (chip)
+            placeChip(chip); });
+    };
+    const cleanups = [];
+    try {
+        globalThis.addEventListener?.('resize', replace, { passive: true });
+        cleanups.push(() => globalThis.removeEventListener?.('resize', replace));
+    }
+    catch { }
+    try {
+        const vv = globalThis.visualViewport;
+        if (vv?.addEventListener) {
+            vv.addEventListener('resize', replace, { passive: true });
+            cleanups.push(() => vv.removeEventListener('resize', replace));
+        }
+    }
+    catch { }
+    try {
+        const form = doc?.getElementById?.('send_form') || doc?.getElementById?.('form_sheld');
+        if (form && typeof ResizeObserver === 'function') {
+            const ro = new ResizeObserver(replace);
+            ro.observe(form);
+            cleanups.push(() => ro.disconnect());
+        }
+    }
+    catch { }
+    return () => { for (const cleanup of cleanups) {
+        try {
+            cleanup();
+        }
+        catch { }
+    } };
 }
 function normalizeItem(entry, failed) {
     if (!entry)

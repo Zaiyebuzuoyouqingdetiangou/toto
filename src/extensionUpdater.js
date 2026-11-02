@@ -1,4 +1,4 @@
-import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.3";
+import { rmT as __rmT, rmR as __rmR } from "./textTable.js?rmv=2.15.4";
 let pending = null;
 export function ownExtensionFolder(moduleUrl = import.meta.url) {
     const match = new URL(moduleUrl).pathname.match(/\/third-party\/([^/]+)\/src\/extensionUpdater\.js$/);
@@ -172,8 +172,52 @@ export function isNewerRabbitMirrorVersion(latest, current) {
 function snapshot() {
     return { ...updateState };
 }
+const LAST_LATEST_KEY = 'rabbitMirrorUpdateLatestAt';
+const AUTO_CHECK_REUSE_MS = 6 * 60 * 60 * 1000;
+const SETTINGS_OPEN_RECHECK_MS = 10 * 60 * 1000;
+function rememberLatest(state) {
+    try {
+        if (state.status === 'latest' && state.remoteVersion) {
+            globalThis.localStorage?.setItem(LAST_LATEST_KEY, JSON.stringify({ at: Date.now(), running: runningRabbitMirrorVersion(), remoteVersion: state.remoteVersion, remoteBranch: state.remoteBranch, remoteUrl: state.remoteUrl }));
+        }
+        else if (state.status === 'available')
+            globalThis.localStorage?.removeItem(LAST_LATEST_KEY);
+    }
+    catch { }
+}
+function recentLatest() {
+    try {
+        const saved = JSON.parse(globalThis.localStorage?.getItem(LAST_LATEST_KEY) || 'null');
+        if (!saved || saved.running !== runningRabbitMirrorVersion() || !validVersion(saved.remoteVersion))
+            return null;
+        const age = Date.now() - Number(saved.at || 0);
+        if (!(age >= 0 && age < AUTO_CHECK_REUSE_MS))
+            return null;
+        if (isNewerRabbitMirrorVersion(saved.remoteVersion, runningRabbitMirrorVersion()))
+            return null;
+        return saved;
+    }
+    catch {
+        return null;
+    }
+}
+export function checkRabbitMirrorUpdateOnLoad(options = {}) {
+    const saved = updateState.status === 'idle' ? recentLatest() : null;
+    if (saved) {
+        publish({ status: 'latest', message: '', remoteVersion: saved.remoteVersion, remoteUrl: saved.remoteUrl || HOMEPAGE,
+            remoteBranch: saved.remoteBranch || FALLBACK_BRANCH, remoteBranchKnown: false, remoteBranchSource: 'cache' });
+        return Promise.resolve(snapshot());
+    }
+    return checkRabbitMirrorUpdate(options);
+}
+export function checkRabbitMirrorUpdateOnSettingsOpen(options = {}) {
+    const stale = !lastUpdateCheckAt || Date.now() - lastUpdateCheckAt > SETTINGS_OPEN_RECHECK_MS;
+    return checkRabbitMirrorUpdate({ ...options, force: stale });
+}
 function publish(next) {
     updateState = { ...updateState, ...next };
+    if (next.status === 'latest' || next.status === 'available')
+        rememberLatest(updateState);
     for (const listener of updateListeners) {
         try {
             listener(snapshot());

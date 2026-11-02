@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "../textTable.js?rmv=2.15.3";
-import { buildFailedMirror, sceneKit } from './mirrorScene.js?rmv=2.15.3';
+import { rmR as __rmR } from "../textTable.js?rmv=2.15.4";
+import { buildFailedMirror, sceneKit } from './mirrorScene.js?rmv=2.15.4';
 const { BASE_W, grid, put, blit, mirror, room, waitGround, svgOf, group, BIG, SMALL, STAR, QUESTION, BANG, WAIT_EYES, MIRROR_RX, MIRROR_RY } = sceneKit;
 export const ERROR_SCENE_KINDS = Object.freeze(['network', 'auth', 'quota', 'busy', 'blocked', 'cut', 'garbled', 'local', 'rest', 'crash']);
 const RULES = [
