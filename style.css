@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.15.18');
+@import url('./settings-ui.css?rmv=2.15.19');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -173,15 +173,21 @@ html:not([data-rabbit-mirror-boot]) #extensions_settings::before {
     vertical-align: middle;
 }
 
-toto[data-rabbit-mirror="true"] details {
+toto[data-rabbit-mirror="true"][data-rabbit-mirror] details {
     display: block;
     box-sizing: border-box;
     max-width: 100%;
 }
 
-toto[data-rabbit-mirror="true"] summary {
+toto[data-rabbit-mirror="true"][data-rabbit-mirror] summary {
     cursor: pointer;
     box-sizing: border-box;
+}
+
+toto[data-rabbit-mirror="true"][data-rabbit-mirror] :is(input, textarea, kbd, samp, br)[hidden],
+[data-rabbit-mirror-external-source="true"][data-rabbit-mirror-external-source] :is(input, textarea, kbd, samp, br)[hidden],
+.rabbit-mirror-history-preview.rabbit-mirror-history-preview :is(input, textarea, kbd, samp, br)[hidden] {
+    display: none;
 }
 
 .rabbit-mirror-settings button.menu_button,
@@ -973,14 +979,14 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   position:relative;
   z-index:3;
 }
-[data-rabbit-mirror-external-source="true"] > details{
+[data-rabbit-mirror-external-source="true"][data-rabbit-mirror-external-source] > details{
   display:block;
   width:100%;
   max-width:100%;
   margin:0!important;
   box-sizing:border-box;
 }
-[data-rabbit-mirror-external-source="true"] > details > summary{
+[data-rabbit-mirror-external-source="true"][data-rabbit-mirror-external-source] > details > summary{
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
@@ -1688,7 +1694,7 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-history-list button{width:100%;padding:9px 10px;border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.24));border-radius:8px;background:transparent;color:inherit;text-align:left;cursor:pointer;overflow-wrap:anywhere;}
 .rabbit-mirror-history-list button.is-active{background:color-mix(in srgb,currentColor 12%,transparent);font-weight:700;}
 .rabbit-mirror-history-preview{min-width:0;min-height:0;padding:12px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
-.rabbit-mirror-history-preview > details{width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0 auto;}
+.rabbit-mirror-history-preview.rabbit-mirror-history-preview > details{width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0 auto;}
 @media (max-width:640px){
  .rabbit-mirror-history-overlay{
    align-items:stretch;justify-content:stretch;
