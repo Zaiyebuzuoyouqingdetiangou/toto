@@ -1,4 +1,4 @@
-import { sceneKit } from './mirrorScene.js?rmv=2.15.2';
+import { sceneKit } from './mirrorScene.js?rmv=2.15.3';
 const { BASE_W, grid, put, blit, mirror, room, svgOf, group, SMALL, STAR } = sceneKit;
 export const SMALL_SCENES = Object.freeze(['manual', 'cat', 'album']);
 function manualScene() {

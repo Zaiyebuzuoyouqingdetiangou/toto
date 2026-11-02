@@ -1,6 +1,6 @@
-import { rmT as __rmT } from "./textTable.js?rmv=2.15.2";
-import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.15.2';
-import { persistImage } from './chatu8Image.js?rmv=2.15.2';
+import { rmT as __rmT } from "./textTable.js?rmv=2.15.3";
+import { buildSingleImagePrompt } from './imagePromptPayload.js?rmv=2.15.3';
+import { persistImage } from './chatu8Image.js?rmv=2.15.3';
 function failure(code, message, extra = {}) {
     return Object.assign(new Error(message), { code }, extra);
 }

@@ -1,21 +1,21 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.15.2";
-import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=2.15.2';
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=2.15.2';
-import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=2.15.2';
-import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=2.15.2';
-import { getSettings } from '../settings.js?rmv=2.15.2';
-import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=2.15.2';
-import { independentGenerationTiming } from '../independentTiming.js?rmv=2.15.2';
-import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.15.2';
-import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, REMOVED_SWIPE_THEATER_MESSAGE, safetyValveShellMessage, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE, assistantRowsInScanRange, formatMissingShellReport, hasUsableAssistantBody, isMissingShellTargetFloor, normalizeMissingShellScanRange, shouldRestoreMissingIndependentRetryShell, } from './missingRetryShell.js?rmv=2.15.2';
-import { INDEPENDENT_GENERATION_INTENTS_KEY, INDEPENDENT_GENERATION_INTENT_TYPES, INDEPENDENT_GENERATION_STOPS_KEY, RUNTIME_VERSION, SOURCE_ATTR, currentRuntime, getContext, hashText, independentMaintenanceLiveRepairLocked, } from './runtime.js?rmv=2.15.2';
-import { ACTIVE_GENERATION_WAIT_MS, FINAL_RENDER_POLL_INTERVAL_MS, FINAL_RENDER_SOURCE_STABLE_WAIT_MS, GENERATION_PLACEHOLDER_POLL_INTERVAL_MS, HOST_FINAL_PROOF_WAIT_MS, SOURCE_STABLE_WAIT_MS, advanceOperationEpochForBase, automaticFailureStopFor, clearAutomaticFailureStop, generationPolls, isMissingShellStop, markAutomaticFailureStop, operationEpochForBase, pending, } from './flights.js?rmv=2.15.2';
-import { appendHistoryEntry, chatPersistenceSlot, normalizeHistoryEntry, persistedOwnerForMessage, earliestMirrorEvidenceFloor, floorMirrorEvidence, independentHistoryLoaded, independentHistoryReadState, restoreIndependentHistory, readStore, savedInChatFile, persistedOwnerUpToDate, synchronizeIndependentChatPersistence, writePersistedOwner, writeStore, reconcileIndependentChatOwners, rememberChatMessageOrder, checkOwnerRemapEpoch, migrateLocalStoresToArchive, dropInheritedCellForNewSwipe, stashCellForContinue, restoreStashedContinueCell, } from './persistence.js?rmv=2.15.2';
-import { activeGlobalWorldInfoCapture, assistantMessages, beginGlobalWorldInfoCapture, bindIndependentRecordContinuity, canonicalVisibleMessageText, captureActivatedGlobalWorldInfo, captureGlobalWorldInfoEntriesLoaded, chatKey, clearOwnerLockForBase, currentWorldInfoBookScope, dispatchWorldInfoBooksChanged, externalHostGenerationActivity, findSavedRecord, finishGlobalWorldInfoCapture, hostGenerationLooksActive, hostModule, independentContextExcludedTagSet, independentRecordContinuity, isRabbitMirrorEligibleAssistantMessage, lastAssistantMessage, liveVisibleIndependentMessageText, lockedIndependentRecordForBase, messageBaseSlotKey, messageBodyFingerprint, messageDisplayFingerprint, messageElement, messageReasoningFingerprint, messageSlotKey, messageSourceFingerprint, normalizeBase, normalizeIndependentConnectionText, normalizedIndependentVisibleComparison, observeMessageSourceRevision, publishIndependentApiRequestDiagnostic, recentAssistantMessages, recordKey, revokeIndependentRecordContinuity, saveRecordForSlot, savedIndependentRecordForOwner, savedRecordMatchesObserved, sameIndependentRecordVersion, setOwnerLockForBase, stripHistoricalRabbitMirrorBlocks, stripInvisibleIndependentContextMarkup, swipeId, updateIndependentRecordContinuity, withOwnerLockStoreBatch, writeActiveGlobalWorldInfoCapture, writeHostModule, } from './connection.js?rmv=2.15.2';
-import { allExternalHosts, externalHosts, hasMultifaceMarkup, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors, withExternalHostSyncIndex, isTheaterFavoriteHost, } from './request.js?rmv=2.15.2';
-import { beginHostWorkTiming, clearExternalHostFreshSourceState, clearIndependentResayStatus, clearOrphanExternalHostTimer, collapseDuplicateIdentityHosts, ensureReplyGenerationPlaceholder, externalHostsOwnedByMesid, hasExplicitSourceReplacementEvidence, historyRecoveryForObserved, independentStoredHtmlRestorable, markExternalHostsAwaitingOwner, pruneOrphanIndependentPlaceholderHosts, mountedIndependentReadyHostMatchesObserved, mountedIndependentReadyHostSharesStableOwner, passiveIndependentFailureForIdentity, placeExternalHost, quickAuthorizationOwners, quickIntentOwners, quickStartOwners, quickWaitingCandidate, readyDetailsFromHost, readyRecordFromHost, rebuildCollapsedReadyHost, recoverSavedRecord, refreshExistingExternalDetails, removeExternalDuplicatesPreferInline, removeIndependentInlineDuplicates, restoreExternalHostRendering, restorePassiveIndependentFailure, setPlaceholderSummary, usableReadyDetails, withRestorableHtmlCacheBatch, } from './geometry.js?rmv=2.15.2';
-import { INDEPENDENT_INTENT_OWNER, abortFlight, activeIndependentFlightForBase, automaticAuthorizationLineage, automaticCutoverVersionToken, automaticIndependentTiming, boundIndependentIntentOwner, cancelAllIndependentFlights, cancelFlightsForMessage, cancelFlightsForSlot, cancelSupersededFlightsForBase, claimDeferredIndependentGenerationIntent, clearGenerationPlaceholderPoll, clearIndependentRejectedFacePreviews, confirmFinalRenderedGeneration, consumeIndependentDisplayModeChange, currentGenerationIdentity, deferredIndependentGenerationIntents, deferredIndependentIntentCandidateIndex, deferredIndependentIntentCompletedAt, earlyBodyConfigSignature, earlyBodyCredentials, earlyBodyEnabled, ensureAutomaticGenerationCutover, ensureExternalUi, ensureGenerationPlaceholderForIndex, ensureManualGenerationPlaceholder, exactIndependentReadyForIdentity, externalFaceDetails, externalizeFollowMirror, generateFor, generationPollKey, generationWaitPollDelay, handleIndependentManualBridge, hasGenerationWorkFor, manualBodyOwnerCurrent, manualIndependentTiming, manualIntentForMessage, messageSourceRevisions, orphanExternalHostTimers, passiveObservedIdentity, queueManualGenerationTerminalSync, refreshDeferredIndependentProof, renderAutomaticFailureStop, restoreFollowInline, restoreFollowMirrorFromMessageSource, runtimeMode, scheduleGenerationPlaceholderPoll, scheduleMessageGeneration, serializeExternalFaceDetails, stampAutomaticAuthorizationEpoch, withHistoricalRestoreLightPass, } from './mount.js?rmv=2.15.2';
-import { automaticGenerationCutovers, hostGenerationHintStartedAt, hostGenerationInProgress, hostSubscriptions, managedIndependentMessagesUnsubscribe, observer, passiveRecoveryTimers, queuedIndices, runtimeConfigSequence, startupHistoryFallbackHandler, startupHistoryFallbackRoot, syncRunning, syncTimer, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, writeHostSubscriptions, writeManagedIndependentMessagesUnsubscribe, writeObserver, writeQueuedIndices, writeStartupHistoryFallbackHandler, writeStartupHistoryFallbackRoot, writeSyncRunning, writeSyncTimer, } from './lifecycle.js?rmv=2.15.2';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.15.3";
+import { restoreRabbitMirrorAvatarClone } from '../chatAvatars.js?rmv=2.15.3';
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages, subscribeRabbitMirrorChatSurface } from '../hostCompatibility.js?rmv=2.15.3';
+import { recordTtSurface, ttSurfaceNow } from '../ttSurfaceDiagnostics.js?rmv=2.15.3';
+import { parseMultifaceOutput } from '../multifaceProtocol.js?rmv=2.15.3';
+import { getSettings } from '../settings.js?rmv=2.15.3';
+import { mainReplyAbnormalReason, notifySafetyValve } from '../mainReplySafetyValve.js?rmv=2.15.3';
+import { independentGenerationTiming } from '../independentTiming.js?rmv=2.15.3';
+import { independentAdvancedOptionsSignature } from '../advancedRequestOptions.js?rmv=2.15.3';
+import { MISSING_INDEPENDENT_RETRY_SHELL_MESSAGE, REMOVED_SWIPE_THEATER_MESSAGE, safetyValveShellMessage, INDEPENDENT_HISTORY_READ_ERROR_MESSAGE, assistantRowsInScanRange, formatMissingShellReport, hasUsableAssistantBody, isMissingShellTargetFloor, normalizeMissingShellScanRange, shouldRestoreMissingIndependentRetryShell, } from './missingRetryShell.js?rmv=2.15.3';
+import { INDEPENDENT_GENERATION_INTENTS_KEY, INDEPENDENT_GENERATION_INTENT_TYPES, INDEPENDENT_GENERATION_STOPS_KEY, RUNTIME_VERSION, SOURCE_ATTR, currentRuntime, getContext, hashText, independentMaintenanceLiveRepairLocked, } from './runtime.js?rmv=2.15.3';
+import { ACTIVE_GENERATION_WAIT_MS, FINAL_RENDER_POLL_INTERVAL_MS, FINAL_RENDER_SOURCE_STABLE_WAIT_MS, GENERATION_PLACEHOLDER_POLL_INTERVAL_MS, HOST_FINAL_PROOF_WAIT_MS, SOURCE_STABLE_WAIT_MS, advanceOperationEpochForBase, automaticFailureStopFor, clearAutomaticFailureStop, generationPolls, isMissingShellStop, markAutomaticFailureStop, operationEpochForBase, pending, } from './flights.js?rmv=2.15.3';
+import { appendHistoryEntry, chatPersistenceSlot, normalizeHistoryEntry, persistedOwnerForMessage, earliestMirrorEvidenceFloor, floorMirrorEvidence, independentHistoryLoaded, independentHistoryReadState, restoreIndependentHistory, readStore, savedInChatFile, persistedOwnerUpToDate, synchronizeIndependentChatPersistence, writePersistedOwner, writeStore, reconcileIndependentChatOwners, rememberChatMessageOrder, checkOwnerRemapEpoch, migrateLocalStoresToArchive, dropInheritedCellForNewSwipe, stashCellForContinue, restoreStashedContinueCell, } from './persistence.js?rmv=2.15.3';
+import { activeGlobalWorldInfoCapture, assistantMessages, beginGlobalWorldInfoCapture, bindIndependentRecordContinuity, canonicalVisibleMessageText, captureActivatedGlobalWorldInfo, captureGlobalWorldInfoEntriesLoaded, chatKey, clearOwnerLockForBase, currentWorldInfoBookScope, dispatchWorldInfoBooksChanged, externalHostGenerationActivity, findSavedRecord, finishGlobalWorldInfoCapture, hostGenerationLooksActive, hostModule, independentContextExcludedTagSet, independentRecordContinuity, isRabbitMirrorEligibleAssistantMessage, lastAssistantMessage, liveVisibleIndependentMessageText, lockedIndependentRecordForBase, messageBaseSlotKey, messageBodyFingerprint, messageDisplayFingerprint, messageElement, messageReasoningFingerprint, messageSlotKey, messageSourceFingerprint, normalizeBase, normalizeIndependentConnectionText, normalizedIndependentVisibleComparison, observeMessageSourceRevision, publishIndependentApiRequestDiagnostic, recentAssistantMessages, recordKey, revokeIndependentRecordContinuity, saveRecordForSlot, savedIndependentRecordForOwner, savedRecordMatchesObserved, sameIndependentRecordVersion, setOwnerLockForBase, stripHistoricalRabbitMirrorBlocks, stripInvisibleIndependentContextMarkup, swipeId, updateIndependentRecordContinuity, withOwnerLockStoreBatch, writeActiveGlobalWorldInfoCapture, writeHostModule, } from './connection.js?rmv=2.15.3';
+import { allExternalHosts, externalHosts, hasMultifaceMarkup, removeEmptyFollowExternalAnchors, removeEmptyInlineAnchors, withExternalHostSyncIndex, isTheaterFavoriteHost, } from './request.js?rmv=2.15.3';
+import { beginHostWorkTiming, clearExternalHostFreshSourceState, clearIndependentResayStatus, clearOrphanExternalHostTimer, collapseDuplicateIdentityHosts, ensureReplyGenerationPlaceholder, externalHostsOwnedByMesid, hasExplicitSourceReplacementEvidence, historyRecoveryForObserved, independentStoredHtmlRestorable, markExternalHostsAwaitingOwner, pruneOrphanIndependentPlaceholderHosts, mountedIndependentReadyHostMatchesObserved, mountedIndependentReadyHostSharesStableOwner, passiveIndependentFailureForIdentity, placeExternalHost, quickAuthorizationOwners, quickIntentOwners, quickStartOwners, quickWaitingCandidate, readyDetailsFromHost, readyRecordFromHost, rebuildCollapsedReadyHost, recoverSavedRecord, refreshExistingExternalDetails, removeExternalDuplicatesPreferInline, removeIndependentInlineDuplicates, restoreExternalHostRendering, restorePassiveIndependentFailure, setPlaceholderSummary, usableReadyDetails, withRestorableHtmlCacheBatch, } from './geometry.js?rmv=2.15.3';
+import { INDEPENDENT_INTENT_OWNER, abortFlight, activeIndependentFlightForBase, automaticAuthorizationLineage, automaticCutoverVersionToken, automaticIndependentTiming, boundIndependentIntentOwner, cancelAllIndependentFlights, cancelFlightsForMessage, cancelFlightsForSlot, cancelSupersededFlightsForBase, claimDeferredIndependentGenerationIntent, clearGenerationPlaceholderPoll, clearIndependentRejectedFacePreviews, confirmFinalRenderedGeneration, consumeIndependentDisplayModeChange, currentGenerationIdentity, deferredIndependentGenerationIntents, deferredIndependentIntentCandidateIndex, deferredIndependentIntentCompletedAt, earlyBodyConfigSignature, earlyBodyCredentials, earlyBodyEnabled, ensureAutomaticGenerationCutover, ensureExternalUi, ensureGenerationPlaceholderForIndex, ensureManualGenerationPlaceholder, exactIndependentReadyForIdentity, externalFaceDetails, externalizeFollowMirror, generateFor, generationPollKey, generationWaitPollDelay, handleIndependentManualBridge, hasGenerationWorkFor, manualBodyOwnerCurrent, manualIndependentTiming, manualIntentForMessage, messageSourceRevisions, orphanExternalHostTimers, passiveObservedIdentity, queueManualGenerationTerminalSync, refreshDeferredIndependentProof, renderAutomaticFailureStop, restoreFollowInline, restoreFollowMirrorFromMessageSource, runtimeMode, scheduleGenerationPlaceholderPoll, scheduleMessageGeneration, serializeExternalFaceDetails, stampAutomaticAuthorizationEpoch, withHistoricalRestoreLightPass, } from './mount.js?rmv=2.15.3';
+import { automaticGenerationCutovers, hostGenerationHintStartedAt, hostGenerationInProgress, hostSubscriptions, managedIndependentMessagesUnsubscribe, observer, passiveRecoveryTimers, queuedIndices, runtimeConfigSequence, startupHistoryFallbackHandler, startupHistoryFallbackRoot, syncRunning, syncTimer, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, writeHostSubscriptions, writeManagedIndependentMessagesUnsubscribe, writeObserver, writeQueuedIndices, writeStartupHistoryFallbackHandler, writeStartupHistoryFallbackRoot, writeSyncRunning, writeSyncTimer, } from './lifecycle.js?rmv=2.15.3';
 let earlyBodyParserPromise = null;
 let earlyBodyParser = null;
 let earlyBodyProbeTimer = 0;
@@ -166,7 +166,7 @@ async function probeIndependentEarlyBody(packet, sequence) {
     if (!earlyBodyPacketCurrent(packet))
         return;
     if (!earlyBodyParserPromise)
-        earlyBodyParserPromise = import('../earlyBodyTags.js?rmv=2.15.2')
+        earlyBodyParserPromise = import('../earlyBodyTags.js?rmv=2.15.3')
             .then(module => { earlyBodyParser = module; return module; }).catch(() => { earlyBodyParserPromise = null; return null; });
     const parser = await earlyBodyParserPromise;
     if (!parser || sequence !== earlyBodyProbeSequence || !earlyBodyPacketCurrent(packet))
@@ -1534,6 +1534,10 @@ function clearStartupHistoryLazySync() {
             startupHistoryFallbackRoot.removeEventListener('focusin', startupHistoryFallbackHandler, true);
         }
         catch { }
+        try {
+            startupHistoryFallbackHandler.cancel?.();
+        }
+        catch { }
     }
     writeStartupHistoryFallbackRoot(null);
     writeStartupHistoryFallbackHandler(null);
@@ -1543,10 +1547,10 @@ function syncMessageBatch(indices = [], historyRestoreLight = true) {
     if (!batch.size)
         return;
     const end = globalThis.__rabbitMirrorPerfDiag?.begin?.('independent.syncMessageBatch', { count: batch.size, historyRestoreLight: !!historyRestoreLight }, 5);
-    const run = () => withOwnerLockStoreBatch(() => withRestorableHtmlCacheBatch(() => {
+    const run = () => withOwnerLockStoreBatch(() => withRestorableHtmlCacheBatch(() => withExternalHostSyncIndex(() => {
         syncMessages(batch);
         reconcileVisibleMirrorDuplicates(batch);
-    }));
+    })));
     try {
         return historyRestoreLight ? withHistoricalRestoreLightPass(run) : run();
     }
@@ -1651,6 +1655,8 @@ function sameRestoredHistoryProbe(a, b) {
         && a.source === b.source && a.textRoot === b.textRoot && a.faces.length === b.faces.length && a.faces.every((face, i) => face === b.faces[i])
         && a.tools.length === b.tools.length && a.tools.every((tool, i) => tool === b.tools[i]));
 }
+const VISIBLE_FLOOR_PROBE_SCROLL_MS = 320, VISIBLE_FLOOR_PROBE_TAP_MS = 80, VISIBLE_FLOOR_PROBE_RETRY_MS = 1600;
+const VISIBLE_FLOOR_RESYNC_GAP_MS = 1500, VISIBLE_FLOOR_PROBE_RETRY_CAP_MS = 10 * 60 * 1000, VISIBLE_FLOOR_PROBE_MIN_SCROLL_PX = 24;
 function installStartupHistoryLazySync(expectedSequence = runtimeConfigSequence) {
     clearStartupHistoryLazySync();
     if (isRabbitMirrorManagedChatSurface()) {
@@ -1661,37 +1667,93 @@ function installStartupHistoryLazySync(expectedSequence = runtimeConfigSequence)
     if (!chat)
         return;
     const restored = new WeakMap();
-    let queued = false;
-    const probe = () => {
-        if (queued)
+    const syncedAt = new Map();
+    let timer = 0, retryTimer = 0, retryingSince = 0, lastRunTop = NaN, lastRunAt = 0, scrollOnly = true;
+    const cancel = () => { clearTimeout(timer); clearTimeout(retryTimer); timer = 0; retryTimer = 0; };
+    const retryLater = () => {
+        if (retryTimer)
             return;
-        queued = true;
-        setTimeout(function rabbitMirrorVisibleFloorCheck() {
-            queued = false;
-            if (expectedSequence !== runtimeConfigSequence || !currentRuntime())
-                return;
-            const ctx = getContext();
-            const visible = viewportMessageIndices(chat, STARTUP_SYNC_IMMEDIATE_MESSAGES);
-            const ready = visible.filter(index => {
+        if (!retryingSince)
+            retryingSince = Date.now();
+        if (Date.now() - retryingSince > VISIBLE_FLOOR_PROBE_RETRY_CAP_MS) {
+            retryingSince = 0;
+            return;
+        }
+        retryTimer = setTimeout(() => { retryTimer = 0; run(true); }, VISIBLE_FLOOR_PROBE_RETRY_MS);
+    };
+    const run = function rabbitMirrorVisibleFloorCheck(force = false) {
+        timer = 0;
+        if (expectedSequence !== runtimeConfigSequence || !currentRuntime())
+            return;
+        let generating = false;
+        try {
+            generating = hostGenerationLooksActive();
+        }
+        catch {
+            generating = false;
+        }
+        if (generating) {
+            retryLater();
+            return;
+        }
+        retryingSince = 0;
+        const now = Date.now();
+        const top = Number(chat.scrollTop) || 0;
+        const onlyScrolled = scrollOnly;
+        scrollOnly = true;
+        if (force !== true && onlyScrolled && lastRunAt && now - lastRunAt < 5000 && Math.abs(top - lastRunTop) < VISIBLE_FLOOR_PROBE_MIN_SCROLL_PX)
+            return;
+        lastRunTop = top;
+        lastRunAt = now;
+        const ctx = getContext();
+        const visible = viewportMessageIndices(chat, STARTUP_SYNC_IMMEDIATE_MESSAGES);
+        withExternalHostSyncIndex(() => {
+            const ready = [];
+            let deferred = false;
+            for (const index of visible) {
                 if (!isRabbitMirrorEligibleAssistantMessage(ctx.chat?.[index]))
-                    return false;
+                    continue;
                 const state = restoredHistoryProbeState(ctx, index);
-                return !state || !sameRestoredHistoryProbe(restored.get(state.element), state);
-            });
+                if (state && sameRestoredHistoryProbe(restored.get(state.element), state))
+                    continue;
+                if (now - (syncedAt.get(index) || 0) < VISIBLE_FLOOR_RESYNC_GAP_MS) {
+                    const element = state?.element || messageElement(index);
+                    if (state || (element && restored.has(element)))
+                        deferred = true;
+                    continue;
+                }
+                ready.push(index);
+            }
             if (ready.length)
                 syncMessageBatch(ready, true);
             for (const index of ready) {
+                syncedAt.set(index, now);
                 const state = restoredHistoryProbeState(ctx, index);
                 if (state)
                     restored.set(state.element, state);
             }
-        }, 80);
+            if (syncedAt.size > 400)
+                for (const [index, at] of syncedAt)
+                    if (now - at > VISIBLE_FLOOR_RESYNC_GAP_MS)
+                        syncedAt.delete(index);
+            if (deferred)
+                retryLater();
+        });
     };
+    const probe = event => {
+        if (event?.type && event.type !== 'scroll')
+            scrollOnly = false;
+        if (timer)
+            return;
+        timer = setTimeout(() => run(false), event?.type === 'scroll' ? VISIBLE_FLOOR_PROBE_SCROLL_MS : VISIBLE_FLOOR_PROBE_TAP_MS);
+    };
+    probe.cancel = cancel;
     writeStartupHistoryFallbackRoot(chat);
     writeStartupHistoryFallbackHandler(probe);
     chat.addEventListener('scroll', probe, { passive: true });
     chat.addEventListener('pointerdown', probe, true);
     chat.addEventListener('focusin', probe, true);
+    scrollOnly = false;
     probe();
 }
 export function scheduleStartupHistorySync(expectedSequence = runtimeConfigSequence) {
@@ -1718,10 +1780,10 @@ export function queueMessageSync(indices = []) {
         const batch = queuedIndices;
         writeQueuedIndices(new Set());
         if (batch.size) {
-            withOwnerLockStoreBatch(() => withRestorableHtmlCacheBatch(() => {
+            withOwnerLockStoreBatch(() => withRestorableHtmlCacheBatch(() => withExternalHostSyncIndex(() => {
                 syncMessages(batch);
                 reconcileVisibleMirrorDuplicates(batch);
-            }));
+            })));
         }
     }, 120));
 }

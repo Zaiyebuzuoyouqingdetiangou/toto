@@ -1,17 +1,17 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.15.2";
-import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=2.15.2';
-import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, } from '../settings.js?rmv=2.15.2';
-import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=2.15.2';
-import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=2.15.2';
-import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=2.15.2';
-import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=2.15.2';
-import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=2.15.2';
-import { CONTEXT_TOTAL_BUDGET, CONTEXT_TRANSCRIPT_BUDGET, RUNTIME_VERSION, getContext, hashText, } from './runtime.js?rmv=2.15.2';
-import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=2.15.2';
-import { OWNER_LOCK_STORE_KEY, apiProfileKey, historyEntriesForSlot, normalizedConfiguredTemperature, persistedOwnerForMessage, readApiProfileStore, readStore, writeApiProfileStore, writePersistedOwner, writeStore, } from './persistence.js?rmv=2.15.2';
-import { hasExplicitSourceReplacementEvidence, independentStoredHtmlLightRestorable, independentStoredHtmlRestorable, } from './geometry.js?rmv=2.15.2';
-import { activeIndependentFlightForBase, messageSourceRevisions, parseMessageIndexFromOwnerKey, passiveObservedIdentity, runtimeMode, showIndependentUnsavedOutput, } from './mount.js?rmv=2.15.2';
-import { hostGenerationHintStartedAt, hostGenerationInProgress, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, } from './lifecycle.js?rmv=2.15.2';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.15.3";
+import { isRabbitMirrorManagedChatSurface, getRabbitMirrorMountedMessages } from '../hostCompatibility.js?rmv=2.15.3';
+import { WORLD_INFO_BOOK_NAME_MAX_CHARS, getSettings, normalizeIndependentContextExcludedTags, updateSettings, } from '../settings.js?rmv=2.15.3';
+import { fetchRabbitMirrorIndependentCompletion } from '../independentSecurityGuard.js?rmv=2.15.3';
+import { buildIndependentAdvancedCarrier, applyIndependentAdvancedExclusions } from '../advancedRequestOptions.js?rmv=2.15.3';
+import { describeBatchPlanFailure } from '../externalWorldBook/errors.js?rmv=2.15.3';
+import { describeRabbitMirrorStorageUsage, getCurrentChatKey } from '../storage.js?rmv=2.15.3';
+import { rememberIndependentTransportDiagnostic } from '../transportDiagnostics.js?rmv=2.15.3';
+import { CONTEXT_TOTAL_BUDGET, CONTEXT_TRANSCRIPT_BUDGET, RUNTIME_VERSION, getContext, hashText, } from './runtime.js?rmv=2.15.3';
+import { HOST_GENERATION_EVENT_HINT_MS, operationEpochForBase } from './flights.js?rmv=2.15.3';
+import { OWNER_LOCK_STORE_KEY, apiProfileKey, historyEntriesForSlot, normalizedConfiguredTemperature, persistedOwnerForMessage, readApiProfileStore, readStore, writeApiProfileStore, writePersistedOwner, writeStore, } from './persistence.js?rmv=2.15.3';
+import { hasExplicitSourceReplacementEvidence, independentStoredHtmlLightRestorable, independentStoredHtmlRestorable, } from './geometry.js?rmv=2.15.3';
+import { activeIndependentFlightForBase, messageSourceRevisions, parseMessageIndexFromOwnerKey, passiveObservedIdentity, runtimeMode, showIndependentUnsavedOutput, } from './mount.js?rmv=2.15.3';
+import { hostGenerationHintStartedAt, hostGenerationInProgress, writeHostGenerationHintStartedAt, writeHostGenerationInProgress, } from './lifecycle.js?rmv=2.15.3';
 export const API_PROFILE_STORE_KEY = 'rabbit_mirror_independent_api_profiles_v1';
 const API_REQUEST_DIAGNOSTIC_STORE_KEY = 'rabbit_mirror_independent_api_last_request_v2';
 export const API_REQUEST_DIAGNOSTIC_EVENT = 'rabbitmirror:independent-api-diagnostic';
@@ -847,6 +847,23 @@ export function independentDiagnosticBase(st = getSettings()) {
     }
     return normalizeBase(st?.independentApiBaseUrl || '');
 }
+const STREAMING_MESSAGE_MARKS = '.mes.streaming, .mes[data-is-streaming="true"], .mes[is_generating="true"], .mes[data-generating="true"]';
+function streamingMessageInDom() {
+    const chat = document.getElementById?.('chat');
+    if (!chat)
+        return false;
+    let seen = 0;
+    for (let node = chat.lastElementChild, steps = 0; node && steps < 64 && seen < 2; node = node.previousElementSibling, steps += 1) {
+        if (!node.classList?.contains?.('mes'))
+            continue;
+        seen += 1;
+        if (node.matches?.(STREAMING_MESSAGE_MARKS))
+            return true;
+    }
+    if (seen)
+        return false;
+    return !!chat.querySelector?.(STREAMING_MESSAGE_MARKS);
+}
 export function externalHostGenerationActivity() {
     const ctx = getContext();
     const weakFlags = [
@@ -857,14 +874,16 @@ export function externalHostGenerationActivity() {
         globalThis.is_group_generating,
     ];
     const weak = weakFlags.some(value => value === true);
-    let dom = false;
-    try {
-        dom = !!document.querySelector?.('#chat .mes.streaming, #chat .mes[data-is-streaming="true"], #chat .mes[is_generating="true"], #chat .mes[data-generating="true"]');
-    }
-    catch { }
     let moduleActive = false;
     try {
         moduleActive = hostModule?.is_send_press === true || hostModule?.isGenerating?.() === true;
+    }
+    catch { }
+    if (moduleActive)
+        return { active: true, weak, dom: false, moduleActive };
+    let dom = false;
+    try {
+        dom = streamingMessageInDom();
     }
     catch { }
     return { active: dom || weak || moduleActive, weak, dom, moduleActive };
@@ -963,6 +982,16 @@ function visibleChatMessageElement(index) {
     }
     return null;
 }
+const messageElementCache = new Map();
+const MESSAGE_ELEMENT_CACHE_MAX = 2000;
+function cachedMessageElement(index, chat) {
+    const cached = messageElementCache.get(index);
+    if (cached && cached.isConnected && cached.getAttribute?.('mesid') === String(index) && chat.contains(cached))
+        return cached;
+    if (cached)
+        messageElementCache.delete(index);
+    return null;
+}
 export function messageElement(index) {
     if (isRabbitMirrorManagedChatSurface()) {
         const leased = getRabbitMirrorMountedMessages().find(context => context.mesid === Number(index) && !context.signal.aborted)?.element;
@@ -970,7 +999,21 @@ export function messageElement(index) {
             return leased;
         return visibleChatMessageElement(index);
     }
-    return document.querySelector(`#chat .mes[mesid="${index}"], #chat [mesid="${index}"].mes, #chat [mesid="${index}"]`);
+    const chat = document.getElementById?.('chat');
+    if (!chat)
+        return document.querySelector(`#chat .mes[mesid="${index}"], #chat [mesid="${index}"].mes, #chat [mesid="${index}"]`);
+    const key = String(index);
+    const cached = cachedMessageElement(key, chat);
+    if (cached)
+        return cached;
+    const found = chat.querySelector(`:scope > .mes[mesid="${index}"]`)
+        || chat.querySelector(`.mes[mesid="${index}"], [mesid="${index}"].mes, [mesid="${index}"]`);
+    if (found) {
+        if (messageElementCache.size >= MESSAGE_ELEMENT_CACHE_MAX)
+            messageElementCache.clear();
+        messageElementCache.set(key, found);
+    }
+    return found;
 }
 export function messageBody(el) { return el?.querySelector?.('.mes_text') || el; }
 const HOST_SYSTEM_MESSAGE_TYPES = new Set(['help', 'welcome', 'empty', 'generic', 'narrator', 'comment', 'slash_commands', 'formatting', 'hotkeys', 'macros', 'welcome_prompt', 'assistant_note', 'assistant_message']);
