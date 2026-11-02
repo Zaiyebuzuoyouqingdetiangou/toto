@@ -1,32 +1,47 @@
-import { buildSewingSprite } from '../independentApi/generationProgress.js?rmv=2.15.0';
+import { buildSewingSprite } from '../independentApi/generationProgress.js?rmv=2.15.1';
 const BUSY_ATTR = 'data-rm-busy-rabbit';
-const SHEET_VAR = '--rm-busy-rabbit-sheet';
-const ready = new WeakSet();
-function ensureSheet(doc) {
-    if (!doc?.documentElement || ready.has(doc))
-        return;
-    ready.add(doc);
+export const BUSY_RABBIT_CLASS = 'rm-busy-rabbit';
+function rabbitBefore(element) {
+    const previous = element.previousElementSibling;
+    return previous?.classList?.contains(BUSY_RABBIT_CLASS) ? previous : null;
+}
+function layoutFor(element) {
     try {
-        const sprite = buildSewingSprite(doc, 1);
-        const [, , w, h] = String(sprite.getAttribute('viewBox') || '0 0 42 30').split(/\s+/).map(Number);
-        const pick = name => sprite.querySelector(`.${name}`)?.outerHTML || '';
-        const base = pick('rm-gp-base');
-        const sheet = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w * 2} ${h}" width="${w * 2}" height="${h}" shape-rendering="crispEdges">`
-            + `<g>${base}${pick('rm-gp-frame-a')}</g><g transform="translate(${w} 0)">${base}${pick('rm-gp-frame-b')}</g></svg>`;
-        doc.documentElement.style.setProperty(SHEET_VAR, `url("data:image/svg+xml,${encodeURIComponent(sheet)}")`);
+        const view = element.ownerDocument?.defaultView;
+        const parent = element.parentElement ? view?.getComputedStyle?.(element.parentElement) : null;
+        if (parent && /flex|grid/.test(parent.display))
+            return 'row';
+        const style = view?.getComputedStyle?.(element);
+        if (!style || /^inline/.test(style.display))
+            return 'row';
+        return style.textAlign === 'center' ? 'center' : 'float';
     }
     catch {
-        ready.delete(doc);
+        return 'row';
     }
 }
 export function setBusyRabbit(node, on) {
     const element = node?.jquery ? node[0] : node;
     if (!element?.setAttribute)
         return;
-    if (on) {
-        ensureSheet(element.ownerDocument);
-        element.setAttribute(BUSY_ATTR, 'true');
-    }
-    else
+    const existing = rabbitBefore(element);
+    if (!on) {
         element.removeAttribute(BUSY_ATTR);
+        existing?.remove();
+        return;
+    }
+    element.setAttribute(BUSY_ATTR, 'true');
+    if (existing || !element.parentNode)
+        return;
+    const doc = element.ownerDocument;
+    try {
+        const rabbit = doc.createElement('span');
+        rabbit.className = BUSY_RABBIT_CLASS;
+        rabbit.setAttribute('data-rm-gp-phase', 'sewing');
+        rabbit.setAttribute('data-rm-busy-layout', layoutFor(element));
+        rabbit.setAttribute('aria-hidden', 'true');
+        rabbit.append(buildSewingSprite(doc, 1));
+        element.before(rabbit);
+    }
+    catch { }
 }

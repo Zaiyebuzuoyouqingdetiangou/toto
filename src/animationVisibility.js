@@ -1,5 +1,5 @@
-import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=2.15.0';
-import { getSettings } from './settings.js?rmv=2.15.0';
+import { ANIMATION_SUSPENDED_ATTR } from './runtimeAnimationState.js?rmv=2.15.1';
+import { getSettings } from './settings.js?rmv=2.15.1';
 export const ANIMATION_AWAKE_EVENT = 'rabbitmirror:animation-awake';
 export const IDLE_MS = 25000;
 const roots = new Map();
@@ -50,6 +50,8 @@ function holdUnpausedCssAnimations(root, loopingOnly = false) {
     for (const animation of animations) {
         const target = animation.effect?.target;
         if (typeof animation.animationName !== 'string' || !target || (target !== root && !root.contains(target)))
+            continue;
+        if (target.closest?.('.rabbit-mirror-draw-wait-art'))
             continue;
         if (animation.playState !== 'running' || !Number.isFinite(animation.playbackRate) || animation.playbackRate === 0)
             continue;

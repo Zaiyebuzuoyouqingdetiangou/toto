@@ -1286,11 +1286,14 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 @keyframes rm-gp-err-3{ 0%{opacity:1} 33.333%{opacity:0} 100%{opacity:0} }
 @keyframes rm-gp-err-4{ 0%{opacity:1} 25%{opacity:0} 100%{opacity:0} }
 
-[data-rm-busy-rabbit]::before{ content:"" !important; display:inline-block !important; vertical-align:middle !important; width:42px !important; height:30px !important; margin:0 6px 0 0 !important;
-  background-image:var(--rm-busy-rabbit-sheet) !important; background-size:84px 30px !important; background-repeat:no-repeat !important; background-position:0 0;
-  image-rendering:pixelated !important; animation:rm-busy-sew .36s steps(2) infinite; }
-@keyframes rm-busy-sew{ from{ background-position:0 0; } to{ background-position:-84px 0; } }
-@media (prefers-reduced-motion: reduce){ [data-rm-busy-rabbit]::before{ animation:none !important; } }
+.rm-busy-rabbit{ display:inline-block !important; vertical-align:middle !important; line-height:0 !important; margin:0 6px 0 0 !important; pointer-events:none !important; flex:0 0 auto !important; }
+.rm-busy-rabbit[data-rm-busy-layout="float"]{ float:left !important; margin:0 8px 2px 0 !important; }
+.rm-busy-rabbit[data-rm-busy-layout="center"]{ display:block !important; margin:0 auto 2px !important; }
+.rm-busy-rabbit svg.rm-gp-sprite{ display:block !important; width:42px !important; height:30px !important; max-width:none !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; position:static !important; }
+.rm-busy-rabbit svg.rm-gp-sprite .rm-gp-bubble,
+.rm-busy-rabbit svg.rm-gp-sprite .rm-gp-sparkle{ visibility:hidden !important; animation:none !important; }
+.rm-busy-rabbit svg.rm-gp-sprite .rm-gp-dot{ animation:none !important; }
+@media (prefers-reduced-motion: reduce){ .rm-busy-rabbit svg.rm-gp-sprite *{ animation:none !important; } .rm-busy-rabbit svg.rm-gp-sprite .rm-gp-frame-b{ opacity:0 !important; } }
 
 .rabbit-mirror-small-art{ display:flex !important; justify-content:center !important; margin:4px 0 8px !important; pointer-events:none !important; filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important; }
 .rabbit-mirror-small-art svg.rm-gp-scene{ display:block !important; width:84px !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; position:static !important; }
@@ -1301,12 +1304,14 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-maintenance-art svg.rm-gp-scene{ display:block !important; width:84px !important; max-width:none !important; height:60px !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; position:static !important; }
 
 .rabbit-mirror-draw-wait-art{
-  display:flex !important;
-  justify-content:center !important;
+  display:block !important;
+  width:min(168px, 72%) !important;
+  min-height:0 !important;
+  margin:0 auto !important;
   pointer-events:none !important;
   filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important;
 }
-.rabbit-mirror-draw-wait-art svg.rm-gp-scene{ display:block !important; width:min(168px, 72%) !important; max-width:none !important; height:auto !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; position:static !important; }
+.rabbit-mirror-draw-wait-art svg.rm-gp-scene{ display:block !important; width:100% !important; max-width:none !important; height:auto !important; margin:0 !important; overflow:visible !important; image-rendering:pixelated !important; position:static !important; }
 .rabbit-mirror-draw-wait-art[data-rm-offscreen] *{ animation-play-state:paused !important; }
 
 .rabbit-mirror-external-wait-art{
@@ -2475,7 +2480,8 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-sw
 @keyframes rm-chip-wave{ 0%,100%{ transform:rotate(0); } 20%{ transform:rotate(22deg); } 40%{ transform:rotate(-6deg); } 60%{ transform:rotate(22deg); } 80%{ transform:rotate(0); } }
 @keyframes rm-ready-chip-in{ from{ opacity:0; transform:translate(-50%, 10px); } to{ opacity:1; transform:translate(-50%, 0); } }
 @keyframes rm-ready-chip-out{ from{ opacity:1; transform:translate(-50%, 0); } to{ opacity:0; transform:translate(-50%, 8px); } }
-@media (prefers-reduced-motion: reduce){ [data-rm-ready-chip], [data-rm-ready-chip][data-rm-leaving="true"], [data-rm-ready-chip] .rm-ready-chip-icon svg, [data-rm-ready-chip] .rm-chip-ear{ animation:none !important; } }
+
+@media (prefers-reduced-motion: reduce){ [data-rm-ready-chip], [data-rm-ready-chip][data-rm-leaving="true"], [data-rm-ready-chip] .rm-ready-chip-icon svg, [data-rm-ready-chip]:not([data-rm-failed]) .rm-ready-chip-icon svg, [data-rm-ready-chip] .rm-chip-ear{ animation:none !important; } }
 
 [data-rm-continue-chooser]{
   --rmc-ink: var(--rh-text, var(--SmartThemeBodyColor, #e6e4dd));

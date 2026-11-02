@@ -1,8 +1,8 @@
-import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.15.0";
-import { spritePaths } from '../pixelSprites.js?rmv=2.15.0';
-import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.15.0';
-import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.15.0';
-import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, waitArtSelector, isPreStartPlaceholderText } from './mirrorScene.js?rmv=2.15.0';
+import { rmT as __rmT, rmR as __rmR } from "../textTable.js?rmv=2.15.1";
+import { spritePaths } from '../pixelSprites.js?rmv=2.15.1';
+import { interactionDisplayKeys, interactionDisplayName } from '../interactionMethods.js?rmv=2.15.1';
+import { parseSelfInvented } from '../interactionMethodLedger.js?rmv=2.15.1';
+import { buildMirrorScene, clampMirrorCount, sceneKey, seekerX, waitArtSelector, isPreStartPlaceholderText } from './mirrorScene.js?rmv=2.15.1';
 export const GENERATION_PROGRESS_ATTR = 'data-rabbit-mirror-generation-progress';
 export const GENERATION_PROGRESS_MINI_ATTR = 'data-rabbit-mirror-generation-progress-mini';
 const CARD_CLASS = 'rabbit-mirror-generation-progress';

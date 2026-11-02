@@ -1,5 +1,5 @@
-import { rmR as __rmR } from "./textTable.js?rmv=2.15.0";
-import { sceneKit } from './independentApi/mirrorScene.js?rmv=2.15.0';
+import { rmR as __rmR } from "./textTable.js?rmv=2.15.1";
+import { sceneKit } from './independentApi/mirrorScene.js?rmv=2.15.1';
 const { BASE_W, grid, put, blit, room, svgOf, group, SMALL } = sceneKit;
 export const DRAW_WAIT_PHASES = Object.freeze(['think', 'queue', 'paint', 'save']);
 export function drawWaitPhase(text = '') {
@@ -185,7 +185,26 @@ function template(doc, phase) {
     return svg;
 }
 const observers = new WeakMap();
+const watched = new WeakSet();
+function setRates(art, rate) {
+    let animations = [];
+    try {
+        animations = art.getAnimations({ subtree: true }) || [];
+    }
+    catch {
+        return;
+    }
+    for (const animation of animations) {
+        try {
+            if (animation.playbackRate !== rate)
+                animation.playbackRate = rate;
+        }
+        catch { }
+    }
+}
 function watch(art) {
+    if (!art || watched.has(art))
+        return;
     const doc = art.ownerDocument, View = doc?.defaultView?.IntersectionObserver;
     if (typeof View !== 'function')
         return;
@@ -195,17 +214,35 @@ function watch(art) {
             for (const entry of entries) {
                 if (!entry.target.isConnected) {
                     observer.unobserve(entry.target);
+                    watched.delete(entry.target);
                     continue;
                 }
-                if (entry.isIntersecting)
+                if (entry.isIntersecting) {
                     entry.target.removeAttribute('data-rm-offscreen');
-                else
+                    setRates(entry.target, 1);
+                }
+                else {
                     entry.target.setAttribute('data-rm-offscreen', 'true');
+                    setRates(entry.target, 0);
+                }
             }
         });
         observers.set(doc, observer);
     }
     observer.observe(art);
+    watched.add(art);
+}
+export function releaseDrawWaitArt(container) {
+    if (!container)
+        return;
+    const arts = container.classList?.contains?.(DRAW_WAIT_ART_CLASS) ? [container] : [...(container.querySelectorAll?.(`.${DRAW_WAIT_ART_CLASS}`) || [])];
+    for (const art of arts) {
+        watched.delete(art);
+        try {
+            observers.get(art.ownerDocument)?.unobserve(art);
+        }
+        catch { }
+    }
 }
 export const DRAW_WAIT_ART_CLASS = 'rabbit-mirror-draw-wait-art';
 export function buildDrawWaitArt(doc, phase, { dark = false } = {}) {
@@ -225,5 +262,8 @@ export function syncDrawWaitArt(art, phase) {
         return art;
     art.setAttribute('data-rm-draw-wait-phase', next);
     art.querySelector('svg')?.replaceWith(template(art.ownerDocument, next).cloneNode(true));
+    watch(art);
+    if (art.hasAttribute('data-rm-offscreen'))
+        setRates(art, 0);
     return art;
 }
