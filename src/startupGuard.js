@@ -7,7 +7,7 @@ catch {
 } })();
 const SELF_URL = String(import.meta.url || '');
 const RUNTIME_VERSION = (/[?&]rmv=([^&#]+)/.exec(SELF_URL) || [])[1] || '';
-const BASE_URL = SELF_URL.replace(/[?#].*$/, '').replace(/src\/startupGuard\.js$/, '');
+const BASE_URL = SELF_URL.replace(/[?#].*$/, '').replace(/src\/startupGuard\.js$/, '').replace(/[^/]+\.js$/, '');
 const EXTENSION_PATH_RE = /\/scripts\/extensions\/(third-party\/)?([^/?#:\s)]+)\//g;
 const SELF_FOLDER = folderOf(BASE_URL);
 const PATH_FROM_BASE = (() => { try {
@@ -183,7 +183,7 @@ export function buildRabbitMirrorStartupDiagnostic(extra = '') {
         return name;
     } }).join('、') || '（没读到）'}`);
     const entry = document.getElementById('rabbit_mirror_wand_entry') || document.getElementById('rabbit_mirror_wand_bootstrap');
-    lines.push(`魔法棒菜单=${document.getElementById('extensionsMenu') ? '有' : '没有'} 兔子镜入口=${entry ? (entry.isConnected ? '在' : '不在页面上') : '没有'} 设置界面=${document.getElementById('rabbit_mirror_theater_settings') ? '已挂上' : '没挂上'}`);
+    lines.push(`魔法棒菜单=${document.getElementById('extensionsMenu') ? '有' : '没有'} 兔子镜入口=${entry ? (entry.isConnected ? '在' : '不在页面上') : '没有'} 设置界面=${document.getElementById('rabbit_mirror_theater_settings') ? '已挂上' : typeof globalThis.__rabbitMirrorSettingsWorkbench === 'function' ? '打开时再搭' : '没挂上'}`);
     if (extra) {
         lines.push('');
         lines.push(shortPath(extra));
