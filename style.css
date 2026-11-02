@@ -1893,6 +1893,10 @@ details + [data-rm-face-swipe-position="bottom"][data-rm-pager-tone="dark"] .rab
   color:var(--rm-shell-text) !important;
   border-color:var(--rm-shell-border) !important;
 }
+
+#chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme]{
+  border-radius:var(--rm-shell-radius, 16px) !important;
+}
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement] > details.rabbit-mirror-external-placeholder[data-rm-placeholder-theme="dark"]{
   --rm-shell-bg:#202329;
   --rm-shell-text:#eceef2;
