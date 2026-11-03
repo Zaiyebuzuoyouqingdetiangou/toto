@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.20.4');
+@import url('./settings-ui.css?rmv=2.20.11');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -762,6 +762,15 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   text-align: left !important;
   cursor: pointer !important;
 }
+.rabbit-mirror-maintenance-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+.rabbit-mirror-maintenance-grid > button { padding: 7px 6px !important; }
+.rabbit-mirror-maintenance-row { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }
+.rabbit-mirror-maintenance-row > button { flex: 1 1 auto !important; width: auto !important; min-width: max-content !important; text-align: center !important; padding: 7px 4px !important; white-space: nowrap !important; }
+.rabbit-mirror-maintenance-row > button[data-rm-maintenance-action="more"] { flex: 0 0 40px !important; min-width: 40px !important; }
+.rabbit-mirror-maintenance-more { display: grid !important; gap: 6px !important; }
+.rabbit-mirror-maintenance-more[hidden], .rabbit-mirror-maintenance-menu [data-rm-send-sample-status][hidden] { display: none !important; }
+.rabbit-mirror-maintenance-menu > button.rabbit-mirror-maintenance-close { position: absolute !important; top: 6px !important; right: 6px !important; width: 36px !important; min-height: 36px !important; height: 36px !important; padding: 0 !important; border: 0 !important; background: transparent !important; text-align: center !important; font-size: 20px !important; line-height: 1 !important; opacity: .7 !important; }
+.rabbit-mirror-maintenance-menu-title { padding-right: 34px !important; }
 .rabbit-mirror-maintenance-menu button:hover,
 .rabbit-mirror-maintenance-menu button:focus-visible {
   background: color-mix(in srgb, currentColor 14%, transparent) !important;
