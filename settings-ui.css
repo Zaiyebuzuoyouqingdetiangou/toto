@@ -1,4 +1,4 @@
- 
+
 #rabbit_mirror_theater_settings[data-rh-workbench="ui3"]{position:fixed;inset:var(--rh-viewport-top,0px) auto auto var(--rh-viewport-left,0px);z-index:2147483000;display:flex;align-items:center;justify-content:center;width:100vw;width:var(--rh-viewport-width,100dvw);min-width:0;max-width:none;height:100vh;height:var(--rh-viewport-height,100dvh);min-height:0;max-height:none;margin:0;border:0;transform:none;padding:10px;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));box-sizing:border-box;overflow:hidden;contain:none;background:#1b293b40;color:var(--rh-text,#34495d);font:13px/1.6 "Microsoft YaHei",system-ui,sans-serif;}
 #rabbit_mirror_theater_settings[data-rh-workbench="ui3"][hidden],#rabbit_mirror_theater_settings [hidden]{display:none!important}
 #rabbit_mirror_theater_settings .rh-ui-window{width:min(690px,100%);max-width:100%;min-width:0;height:100%;max-height:820px;display:flex;flex-direction:column;min-height:0;overflow:hidden;border:1px solid var(--rh-border);border-radius:22px;background:var(--rh-bg);box-shadow:0 22px 60px #15243822;box-sizing:border-box;}
@@ -57,6 +57,8 @@
 #rabbit_mirror_theater_settings .rh-ui-choice small{font-size:12px;font-weight:400;color:var(--rh-muted);margin-top:7px;line-height:1.75;}
 #rabbit_mirror_theater_settings .rh-ui-choice em{border-top:1px solid var(--rh-border);margin-top:12px;padding-top:9px;color:var(--rh-muted);font-size:11px;font-style:normal;}
 #rabbit_mirror_theater_settings .rh-ui-display-options{display:flex;flex-direction:column;gap:12px;}
+#rabbit_mirror_theater_settings .rh-ui-group-title{font-size:13px;font-weight:700;color:var(--rh-muted);margin:18px 2px 8px;letter-spacing:.02em;}
+#rabbit_mirror_theater_settings .rh-ui-page-body>.rh-ui-group-title:first-child{margin-top:4px;}
 #rabbit_mirror_theater_settings .rh-ui-note{font-size:12px;color:var(--rh-muted);margin:4px 0;line-height:1.8;}
 #rabbit_mirror_theater_settings #rh_missing_shell_panel{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid var(--rh-border);border-radius:16px;background:var(--rh-card);}
 #rabbit_mirror_theater_settings #rh_missing_shell_panel>strong{font-size:13px;font-weight:700;}
@@ -108,10 +110,9 @@
 @media(max-width:480px){#rabbit_mirror_theater_settings .rh-ui-main{padding:17px 16px 22px;}#rabbit_mirror_theater_settings .rh-ui-head{padding:13px 16px;}#rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{grid-template-columns:1fr;}#rabbit_mirror_theater_settings .rh-ui-page-body .flex-container{max-width:100%;}}
 
 #rabbit_mirror_theater_settings[data-rh-workbench="ui3"]::backdrop{background:transparent;}
- 
+
 @media(max-height:420px){#rabbit_mirror_theater_settings .rh-ui-head{padding:4px 12px;}#rabbit_mirror_theater_settings .rh-ui-logo{width:32px;height:32px;}#rabbit_mirror_theater_settings .rh-ui-head small{display:none;}#rabbit_mirror_theater_settings .rh-ui-searchbar{padding:5px 12px;}#rabbit_mirror_theater_settings .rh-ui-tabs{padding:0 12px 5px;}}
 
- 
 #rabbit_mirror_theater_settings#rabbit_mirror_theater_settings :is(select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]):not([type=reset])),[data-rh-theme][data-rh-theme]:not([data-rh-theme="host"]):not(#rabbit_mirror_theater_settings) :is(select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]):not([type=reset])){color:var(--rh-text)!important;-webkit-text-fill-color:var(--rh-text)!important;caret-color:var(--rh-text)!important;text-shadow:none!important;}
 #rabbit_mirror_theater_settings#rabbit_mirror_theater_settings select,[data-rh-theme][data-rh-theme]:not([data-rh-theme="host"]):not(#rabbit_mirror_theater_settings) select{background-color:var(--rh-field,var(--rh-card))!important;border:1px solid var(--rh-border)!important;opacity:1;}
 #rabbit_mirror_theater_settings#rabbit_mirror_theater_settings :is(option,optgroup),[data-rh-theme][data-rh-theme]:not([data-rh-theme="host"]):not(#rabbit_mirror_theater_settings) :is(option,optgroup){color:var(--rh-text)!important;-webkit-text-fill-color:var(--rh-text)!important;background-color:var(--rh-field,var(--rh-card))!important;}
