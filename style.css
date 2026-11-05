@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.22.17');
+@import url('./settings-ui.css?rmv=2.22.18');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2709,4 +2709,122 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-sw
 #chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details > summary[data-rm-title-chrome="true"][data-rm-title-chrome="true"] > span[data-rm-title-label] *,
 #chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details > summary[data-rm-title-chrome="true"][data-rm-title-chrome="true"] > span[data-rm-title-label] span[data-rabbit-mirror-title-part]::before{
   font-weight:700 !important;
+}
+
+section[data-rm-tool-menu]{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:6px !important;
+  align-content:start !important;
+  padding:12px !important;
+}
+section[data-rm-tool-menu] > [data-rm-tool-menu-title]{
+  grid-row:1 !important;
+  grid-column:1 !important;
+  align-self:center !important;
+  margin:0 0 0 2px !important;
+  font-size:14px !important;
+  font-weight:700 !important;
+  letter-spacing:.04em !important;
+}
+section[data-rm-tool-menu] > button[data-rm-tool-choice="close"]{
+  grid-row:1 !important;
+  grid-column:2 !important;
+  justify-self:end !important;
+  align-self:center !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:32px !important;
+  height:32px !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  background:color-mix(in srgb,currentColor 8%,transparent) !important;
+  color:inherit !important;
+  font:15px/1 sans-serif !important;
+  opacity:.75 !important;
+  cursor:pointer !important;
+}
+section[data-rm-tool-menu] > [data-rm-tool-group]{
+  grid-column:1 / -1 !important;
+  margin:8px 2px 0 !important;
+  font-size:11.5px !important;
+  font-weight:600 !important;
+  letter-spacing:.08em !important;
+  opacity:.6 !important;
+}
+section[data-rm-tool-menu] > button[data-rm-tool-choice]:not([data-rm-tool-choice="close"]){
+  display:flex !important;
+  align-items:center !important;
+  gap:8px !important;
+  width:100% !important;
+  min-width:0 !important;
+  min-height:44px !important;
+  margin:0 !important;
+  padding:8px 10px !important;
+  box-sizing:border-box !important;
+  border:1px solid color-mix(in srgb,currentColor 14%,transparent) !important;
+  border-radius:12px !important;
+  background:color-mix(in srgb,currentColor 6%,transparent) !important;
+  color:inherit !important;
+  font:inherit !important;
+  font-size:13.5px !important;
+  line-height:1.3 !important;
+  text-align:left !important;
+  white-space:normal !important;
+  cursor:pointer !important;
+  -webkit-tap-highlight-color:transparent !important;
+  transition:background-color .15s ease, transform .1s ease !important;
+}
+section[data-rm-tool-menu] > button[data-rm-tool-choice]:not([data-rm-tool-choice="close"]):active{
+  transform:scale(.97) !important;
+  background:color-mix(in srgb,currentColor 12%,transparent) !important;
+}
+@media (hover:hover) and (pointer:fine){
+  section[data-rm-tool-menu] > button[data-rm-tool-choice]:not([data-rm-tool-choice="close"]):hover{ background:color-mix(in srgb,currentColor 11%,transparent) !important; }
+}
+section[data-rm-tool-menu] > button[data-rm-tool-choice] > [data-rm-tool-icon]{
+  flex:none !important;
+  font-size:17px !important;
+  line-height:1 !important;
+}
+section[data-rm-tool-menu] > button[data-rm-tool-choice] > [data-rm-tool-text]{
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  overflow-wrap:anywhere !important;
+}
+section[data-rm-tool-menu] > button[data-rm-tool-choice][data-rm-tool-tone="danger"]{
+  color:color-mix(in srgb,#d64541 78%,currentColor) !important;
+  border-color:color-mix(in srgb,#d64541 30%,transparent) !important;
+}
+section[data-rm-tool-menu] > [data-rm-update-host]{
+  grid-column:1 / -1 !important;
+  margin:6px 0 0 !important;
+  padding:6px 0 0 !important;
+  border-top:1px solid color-mix(in srgb,currentColor 12%,transparent) !important;
+}
+section[data-rm-tool-menu] > [data-rm-update-host] > button[data-rm-update-check]{
+  display:block !important;
+  width:100% !important;
+  min-height:34px !important;
+  margin:0 !important;
+  padding:6px 10px !important;
+  border:0 !important;
+  border-radius:10px !important;
+  background:transparent !important;
+  color:inherit !important;
+  font:inherit !important;
+  font-size:12.5px !important;
+  text-align:center !important;
+  opacity:.75 !important;
+  cursor:pointer !important;
+}
+section[data-rm-tool-menu] > [data-rm-update-host] > button[data-rm-update-check][data-rm-update-mode="update"]{
+  opacity:1 !important;
+  font-weight:700 !important;
+  color:var(--SmartThemeQuoteColor,#c47a3a) !important;
+  background:color-mix(in srgb,var(--SmartThemeQuoteColor,#c47a3a) 12%,transparent) !important;
 }
