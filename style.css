@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.22.28');
+@import url('./settings-ui.css?rmv=2.22.29');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1851,6 +1851,8 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"][data-rm-external-raised="true"]{ position:relative !important; z-index:60 !important; }
 
 #chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-face-flush="true"]{ margin-left:0 !important; margin-right:0 !important; }
+
+#chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"] > [data-rm-face-flush="pad"]{ padding-left:0 !important; padding-right:0 !important; }
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder):not([data-rm-frame-probe]){
   background:transparent !important;
   border:0 !important;
@@ -2701,6 +2703,7 @@ details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-sw
 #chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="radius"]{ border-radius:var(--rm-face-frame-radius); }
 #chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details[data-rm-face-frame="true"] > [data-rm-face-frame-body~="shadow"]{ box-shadow:var(--rm-face-frame-shadow); }
 #chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details > [data-rm-face-flush="true"]{ margin-left:0 !important; margin-right:0 !important; }
+#chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details > [data-rm-face-flush="pad"]{ padding-left:0 !important; padding-right:0 !important; }
 
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder) > summary[data-rm-title-chrome="true"][data-rm-title-chrome="true"] > span[data-rm-title-label],
 #chat .rabbit-mirror-external-shell[data-rm-source][data-rm-placement="external"] > details[data-rabbit-mirror-external-details="true"]:not(.rabbit-mirror-external-placeholder) > summary[data-rm-title-chrome="true"][data-rm-title-chrome="true"] > span[data-rm-title-label] *,
