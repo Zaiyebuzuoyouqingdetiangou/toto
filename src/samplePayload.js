@@ -88,7 +88,7 @@ export function bareModelName(value) {
 
 /**
  * 从一次失败的生成里拿回执要的那几项：只取错误类别、模型型号、开关和数字。
- * 提示词、聊天正文、模型回复、上游报错原文、连接地址和 key 都不碰。编号由调用方按 receiptSignature 算。
+ * 提示词、聊天正文、模型回复、连接地址和 key 都不碰；上游报错只留状态码、类别和英文那一截（2.22.6）。编号由调用方按 receiptSignature 算。
  */
 export function failureReceiptFields(record) {
     const outcome = record?.outcome || {};
@@ -119,6 +119,10 @@ export function failureReceiptFields(record) {
                 frameError: !!String(shape.error || '').trim(), lastFrameKeys: ascii(shape.keys, 200) } : {}),
         },
         ms: count(record?.timing?.totalMs ?? (Date.parse(record?.finishedAt) - Date.parse(record?.startedAt))),
+        // 2.22.6 宿主、上游报错的提示：状态码、哪一类、报错里英文的那一截（地址、key 已去掉，中文不留）
+        ...(count(outcome.errorStatus) !== null ? { errorStatus: count(outcome.errorStatus) } : {}),
+        ...(outcome.errorKind ? { errorKind: ascii(outcome.errorKind, 24) } : {}),
+        ...(outcome.errorText ? { errorText: ascii(outcome.errorText, 120) } : {}),
     };
 }
 /** 同一种失败认成同一张回执用的签名（错误、模型、版本、结束原因、帧的样子）。 */
@@ -127,7 +131,7 @@ export function receiptSignature(receipt) {
 }
 
 /** 一张回执要发的内容：只挑下面这些字段，字都只留英文、数字和符号。 */
-const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'transport', 'ms', 'hits', 'at', 'firstAt'];
+const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt'];
 const TRANSPORT_KEYS = ['status', 'contentType', 'parserFormat', 'receivedBytes', 'contentChars', 'finishReason', 'termination', 'failureCategory', 'endedNormally', 'prematureClose', 'frames', 'frameFinish', 'reasoningOnly', 'frameError', 'lastFrameKeys'];
 function onlyPlain(value) {
     if (typeof value === 'string') return ascii(value, 200);
