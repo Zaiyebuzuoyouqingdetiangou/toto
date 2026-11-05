@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.22.22');
+@import url('./settings-ui.css?rmv=2.22.23');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2728,7 +2728,7 @@ section[data-rm-tool-menu] > [data-rm-tool-menu-art]{
   z-index:-1 !important;
   margin:0 !important;
   padding:0 !important;
-  opacity:.32 !important;
+  opacity:.13 !important;
   pointer-events:none !important;
   border-radius:0 0 16px 16px !important;
   overflow:hidden !important;
