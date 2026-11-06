@@ -5,6 +5,7 @@
 // 发的只有两种：
 //   1. 待修样本：一面兔子镜的「写法骨架」。文字全换成了占位「字」「字×12」，图片和链接地址换成「…」，
 //      只留标签、类名、样式。另外带维修兔自己写的一句结论（里面提到的按钮名也换成了「字×N」）。
+//      用户在维修兔菜单里点「发给作者」、自己写了备注的，备注原样带上（2.25.0，最多 500 字；不写就没有这一项）。
 //   2. 失败回执：副 API 没生成出来时的错误类别、模型型号和几个数字。没有任何一段文字。
 // 这里只挑认得的字段，别的一概不带；骨架里只要还有占位以外的汉字，这一份就不发。
 // 本文件不引用别的文件：要拼什么、挑哪些字段，全在下面。
@@ -60,6 +61,8 @@ export function samplePayload(entry, { resanitize = null, sentVersion = '' } = {
         dialect,
         hits: Number(entry?.hits) || 1, at: Number(entry?.at) || Date.now(),
         source: clean(entry?.source), rendered: clean(entry?.rendered),
+        // 2.25.0 用户自己写的备注（只有手动「发给作者」时写了才有）：原样带上，不打码
+        ...(entry?.note ? { note: String(entry.note).trim().slice(0, 500) } : {}),
         // version 是记下这份样本时的版本；sentVersion 是发出去时正在用的版本。
         sentVersion: String(sentVersion || ''),
     };
