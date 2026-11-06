@@ -129,17 +129,28 @@
 #rabbit_mirror_theater_settings .rh-game-slider input[type="range"]::-moz-range-track{height:var(--rh-track);border-radius:999px;border:1px solid rgba(255,255,255,.6);box-shadow:inset 0 1px 3px rgba(0,0,0,.2);background:var(--rh-gloss),var(--rh-rest-bg);}
 #rabbit_mirror_theater_settings .rh-game-slider input[type="range"]::-moz-range-progress{height:var(--rh-track);border-radius:999px;background:var(--rh-gloss),var(--rh-fill-bg);}
 #rabbit_mirror_theater_settings .rh-game-slider input[type="range"]::-moz-range-thumb{width:var(--rh-thumb);height:var(--rh-thumb);box-sizing:border-box;border:2px solid #fff;border-radius:50%;background:var(--rh-thumb-bg);box-shadow:var(--rh-thumb-glow);}
-#rabbit_mirror_theater_settings .rh-game-slider::before,#rabbit_mirror_theater_settings .rh-game-slider::after{content:"";position:absolute;z-index:2;top:calc((30px - var(--rh-track)) / 2 + 1px);height:calc(var(--rh-track) - 2px);border-radius:999px;pointer-events:none;}
+
+#rabbit_mirror_theater_settings .rh-game-fx{position:absolute;z-index:2;top:calc((30px - var(--rh-track)) / 2 + 1px);height:calc(var(--rh-track) - 2px);border-radius:999px;overflow:hidden;pointer-events:none;}
+#rabbit_mirror_theater_settings .rh-game-fx--fill{left:1px;width:max(0px,calc((100% - var(--rh-thumb)) * var(--rh-v) / 100));}
+#rabbit_mirror_theater_settings .rh-game-fx--rest{left:calc((100% - var(--rh-thumb)) * var(--rh-v) / 100 + var(--rh-thumb));right:1px;}
+#rabbit_mirror_theater_settings .rh-game-fx i{position:absolute;top:0;bottom:0;left:0;display:block;will-change:opacity;}
+#rabbit_mirror_theater_settings .rh-game-fx .rh-game-shine{will-change:transform;}
+#rabbit_mirror_theater_settings .rh-game-sparkle-a{width:100%;background-image:radial-gradient(circle at 8px 4px,#fff 0 1.3px,transparent 2px),radial-gradient(circle at 23px 9px,#ffe8f3 0 1px,transparent 1.7px),radial-gradient(circle at 37px 3px,#fff 0 .9px,transparent 1.5px);background-size:48px 100%;animation:rh-blink 1.2s linear infinite;}
+#rabbit_mirror_theater_settings .rh-game-sparkle-b{width:100%;background-image:radial-gradient(circle at 15px 7px,#fff 0 1.1px,transparent 1.8px),radial-gradient(circle at 30px 3px,#ffd6ea 0 .9px,transparent 1.5px);background-size:36px 100%;animation:rh-blink 1.2s linear -.6s infinite;}
+#rabbit_mirror_theater_settings .rh-game-shine{width:100%;background:linear-gradient(100deg,transparent 38%,rgba(255,255,255,.8) 50%,transparent 62%);transform:translateX(-100%);animation:rh-sweep 7s linear infinite;}
+#rabbit_mirror_theater_settings .rh-game-slider--story .rh-game-shine{background:linear-gradient(100deg,transparent 38%,rgba(255,255,255,.75) 50%,transparent 62%);}
+#rabbit_mirror_theater_settings .rh-game-stars-a{width:100%;background-image:radial-gradient(circle at 6px 3px,#fff 0 1.1px,transparent 1.8px);background-size:29px 100%;animation:rh-blink 1.8s linear infinite;}
+#rabbit_mirror_theater_settings .rh-game-stars-b{width:100%;background-image:radial-gradient(circle at 11px 8px,#d9d2ff 0 .9px,transparent 1.5px),radial-gradient(circle at 20px 4px,#fff 0 .8px,transparent 1.4px);background-size:23px 100%;animation:rh-blink 1.8s linear -.9s infinite;}
 
 #rabbit_mirror_theater_settings .rh-game-slider--heat{--rh-fill-bg:linear-gradient(90deg,#ffb8d6,#ff72b0 55%,#ff3d8e);--rh-rest-bg:linear-gradient(90deg,#d9f2fb,#c3e8f6);--rh-gloss:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,0) 58%);--rh-thumb-bg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff3d8e' d='M12 21s-7.2-4.5-9.4-8.8C.9 8.9 2.7 5.2 6.3 4.9c2-.2 3.7.9 4.7 2.5 1-1.6 2.7-2.7 4.7-2.5 3.6.3 5.4 4 3.7 7.3C19.2 16.5 12 21 12 21z'/%3E%3C/svg%3E") center/15px no-repeat,radial-gradient(circle at 35% 30%,#fff,#ffe3ef 72%);--rh-thumb-glow:0 0 0 3px rgba(255,95,162,.28),0 2px 6px rgba(214,40,110,.45),0 0 14px 2px rgba(255,105,170,.75);}
-#rabbit_mirror_theater_settings .rh-game-slider--heat::before{left:1px;width:max(0px,calc((100% - var(--rh-thumb)) * var(--rh-v) / 100));background-image:radial-gradient(circle,#fff 0 1.3px,transparent 2px),radial-gradient(circle,#ffe8f3 0 1px,transparent 1.7px),radial-gradient(circle,#fff 0 .9px,transparent 1.5px);background-size:34px 12px,22px 12px,47px 12px;background-position:4px 2px,13px 7px,27px 0;animation:rh-sparkle-drift 4.5s linear infinite,rh-sparkle-twinkle 1.2s ease-in-out infinite alternate;}
-#rabbit_mirror_theater_settings .rh-game-slider--heat::after{left:1px;width:max(0px,calc((100% - var(--rh-thumb)) * var(--rh-v) / 100));background:linear-gradient(100deg,transparent,rgba(255,255,255,.8),transparent) -70px 0/60px 100% no-repeat;animation:rh-shine 2.6s ease-in-out infinite;}
-#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max]{filter:drop-shadow(0 0 6px rgba(255,90,160,.7));}
-#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max]::before{animation-duration:3s,.7s;}
+
+#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max] .rh-game-fx--fill{overflow:visible;}
+#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max] input[type="range"]::-webkit-slider-runnable-track{box-shadow:inset 0 1px 3px rgba(0,0,0,.2),0 0 10px 2px rgba(255,90,160,.55);}
+#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max] input[type="range"]::-moz-range-track{box-shadow:inset 0 1px 3px rgba(0,0,0,.2),0 0 10px 2px rgba(255,90,160,.55);}
+#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max] .rh-game-sparkle-a{animation-duration:.7s;}
+#rabbit_mirror_theater_settings .rh-game-slider--heat[data-rh-max] .rh-game-sparkle-b{animation-duration:.7s;animation-delay:-.35s;}
 
 #rabbit_mirror_theater_settings .rh-game-slider--story{--rh-v:70;--rh-fill-bg:linear-gradient(90deg,#ffe49e,#ffc65c 60%,#ffa63d);--rh-rest-bg:linear-gradient(90deg,#7a6af0,#3d2f94);--rh-gloss:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 58%);--rh-thumb-bg:radial-gradient(circle at 35% 30%,#fffdf2,#ffd978 55%,#f2a93b);--rh-thumb-glow:0 0 0 3px rgba(255,190,80,.3),0 2px 6px rgba(120,80,20,.4),0 0 12px 2px rgba(255,200,90,.7);}
-#rabbit_mirror_theater_settings .rh-game-slider--story::before{left:1px;width:max(0px,calc((100% - var(--rh-thumb)) * var(--rh-v) / 100));background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent) -70px 0/60px 100% no-repeat;animation:rh-shine 3.4s ease-in-out infinite;}
-#rabbit_mirror_theater_settings .rh-game-slider--story::after{left:calc((100% - var(--rh-thumb)) * var(--rh-v) / 100 + var(--rh-thumb));right:1px;background-image:radial-gradient(circle,#fff 0 1.1px,transparent 1.8px),radial-gradient(circle,#d9d2ff 0 .9px,transparent 1.5px);background-size:29px 12px,17px 12px;background-position:6px 2px,11px 7px;animation:rh-sparkle-twinkle 1.8s ease-in-out infinite alternate;}
 #rabbit_mirror_theater_settings .rh-game-ends{display:flex;justify-content:space-between;margin-top:2px;font-size:12px;font-weight:600;}
 #rabbit_mirror_theater_settings .rh-game-end--clean{color:#3a9cc4;}
 #rabbit_mirror_theater_settings .rh-game-end--heat{color:#ff4f97;text-shadow:0 0 6px rgba(255,95,162,.45);}
@@ -148,7 +159,8 @@
 #rabbit_mirror_theater_settings .rh-game-value{font-weight:700;}
 #rabbit_mirror_theater_settings .rh-game-value--heat{color:#ff3d8e;}
 #rabbit_mirror_theater_settings .rh-game-value--story{color:#d98a1c;}
-@keyframes rh-sparkle-drift{to{background-position:38px 2px,35px 7px,74px 0;}}
-@keyframes rh-sparkle-twinkle{from{opacity:.35;}to{opacity:1;}}
-@keyframes rh-shine{0%{background-position:-70px 0;}70%,100%{background-position:760px 0;}}
-@media (prefers-reduced-motion:reduce){#rabbit_mirror_theater_settings .rh-game-slider::before,#rabbit_mirror_theater_settings .rh-game-slider::after{animation:none!important;}}
+
+@keyframes rh-blink{0%{opacity:.25;animation-timing-function:steps(1,end);}50%{opacity:1;animation-timing-function:steps(1,end);}100%{opacity:.25;}}
+
+@keyframes rh-sweep{0%{transform:translateX(-100%);animation-timing-function:ease-in-out;}10%{transform:translateX(100%);animation-timing-function:steps(1,end);}100%{transform:translateX(100%);}}
+@media (prefers-reduced-motion:reduce){#rabbit_mirror_theater_settings .rh-game-fx i{animation:none!important;}}
