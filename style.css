@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.25.2');
+@import url('./settings-ui.css?rmv=2.26.0');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1106,6 +1106,16 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 }
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
   opacity:.76 !important;
+}
+
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-serial-preview] > .rabbit-mirror-resay-status{
+  position:static !important;
+  transform:none !important;
+  display:block !important;
+  margin:8px auto 2px !important;
+}
+#chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-serial-preview][data-rm-pending="true"] > details[data-rabbit-mirror-external-details="true"]{
+  opacity:1 !important;
 }
 
 #chat .rabbit-mirror-external-shell > .rabbit-mirror-generation-progress,
