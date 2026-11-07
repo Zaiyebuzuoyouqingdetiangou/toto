@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.27.0');
+@import url('./settings-ui.css?rmv=2.27.1');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1759,6 +1759,12 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rm-ts-panel .rm-ts-panel-rows dd.rm-ts-panel-empty{font-weight:400;opacity:.55;}
 .rm-ts-panel .rm-ts-panel-source,.rm-ts-panel .rm-ts-panel-note{margin:6px 0;font-size:12px;opacity:.75;}
 .rm-ts-panel .rm-ts-panel-form{display:grid;gap:10px;}
+.rm-ts-panel .rm-ts-panel-grid{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center;}
+.rm-ts-panel .rm-ts-panel-grid .rm-ts-panel-label{margin:0;white-space:nowrap;}
+.rm-ts-panel .rm-ts-panel-auto{font-size:12px;opacity:.75;overflow-wrap:anywhere;}
+.rm-ts-panel .rm-ts-panel-auto.rm-ts-panel-empty{opacity:.5;}
+.rm-ts-panel .rm-ts-panel-auto .rm-ts-panel-hint{display:inline;margin:0;}
+.rm-ts-panel .rm-ts-panel-link{display:inline;min-height:0;margin:0 0 0 2px;padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;opacity:1;}
 .rm-ts-panel .rm-ts-panel-label{font-size:12px;opacity:.75;margin-bottom:4px;}
 .rm-ts-panel .rm-ts-panel-hint{font-size:11px;opacity:.6;margin-top:3px;}
 .rm-ts-panel .rm-ts-panel-input{width:100%;box-sizing:border-box;min-height:36px;margin:0;}
