@@ -164,3 +164,12 @@
 
 @keyframes rh-sweep{0%{transform:translateX(-100%);animation-timing-function:ease-in-out;}10%{transform:translateX(100%);animation-timing-function:steps(1,end);}100%{transform:translateX(100%);}}
 @media (prefers-reduced-motion:reduce){#rabbit_mirror_theater_settings .rh-game-fx i{animation:none!important;}}
+
+.rabbit-mirror-settings .rh-heat-manners { margin-top: 10px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.rabbit-mirror-settings .rh-heat-manners-head { font-size: 12px; opacity: .75; margin: 0 0 4px; }
+.rabbit-mirror-settings .rh-heat-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rabbit-mirror-settings .rh-heat-chips label { display: block; position: relative; margin: 0; cursor: pointer; }
+.rabbit-mirror-settings .rh-heat-chips input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.rabbit-mirror-settings .rh-heat-chips span { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 6px; border-radius: 10px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); font-size: 13px; text-align: center; box-sizing: border-box; }
+.rabbit-mirror-settings .rh-heat-chips input:checked + span { background: color-mix(in srgb, #d0668f 22%, transparent); border-color: #d0668f; font-weight: 600; }
+.rabbit-mirror-settings .rh-heat-chips input:focus-visible + span { outline: 2px solid #d0668f; outline-offset: 2px; }
