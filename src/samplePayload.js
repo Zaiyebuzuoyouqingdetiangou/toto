@@ -95,7 +95,7 @@ export function bareModelName(value) {
  */
 export function failureReceiptFields(record) {
     const outcome = record?.outcome || {};
-    const transport = record?.response?.transport || {};
+    const transport = record?.response?.transport || record?.outcome?.transport || {};
     const settings = record?.context?.settings || {};
     const body = record?.request?.body || {};
     const shape = transport.streamShape && typeof transport.streamShape === 'object' ? transport.streamShape : null;
