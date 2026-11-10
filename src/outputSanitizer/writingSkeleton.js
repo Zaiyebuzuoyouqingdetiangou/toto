@@ -5,9 +5,10 @@
 // 留下的：标签、id、class、data-rm-* 这些写法标识、style 里的样式、<style> 里的规则。
 const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description', 'aria-roledescription', 'placeholder', 'srcset', 'poster', 'srcdoc']);
 // data-rm-self（2.3.0 模型自拟的形式和角度）也是模型写的字，可能带人名：一样换成占位。
+// data-rm-hatch（2.32.0 模型另想的题材和形式名）同样。
 // 复查（2.5.2）：面上盖的抽签记录 data-rm-face-recipe（开了每面抽签规则时里面有聊天文件名）、归属标记 data-rm-owner-*、
 // 标题标签 data-rm-title-label 也整个只留长度。
-const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self(?:-think)?$|data-rm-face-recipe$|data-rm-owner-|data-rm-title-label$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
+const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self(?:-think)?$|data-rm-hatch$|data-rm-face-recipe$|data-rm-owner-|data-rm-title-label$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
 // 插件自己挂在镜面里的工具（维修兔、反馈猫、工具栏、诊断面板）不是写法的一部分，骨架里去掉。
 const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
