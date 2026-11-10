@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.31.10');
+@import url('./settings-ui.css?rmv=2.31.11');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1812,6 +1812,10 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   .rabbit-mirror-health-dialog.rm-ts-panel{height:auto;align-self:center;}
   .rabbit-mirror-health-body .rm-health-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
   .rabbit-mirror-health-body .rm-health-bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 2em;}
+}
+
+[data-rm-reserve-trim="true"]{
+  min-height:var(--rm-reserve-trim) !important;
 }
 
 #chat .rabbit-mirror-external-shell[data-rm-source="independent"][data-rm-awaiting-fresh-source="true"] > details[data-rabbit-mirror-external-details="true"]{
