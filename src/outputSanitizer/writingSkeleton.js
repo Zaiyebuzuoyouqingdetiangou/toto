@@ -44,8 +44,18 @@ function scrubUrl(value) {
 // 整个名字换成代号，和元素上同名的类名换出的代号一样，规则照样对得上。
 const CSS_NAME_START = /[-\w\u0080-\uffff\\]/;
 const CSS_NAME_CHAR = /[-\w\u0080-\uffff]/;
+// 2.37.6 样式没写完就断了、后面接上一段报错时，报错的字落在 <style> 里，里面的地址（http://IP:端口/…）、IP、key 以前原样留在骨架里。
+// 样式里不带 url() 的地址、IP、密钥一律换掉（正常的 CSS 里本来就不会有）。
+function scrubCssAddresses(text) {
+    return String(text || '')
+        .replace(/\b([a-z][a-z0-9+.-]*:)\/\/[^\s;{}'"()<>]*/gi, '$1…')
+        .replace(/\b\d{1,3}(?:\.\d{1,3}){3}(?::\d{1,5})?(?:\/[^\s;{}'"()<>]*)?/g, '…')
+        .replace(/\b(?:sk-[A-Za-z0-9_-]{10,}|AIza[A-Za-z0-9_-]{16,})/g, '…')
+        .replace(/Bearer\s+\S+/gi, 'Bearer …')
+        .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '…');
+}
 function scrubCss(text, keys = new Map()) {
-    const source = String(text || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/url\(\s*(['"]?)[^)]*\1\s*\)/gi, 'url()');
+    const source = scrubCssAddresses(String(text || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/url\(\s*(['"]?)[^)]*\1\s*\)/gi, 'url()'));
     let out = '';
     let depth = 0;
     let inValue = false; // 进了声明块、见过冒号、还没到分号
