@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.45.0');
+@import url('./settings-ui.css?rmv=2.45.1');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -209,7 +209,10 @@ toto[data-rabbit-mirror="true"][data-rabbit-mirror] :is(input, textarea, kbd, sa
 }
 
 [data-rm-draw-notes][data-rm-draw-notes],
-:is([data-rm-draw-prompt], [data-rm-draw-tags], [data-rm-draw-char], [data-rm-draw-char-tags]):not([data-rm-draw-frame]) {
+[data-rm-draw-prompt]:not([data-rm-draw-frame]),
+[data-rm-draw-tags]:not([data-rm-draw-frame]),
+[data-rm-draw-char]:not([data-rm-draw-frame]),
+[data-rm-draw-char-tags]:not([data-rm-draw-frame]) {
     display: none !important;
 }
 
@@ -2940,15 +2943,11 @@ section[data-rm-tool-menu] > [data-rm-update-host] > button[data-rm-update-check
   background:color-mix(in srgb,var(--SmartThemeQuoteColor,#c47a3a) 12%,transparent) !important;
 }
 
-.rabbit-mirror-small-art svg.rm-gp-scene,
-.rabbit-mirror-maintenance-art svg.rm-gp-scene,
-.rabbit-mirror-maintenance-art svg.rm-gp-sprite,
 #chat svg.rm-gp-sprite,
-#chat svg.rm-gp-scene,
-.rabbit-mirror-external-shell svg.rm-gp-sprite,
-.rabbit-mirror-external-shell svg.rm-gp-scene{ pointer-events:auto !important; cursor:pointer !important; }
-section[data-rm-tool-menu] svg,
-.rabbit-mirror-external-error-art svg{ cursor:inherit !important; }
+#chat svg.rm-gp-scene{ pointer-events:auto !important; cursor:pointer !important; }
+#chat summary svg.rm-gp-sprite,
+#chat summary svg.rm-gp-scene,
+#chat .rabbit-mirror-external-error-art svg{ cursor:inherit !important; }
 #rabbit-mirror-outfit-gallery{
   position:fixed !important; inset:0 !important; z-index:2147483002 !important;
   display:flex !important; align-items:center !important; justify-content:center !important;
@@ -2980,6 +2979,8 @@ section[data-rm-tool-menu] svg,
   border-radius:12px !important; background:rgba(127,127,127,.08) !important; text-align:center !important;
 }
 #rabbit-mirror-outfit-gallery figure svg{ width:84px !important; height:60px !important; image-rendering:pixelated !important; pointer-events:none !important; }
+
+#rabbit-mirror-outfit-gallery figure svg *{ animation:none !important; transition:none !important; }
 #rabbit-mirror-outfit-gallery figure[data-rm-gallery-unseen] svg{ filter:brightness(0) !important; opacity:.22 !important; }
 #rabbit-mirror-outfit-gallery figcaption{ display:flex !important; flex-direction:column !important; gap:1px !important; margin-top:4px !important; }
 #rabbit-mirror-outfit-gallery figcaption b{ font-size:13px !important; }
