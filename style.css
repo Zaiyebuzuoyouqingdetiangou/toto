@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.43.4');
+@import url('./settings-ui.css?rmv=2.43.5');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -188,6 +188,11 @@ toto[data-rabbit-mirror="true"][data-rabbit-mirror] :is(input, textarea, kbd, sa
 [data-rabbit-mirror-external-source="true"][data-rabbit-mirror-external-source] :is(input, textarea, kbd, samp, br)[hidden],
 .rabbit-mirror-history-preview.rabbit-mirror-history-preview :is(input, textarea, kbd, samp, br)[hidden] {
     display: none;
+}
+
+[data-rm-draw-notes][data-rm-draw-notes],
+:is([data-rm-draw-prompt], [data-rm-draw-tags], [data-rm-draw-char], [data-rm-draw-char-tags]):not([data-rm-draw-frame]) {
+    display: none !important;
 }
 
 .rabbit-mirror-settings button.menu_button,
