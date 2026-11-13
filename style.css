@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.43.5');
+@import url('./settings-ui.css?rmv=2.44.0');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -188,6 +188,24 @@ toto[data-rabbit-mirror="true"][data-rabbit-mirror] :is(input, textarea, kbd, sa
 [data-rabbit-mirror-external-source="true"][data-rabbit-mirror-external-source] :is(input, textarea, kbd, samp, br)[hidden],
 .rabbit-mirror-history-preview.rabbit-mirror-history-preview :is(input, textarea, kbd, samp, br)[hidden] {
     display: none;
+}
+
+#chat [data-rm-inline-face-view="0"]:has(> [data-rm-inline-face-n="0"]) > [data-rm-inline-face-n]:not([data-rm-inline-face-n="0"]),
+#chat [data-rm-inline-face-view="0"]:has(> [data-rm-inline-face-n="0"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="0"]) + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="0"]:has(> [data-rm-inline-face-n="0"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="0"]) + [data-rm-face-swipe-host] + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="1"]:has(> [data-rm-inline-face-n="1"]) > [data-rm-inline-face-n]:not([data-rm-inline-face-n="1"]),
+#chat [data-rm-inline-face-view="1"]:has(> [data-rm-inline-face-n="1"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="1"]) + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="1"]:has(> [data-rm-inline-face-n="1"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="1"]) + [data-rm-face-swipe-host] + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="2"]:has(> [data-rm-inline-face-n="2"]) > [data-rm-inline-face-n]:not([data-rm-inline-face-n="2"]),
+#chat [data-rm-inline-face-view="2"]:has(> [data-rm-inline-face-n="2"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="2"]) + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="2"]:has(> [data-rm-inline-face-n="2"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="2"]) + [data-rm-face-swipe-host] + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="3"]:has(> [data-rm-inline-face-n="3"]) > [data-rm-inline-face-n]:not([data-rm-inline-face-n="3"]),
+#chat [data-rm-inline-face-view="3"]:has(> [data-rm-inline-face-n="3"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="3"]) + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="3"]:has(> [data-rm-inline-face-n="3"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="3"]) + [data-rm-face-swipe-host] + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="4"]:has(> [data-rm-inline-face-n="4"]) > [data-rm-inline-face-n]:not([data-rm-inline-face-n="4"]),
+#chat [data-rm-inline-face-view="4"]:has(> [data-rm-inline-face-n="4"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="4"]) + [data-rm-face-swipe-host],
+#chat [data-rm-inline-face-view="4"]:has(> [data-rm-inline-face-n="4"]) > details[data-rm-inline-face-n]:not([data-rm-inline-face-n="4"]) + [data-rm-face-swipe-host] + [data-rm-face-swipe-host] {
+  display: none !important;
 }
 
 [data-rm-draw-notes][data-rm-draw-notes],
