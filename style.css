@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.46.0');
+@import url('./settings-ui.css?rmv=2.46.1');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3005,13 +3005,33 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 #rabbit-mirror-outfit-gallery [data-rm-gallery-note]{ margin:0 !important; padding:0 14px 6px !important; font-size:12px !important; opacity:.7 !important; }
 #rabbit-mirror-outfit-gallery [data-rm-gallery-body]{ overflow-y:auto !important; -webkit-overflow-scrolling:touch !important; padding:0 12px 14px !important; overscroll-behavior:contain !important; }
 
+#rabbit-mirror-outfit-gallery [data-rm-gallery-kinds]{
+  display:flex !important; align-items:center !important; justify-content:center !important; gap:10px !important; padding:2px 12px 10px !important; flex:0 0 auto !important;
+}
+#rabbit-mirror-outfit-gallery [data-rm-gallery-kind-picker]{
+  -webkit-appearance:none !important; appearance:none !important; box-sizing:border-box !important; min-width:9em !important; height:34px !important; margin:0 !important;
+  padding:0 26px 0 12px !important; border-radius:999px !important; border:1px solid color-mix(in srgb, currentColor 30%, transparent) !important;
+  background-color:color-mix(in srgb, currentColor 8%, transparent) !important; color:inherit !important; font:inherit !important; font-size:14px !important; font-weight:700 !important;
+  text-align:center !important; text-align-last:center !important; cursor:pointer !important; box-shadow:none !important;
+  background-image:linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%) !important;
+  background-position:calc(100% - 15px) 15px, calc(100% - 10px) 15px !important; background-size:5px 5px, 5px 5px !important; background-repeat:no-repeat !important;
+}
+#rabbit-mirror-outfit-gallery [data-rm-gallery-kind]{
+  all:unset !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; width:40px !important; height:34px !important;
+  border-radius:10px !important; font-size:20px !important; font-weight:700 !important; cursor:pointer !important; -webkit-tap-highlight-color:transparent !important;
+  background:color-mix(in srgb, currentColor 8%, transparent) !important;
+}
+#rabbit-mirror-outfit-gallery [data-rm-gallery-kind]:disabled{ opacity:.3 !important; cursor:default !important; }
+#rabbit-mirror-outfit-gallery [data-rm-gallery-body]{ overflow-y:auto !important; -webkit-overflow-scrolling:touch !important; padding:0 12px 14px !important; overscroll-behavior:contain !important; }
+
 #rabbit-mirror-outfit-gallery [data-rm-gallery-tabs]{
-  display:flex !important; gap:6px !important; overflow-x:auto !important; -webkit-overflow-scrolling:touch !important; scrollbar-width:none !important;
+
+  display:flex !important; flex-wrap:wrap !important; gap:6px !important; overflow:visible !important;
   padding:2px 12px 8px !important; flex:0 0 auto !important;
 }
 #rabbit-mirror-outfit-gallery [data-rm-gallery-tabs]::-webkit-scrollbar{ display:none !important; }
 #rabbit-mirror-outfit-gallery [data-rm-gallery-tab]{
-  all:unset !important; flex:0 0 auto !important; box-sizing:border-box !important; padding:6px 11px !important; border-radius:999px !important;
+  all:unset !important; flex:0 0 auto !important; box-sizing:border-box !important; padding:5px 9px !important; border-radius:999px !important;
   border:1px solid color-mix(in srgb, currentColor 22%, transparent) !important; font-size:13px !important; line-height:1.2 !important;
   white-space:nowrap !important; cursor:pointer !important; opacity:.75 !important; -webkit-tap-highlight-color:transparent !important;
 }
