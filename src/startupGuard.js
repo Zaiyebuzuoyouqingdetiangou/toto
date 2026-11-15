@@ -404,10 +404,18 @@ export function reportRabbitMirrorStartupFailure(label, error, { quiet = false, 
         });
     });
 }
+const LISTENER_FRAME_RE = /^\s*at\s+(?:HTML\w*|SVG\w*|Document|Window|Element|Node|EventTarget|XMLHttpRequest|MediaQueryList|MessagePort|Worker)\.\S*\s+\((.+?)\)\s*$/;
+export function errorThrownInForeignListener(stack) {
+    const first = String(stack || '').split('\n').find(line => /^\s*at\s/.test(line));
+    const match = first ? LISTENER_FRAME_RE.exec(first) : null;
+    return !!match && !isOwnUrl(match[1]);
+}
 function onWindowError(event) {
     const error = event?.error;
     const where = `${event?.filename || ''}\n${errorStack(error)}`;
     if (!isOwnUrl(where))
+        return;
+    if (errorThrownInForeignListener(error?.stack))
         return;
     const ownFrame = errorStack(error).split('\n').find(line => isOwnUrl(line)) || (isOwnUrl(event?.filename) ? event.filename : '');
     const ownFile = (/(?:https?|tauri|app|file):\/\/[^\s)]+?\.js/.exec(ownFrame) || [])[0] || '';
@@ -422,10 +430,41 @@ function flushEvalError() {
     pendingEvalError = null;
     if (!pending || evaluated || disposed)
         return;
+    if (reportMixedVersion())
+        return;
     const file = shortPath(pending.file).replace(/\?.*$/, '');
     reportRabbitMirrorStartupFailure(`加载启动文件${file ? `（${file}）` : ''}`, pending.error);
 }
+function runningOtherVersion() {
+    try {
+        const mark = String(document?.documentElement?.getAttribute?.(BOOT_MARK_ATTRIBUTE) || '');
+        return mark && mark !== '1' && RUNTIME_VERSION && mark !== RUNTIME_VERSION ? mark : '';
+    }
+    catch {
+        return '';
+    }
+}
+let mixedReported = false;
+function reportMixedVersion() {
+    const other = runningOtherVersion();
+    if (!other || mixedReported || disposed)
+        return !!other;
+    mixedReported = true;
+    console.warn(`[RabbitMirror] 启动自检：入口是 ${RUNTIME_VERSION}，跑起来的是 ${other}（文件新旧混在一起）`);
+    steps.push({ label: '文件版本一致', ok: false, error: `入口 ${RUNTIME_VERSION}，跑起来的是 ${other}` });
+    showNotice({
+        title: '兔子镜的文件新旧混在一起',
+        lines: [
+            `兔子镜已经更新到 ${RUNTIME_VERSION}，但这次跑起来的还是旧的 ${other}：用的是以前缓存下来的文件。`,
+            '先强制刷新网页（电脑上按 Ctrl+Shift+R；手机上清一下浏览器或 App 的缓存再打开）。还是这样，可能是酒馆前面的代理、加速服务缓存了旧文件，要在那边清缓存。',
+        ],
+        actions: [copyAction(`入口版本 ${RUNTIME_VERSION}，实际运行 ${other}`), closeAction],
+    });
+    return true;
+}
 function removeEvalListeners() {
+    if (!evaluated)
+        reportMixedVersion();
     try {
         globalThis.removeEventListener?.('error', onWindowError);
     }
