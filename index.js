@@ -1,2 +1,2 @@
-import './src/startupGuard.js?rmv=2.49.3';
-export * from './rm-main.js?rmv=2.49.3';
+import './src/startupGuard.js?rmv=2.49.4';
+export * from './rm-main.js?rmv=2.49.4';
