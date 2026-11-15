@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.50.6');
+@import url('./settings-ui.css?rmv=2.50.7');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2987,7 +2987,11 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   display:flex !important; align-items:center !important; justify-content:center !important;
   padding:calc(env(safe-area-inset-top, 0px) + 12px) 10px calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
   background:rgba(0,0,0,.45) !important; box-sizing:border-box !important;
+
+  width:100% !important; height:100% !important; max-width:none !important; max-height:none !important;
+  margin:0 !important; border:0 !important; color:inherit !important; overflow:hidden !important;
 }
+#rabbit-mirror-outfit-gallery::backdrop{ background:transparent !important; }
 #rabbit-mirror-outfit-gallery > [data-rm-gallery-panel]{
   box-sizing:border-box !important; width:min(560px, 100%) !important; max-height:100% !important;
   display:flex !important; flex-direction:column !important; overflow:hidden !important;
