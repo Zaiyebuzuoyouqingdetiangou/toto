@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.50.8');
+@import url('./settings-ui.css?rmv=2.54.2');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1270,6 +1270,9 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-generation-progress svg.rm-gp-sprite{ width:84px !important; height:60px !important; }
 
 .rm-gp-sprite .rm-gp-frame-b{ opacity:0; }
+
+.rm-gp-sprite .rm-gp-window{ opacity:.82; }
+[data-rm-gp-dark="true"] .rm-gp-sprite .rm-gp-window{ opacity:.62; }
 .rm-gp-sprite .rm-gp-bubble,
 .rm-gp-sprite .rm-gp-sparkle{ visibility:hidden; }
 [data-rm-gp-phase="sewing"] .rm-gp-sprite .rm-gp-frame-a{ animation:rm-gp-frame-a .36s steps(1,end) infinite; }
