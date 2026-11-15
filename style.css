@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.48.1');
+@import url('./settings-ui.css?rmv=2.49.4');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2542,6 +2542,8 @@ dialog.rabbit-mirror-top-layer-modal #rh_advanced_menu {
 
 details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"],
 details:has(> :is(.details-collapse-btn,[data-collapse-btn])) + [data-rm-face-swipe-host][data-rm-face-swipe-position="bottom"] + .rabbit-mirror-bottom-collapse[data-rm-face-swipe-position="collapse"]{display:none !important;}
+
+:is(toto, details[data-rabbit-mirror-css-scope], details[data-rabbit-mirror-external-details]) :is(.details-collapse-btn,[data-collapse-btn]){cursor:pointer;}
 .rabbit-mirror-bottom-collapse-arrow{
   width:0 !important; height:0 !important; border-style:solid !important; border-width:0 .4em .55em .4em !important;
   border-color:transparent transparent currentColor transparent !important; display:inline-block !important;

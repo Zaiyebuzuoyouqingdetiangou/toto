@@ -281,10 +281,3 @@ export function skeletonizeRabbitMirrorHtml(input) {
     return scrubLeftoverText(wrapper.innerHTML);
 }
 
-// 一面的写法骨架：{ source, rendered }，两段都已换成占位。
-export function buildWritingSkeleton(rawSource, renderedClone) {
-    return {
-        source: skeletonizeRabbitMirrorHtml(String(rawSource || '')),
-        rendered: renderedClone ? skeletonizeRabbitMirrorHtml(renderedClone) : '',
-    };
-}
