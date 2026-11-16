@@ -206,7 +206,11 @@ function walk(node, keys) {
             const tag = parent?.tagName?.toLowerCase();
             if (tag === 'style') child.nodeValue = scrubCss(child.nodeValue, keys);
             else if (tag === 'script') child.nodeValue = '';
-            else child.nodeValue = placeholderFor(child.nodeValue);
+            else {
+                // 标题后面补的代号（#t1）再过一遍也留着
+                const code = tag === 'summary' ? /\s#t\d+\s*$/.exec(child.nodeValue) : null;
+                child.nodeValue = code ? `${placeholderFor(child.nodeValue.slice(0, code.index))}${code[0]}` : placeholderFor(child.nodeValue);
+            }
             continue;
         }
         if (child.nodeType === 8) { child.remove(); continue; }
@@ -275,7 +279,19 @@ export function skeletonizeRabbitMirrorHtml(input) {
     keys.quotedCss = collectQuotedCss(container);
     keys.counter = 0;
     for (const match of raw.matchAll(/\bk(\d{1,6})\b/g)) keys.counter = Math.max(keys.counter, Number(match[1]));
+    // 2.60.2 每一面的标题打码以后都成了「字字字字字字字字」，多面没生成成功的样本拿回来重放，几面标题一样，
+    // 分不清当时是模型真写了同名的两面，还是打码打成一样的。标题后面补一个代号（同一个标题同一个代号），只看得出同不同。
+    const titles = new Map();
+    const coded = [];
+    for (const summary of container.querySelectorAll?.('details > summary') || []) {
+        if (summary.parentElement.parentElement?.closest?.('details')) continue;
+        const text = String(summary.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!text || /^字+(?:\s*#t\d+)?$/.test(text) || /#t\d+$/.test(text)) continue;
+        if (!titles.has(text)) titles.set(text, `#t${titles.size + 1}`);
+        coded.push([summary, titles.get(text)]);
+    }
     walk(container, keys);
+    for (const [summary, code] of coded) summary.append(summary.ownerDocument.createTextNode(` ${code}`));
     const wrapper = document.createElement('div');
     wrapper.append(container);
     return scrubLeftoverText(wrapper.innerHTML);
