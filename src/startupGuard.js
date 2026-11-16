@@ -352,6 +352,43 @@ const openAction = () => (opener ? {
     },
 } : null);
 const closeAction = { id: 'close', label: '关闭', run: async () => false };
+export function rabbitMirrorSystemTooOld(RegExpCtor = globalThis.RegExp) {
+    try {
+        new RegExpCtor('(?<=a)b');
+        new RegExpCtor('(?<!a)b');
+        return false;
+    }
+    catch {
+        return true;
+    }
+}
+function isAppleMobile(ua, touchPoints) {
+    return /\b(?:iPhone|iPad|iPod)\b/.test(ua) || (/\bMacintosh\b/.test(ua) && touchPoints > 1);
+}
+export function rabbitMirrorSystemTooOldLines(ua = '', touchPoints = 0) {
+    return isAppleMobile(String(ua || ''), Number(touchPoints) || 0)
+        ? ['需要 iOS 16.4 以上。', '请到「设置 → 通用 → 软件更新」把系统升级到 16.4 或更新的版本，再刷新酒馆。', '停在 iOS 15 的旧机器（比如 iPhone 6s、7、初代 SE）升级不了，用不了兔子镜。']
+        : ['这个浏览器太旧了，兔子镜用不了。', '请把浏览器（或酒馆 App）更新到最新版，再刷新酒馆。iPhone、iPad 需要 iOS 16.4 以上。'];
+}
+export const RABBIT_MIRROR_TOO_OLD = 'rabbitMirrorSystemTooOld';
+let tooOldShown = false;
+export function reportRabbitMirrorSystemTooOld({ again = false } = {}) {
+    steps.push({ label: '系统支持', ok: false, error: 'too-old' });
+    console.warn('[RabbitMirror] 启动自检：系统太旧（不支持正则后行断言），不加载兔子镜主体');
+    if (disposed || (tooOldShown && !again))
+        return;
+    tooOldShown = true;
+    let ua = '', touchPoints = 0;
+    try {
+        ua = navigator.userAgent;
+        touchPoints = navigator.maxTouchPoints;
+    }
+    catch { }
+    showNotice({ title: '兔子镜用不了：系统太旧', lines: rabbitMirrorSystemTooOldLines(ua, touchPoints), actions: [copyAction('系统太旧：不支持正则后行断言'), closeAction] });
+}
+export function rabbitMirrorSystemTooOldError() {
+    return Object.assign(new Error('系统太旧，需要 iOS 16.4 以上'), { [RABBIT_MIRROR_TOO_OLD]: true });
+}
 const muteAction = signature => ({ id: 'mute', label: '不再提醒', run: async () => { mute(signature); return false; } });
 export function setRabbitMirrorStartupOpener(fn) { opener = typeof fn === 'function' ? fn : null; }
 export function setRabbitMirrorOpenCommandAvailable(value) { commandAvailable = value === true; }
@@ -376,6 +413,11 @@ export function runRabbitMirrorStartupStep(label, fn) {
 }
 const LOAD_FAILURE_RE = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Failed to load module script|NetworkError when attempting to fetch/i;
 export function reportRabbitMirrorStartupFailure(label, error, { quiet = false, canOpen = evaluated, opening = false } = {}) {
+    if (error?.[RABBIT_MIRROR_TOO_OLD]) {
+        if (!quiet)
+            reportRabbitMirrorSystemTooOld({ again: opening });
+        return;
+    }
     const message = errorText(error);
     const stack = errorStack(error);
     console.warn(`[RabbitMirror] 启动自检：${label} 没成功`, error);
