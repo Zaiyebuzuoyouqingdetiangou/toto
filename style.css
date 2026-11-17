@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.61.4');
+@import url('./settings-ui.css?rmv=2.61.5');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2952,6 +2952,7 @@ section[data-rm-tool-menu] [data-rm-tool-group]{
   opacity:.55 !important;
 }
 
+section[data-rm-tool-menu] [data-rm-tool-sub] + [data-rm-tool-sub]{ margin-top:4px !important; }
 section[data-rm-tool-menu] [data-rm-tool-sub]{
   grid-column:1 / -1 !important;
   display:flex !important;
@@ -2963,6 +2964,8 @@ section[data-rm-tool-menu] [data-rm-tool-sub-label]{
   flex:0 0 26px !important;
   display:flex !important;
   align-items:center !important;
+  align-self:flex-start !important;
+  min-height:32px !important;
   margin:0 0 0 2px !important;
   font-size:11px !important;
   line-height:1.2 !important;
