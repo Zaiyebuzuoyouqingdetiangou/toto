@@ -120,6 +120,9 @@ export function failureReceiptFields(record) {
             // 流里一帧帧的样子：几帧、最后一帧的结束原因和字段名、是不是只有思考、带没带错误（只记有没有，原文不要）
             ...(shape ? { frames: count(shape.frames), frameFinish: ascii(shape.finish, 24), reasoningOnly: shape.reasoning === true,
                 frameError: !!String(shape.error || '').trim(), lastFrameKeys: ascii(shape.keys, 200) } : {}),
+            // 2.55.5 收字时间线（毫秒，从连上算）：第一个字、最后一个字、分几次收到、收字期间在后台待了多久
+            ...(transport.timing && typeof transport.timing === 'object' ? { firstTextMs: transport.timing.firstTextMs == null ? null : count(transport.timing.firstTextMs), lastTextMs: transport.timing.lastTextMs == null ? null : count(transport.timing.lastTextMs),
+                textReads: count(transport.timing.textReads), hiddenMs: count(transport.timing.hiddenMs) } : {}),
         },
         ms: count(record?.timing?.totalMs ?? (Date.parse(record?.finishedAt) - Date.parse(record?.startedAt))),
         // 2.22.6 宿主、上游报错的提示：状态码、哪一类、报错里英文的那一截（地址、key 已去掉，中文不留）
@@ -135,7 +138,7 @@ export function receiptSignature(receipt) {
 
 /** 一张回执要发的内容：只挑下面这些字段，字都只留英文、数字和符号。 */
 const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt'];
-const TRANSPORT_KEYS = ['status', 'contentType', 'parserFormat', 'receivedBytes', 'contentChars', 'finishReason', 'termination', 'failureCategory', 'endedNormally', 'prematureClose', 'frames', 'frameFinish', 'reasoningOnly', 'frameError', 'lastFrameKeys'];
+const TRANSPORT_KEYS = ['status', 'contentType', 'parserFormat', 'receivedBytes', 'contentChars', 'finishReason', 'termination', 'failureCategory', 'endedNormally', 'prematureClose', 'frames', 'frameFinish', 'reasoningOnly', 'frameError', 'lastFrameKeys', 'firstTextMs', 'lastTextMs', 'textReads', 'hiddenMs'];
 function onlyPlain(value) {
     if (typeof value === 'string') return ascii(value, 200);
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;

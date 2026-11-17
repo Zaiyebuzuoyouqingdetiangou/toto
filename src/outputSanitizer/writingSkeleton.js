@@ -21,12 +21,27 @@ export function maskFaceText(value) {
     return `字×${text.length}`;
 }
 
+// 一段字换成占位：八个字以内写成那么多个「字」，再长的写成「字×N」。
+// 2.61.0 以前长的也只留八个「字」：样本拿回来重放，每段字都只有八个那么长，「字太长装不下、显示不全、被框切掉」这一类
+// 怎么都重现不出来。现在记下原来有多长（N 是「占多宽」：汉字、全角符号算一个，英文、数字、半角符号算半个），内容照旧一个字不留。
+function textUnits(text) {
+    let units = 0;
+    for (const char of text) units += /[\u2E80-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/u.test(char) ? 1 : 0.5;
+    return Math.max(1, Math.ceil(units));
+}
 function placeholderFor(text) {
     const trimmed = text.replace(/\s+/g, '');
     if (!trimmed) return text;
+    // 已经是占位的不再换（发样本前会按新规则再过一遍，长度不能被改掉）
+    if (/^(?:字×\d+|字+)$/.test(trimmed)) return text;
     const lead = /^\s*/.exec(text)[0];
     const tail = /\s*$/.exec(text)[0];
-    return `${lead}${'字'.repeat(Math.max(1, Math.min(trimmed.length, 8)))}${tail}`;
+    const units = textUnits(trimmed);
+    return `${lead}${units <= 8 ? '字'.repeat(units) : `字×${units}`}${tail}`;
+}
+/** 骨架里的「字×N」换回 N 个「字」（只换夹在标签之间的整段字，属性里的不动）：重放样本时排版才和原来差不多。 */
+export function expandSkeletonText(html, limit = 4000) {
+    return String(html || '').replace(/>(\s*)字×(\d{1,5})(\s*(?:#t\d+\s*)?)</g, (_all, lead, count, tail) => `>${lead}${'字'.repeat(Math.min(Number(count) || 1, limit))}${tail}<`);
 }
 
 function scrubUrl(value) {
@@ -206,7 +221,11 @@ function walk(node, keys) {
             const tag = parent?.tagName?.toLowerCase();
             if (tag === 'style') child.nodeValue = scrubCss(child.nodeValue, keys);
             else if (tag === 'script') child.nodeValue = '';
-            else child.nodeValue = placeholderFor(child.nodeValue);
+            else {
+                // 标题后面补的代号（#t1）再过一遍也留着
+                const code = tag === 'summary' ? /\s#t\d+\s*$/.exec(child.nodeValue) : null;
+                child.nodeValue = code ? `${placeholderFor(child.nodeValue.slice(0, code.index))}${code[0]}` : placeholderFor(child.nodeValue);
+            }
             continue;
         }
         if (child.nodeType === 8) { child.remove(); continue; }
@@ -275,7 +294,19 @@ export function skeletonizeRabbitMirrorHtml(input) {
     keys.quotedCss = collectQuotedCss(container);
     keys.counter = 0;
     for (const match of raw.matchAll(/\bk(\d{1,6})\b/g)) keys.counter = Math.max(keys.counter, Number(match[1]));
+    // 2.60.2 每一面的标题打码以后都成了「字字字字字字字字」，多面没生成成功的样本拿回来重放，几面标题一样，
+    // 分不清当时是模型真写了同名的两面，还是打码打成一样的。标题后面补一个代号（同一个标题同一个代号），只看得出同不同。
+    const titles = new Map();
+    const coded = [];
+    for (const summary of container.querySelectorAll?.('details > summary') || []) {
+        if (summary.parentElement.parentElement?.closest?.('details')) continue;
+        const text = String(summary.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!text || /^(?:字+|字×\d+)(?:\s*#t\d+)?$/.test(text) || /#t\d+$/.test(text)) continue;
+        if (!titles.has(text)) titles.set(text, `#t${titles.size + 1}`);
+        coded.push([summary, titles.get(text)]);
+    }
     walk(container, keys);
+    for (const [summary, code] of coded) summary.append(summary.ownerDocument.createTextNode(` ${code}`));
     const wrapper = document.createElement('div');
     wrapper.append(container);
     return scrubLeftoverText(wrapper.innerHTML);
