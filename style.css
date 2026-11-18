@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.61.10');
+@import url('./settings-ui.css?rmv=2.61.11');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2509,7 +2509,8 @@ dialog.rabbit-mirror-top-layer-modal .menu_button {
 dialog.rabbit-mirror-top-layer-modal#rh_advanced_modal #rh_advanced_modal_card,
 dialog.rabbit-mirror-top-layer-modal#rh_world_info_prompt_modal > div,
 dialog.rabbit-mirror-top-layer-modal#rh_independent_tag_filter_modal > div {
-  background: var(--SmartThemeBlurTintColor, #202226) !important;
+
+  background: var(--rh-bg, var(--SmartThemeBlurTintColor, #202226)) !important;
   color: var(--SmartThemeBodyColor, #ddd) !important;
 }
 dialog.rabbit-mirror-top-layer-modal#rh_advanced_modal #rh_advanced_modal_card {
