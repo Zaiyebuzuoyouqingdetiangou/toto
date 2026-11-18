@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.63.7');
+@import url('./settings-ui.css?rmv=2.63.8');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -788,8 +788,9 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   text-align: left !important;
   cursor: pointer !important;
 }
-.rabbit-mirror-maintenance-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
-.rabbit-mirror-maintenance-grid > button { padding: 7px 6px !important; }
+
+.rabbit-mirror-maintenance-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 6px !important; }
+.rabbit-mirror-maintenance-grid > button { width: auto !important; min-width: 0 !important; padding: 7px 6px !important; }
 .rabbit-mirror-maintenance-row { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }
 .rabbit-mirror-maintenance-row > button { flex: 1 1 auto !important; width: auto !important; min-width: max-content !important; text-align: center !important; padding: 7px 4px !important; white-space: nowrap !important; }
 .rabbit-mirror-maintenance-row > button[data-rm-maintenance-action="more"] { flex: 0 0 40px !important; min-width: 40px !important; }
