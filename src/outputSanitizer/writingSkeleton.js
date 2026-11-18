@@ -113,6 +113,21 @@ const KEY_ATTRS = new Set(['data-rm-show', 'data-rm-pick', 'data-rm-picked', 'da
 const PLAIN_KEY = /^!?[\w.-]{1,24}$/;
 const STRUCTURAL_ATTRS = new Set(['id', 'class', 'for', 'name', 'type', 'min', 'max', 'step', 'open', 'hidden', 'checked', 'disabled', 'role', 'tabindex', 'aria-pressed', 'aria-expanded', 'aria-hidden', 'aria-controls', 'aria-live', 'aria-checked', 'aria-selected', 'lang', 'dir', 'width', 'height', 'viewbox', 'preserveaspectratio', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'fill', 'stroke', 'stroke-width', 'opacity', 'transform', 'colspan', 'rowspan', 'loop', 'autoplay', 'muted', 'controls', 'popover', 'popovertarget', 'inert', 'draggable', 'contenteditable', 'inputmode', 'maxlength', 'readonly', 'required', 'multiple', 'selected', 'start', 'reversed', 'scope', 'headers', 'datetime', 'dirname']);
 
+// 材质纹理描述（data-rm-texture="材料 粗细 方向 形状 浓淡 光泽"）：后面五个词出自固定的词表，不是正文，
+// 换成英文代号留着（看得出模型写的是哪种粗细、形状、光泽）；材料名是模型自己写的词，照旧换成代号。分隔符一律换成空格。
+// 和 materialTexture.js 的 TEXTURE_WORD_ALIASES 一一对应（那边把代号认回来，骨架重放时纹理照原样画），测试锁着。
+export const TEXTURE_WORD_CODES = Object.freeze({
+    细: 'fine', 中: 'mid', 粗: 'coarse',
+    无: 'none', 横: 'horizontal', 竖: 'vertical', 斜: 'diagonal',
+    点: 'dot', 纤维: 'fibre', 绒毛: 'fluff', 条纹: 'stripe', 斑块: 'patch',
+    很淡: 'faint', 淡: 'light', 明显: 'strong',
+    哑光: 'matte', 半光: 'semi', 亮面: 'glossy',
+});
+function maskTexture(value, keys) {
+    return String(value || '').split(/[\s,，、;；/|]+/).filter(Boolean)
+        .map(token => (Object.hasOwn(TEXTURE_WORD_CODES, token) ? TEXTURE_WORD_CODES[token] : maskKeys(token, keys))).join(' ');
+}
+
 // 新代号：从这一面里已经有的 k 几往后数（这一面本来就有叫 k1 的类名、或者是再过一遍的旧骨架时，不会撞上）。
 function nextKeyCode(keys) {
     keys.counter = (keys.counter || 0) + 1;
@@ -179,6 +194,8 @@ function scrubAttribute(element, name, value, keys) {
     if (CONTENT_ATTRS.has(lower) || CONTENT_ATTR_RE.test(lower)) return value ? maskFaceText(value) : value;
     if (/^on[a-z]+$/i.test(lower)) return '';
     if (KEY_ATTRS.has(lower)) return maskKeys(value, keys);
+    // 本面 <style> 里用引号写到这个值时走下面的老办法（元素上和选择器里要换成同一个代号）。
+    if (lower === 'data-rm-texture' && !quotedInFaceCss(keys, value)) return maskTexture(value, keys);
     if (lower === 'value') {
         // 滑杆、单选的 value 是数值或短键，留着；文本框、下拉项的 value 可能是正文，只留长度。
         const tag = element.tagName.toLowerCase();
