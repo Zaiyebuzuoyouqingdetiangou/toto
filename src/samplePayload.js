@@ -89,6 +89,20 @@ export function bareModelName(value) {
         .slice(0, 64);
 }
 
+// 2.63.15 发出去的规则里有没有破限词、这一面定的是🔞还是清水：只认兔子镜自己写的固定说法，记成开关和一个英文词，
+// 规则和正文的字一个都不留（拒写、一个字不写的回执要分清是没带破限词，还是带了也被拦）。
+// 开了「输入转成 Unicode 编码」时，请求里的字是 \uXXXX，先还原再认。
+function requestTextOf(body) {
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
+    const text = messages.map(message => typeof message?.content === 'string' ? message.content
+        : Array.isArray(message?.content) ? message.content.map(part => String(part?.text || '')).join('') : '').join('\n');
+    return text.replace(/\\u([0-9a-fA-F]{4})/g, (whole, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+function requestHeat(text) {
+    const adult = /是🔞/.test(text), clean = /是清水/.test(text);
+    return adult && clean ? 'mixed' : adult ? 'adult' : clean ? 'clean' : '';
+}
+
 /**
  * 从一次失败的生成里拿回执要的那几项：只取错误类别、模型型号、开关和数字。
  * 提示词、聊天正文、模型回复、连接地址和 key 都不碰；上游报错只留状态码、类别和英文那一截（2.22.6）。编号由调用方按 receiptSignature 算。
@@ -112,6 +126,9 @@ export function failureReceiptFields(record) {
         modes: Array.isArray(settings.rabbitMirrorPresentationModes) ? settings.rabbitMirrorPresentationModes.slice(0, 5).map(mode => ascii(mode, 12)) : [],
         dispatch: ascii(settings.multifaceDispatch, 16),
         samplingMode: ascii(settings.samplingMode, 16),
+        behaviorRuleMode: ascii(settings.behaviorRuleMode, 16),
+        behaviorRuleSent: /创作补充/.test(requestTextOf(body)),
+        heat: requestHeat(requestTextOf(body)),
         transport: {
             status: count(transport.status), contentType: ascii(transport.contentType, 40), parserFormat: ascii(transport.parserFormat, 16),
             receivedBytes: count(transport.receivedBytes), contentChars: count(transport.contentChars), finishReason: ascii(transport.finishReason, 24),
@@ -137,7 +154,19 @@ export function receiptSignature(receipt) {
 }
 
 /** 一张回执要发的内容：只挑下面这些字段，字都只留英文、数字和符号。 */
-const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt'];
+const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'behaviorRuleMode', 'behaviorRuleSent', 'heat', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt', 'steps', 'page'];
+// 2.64.2 页面突然没了又回来（PAGE_RELOADED）的回执：没了之前页面上的几个数字（见 stepTrail.js），没有一个字的内容
+const PAGE_KEYS = ['gapS', 'ageS', 'up', 'hidden', 'nodes', 'messages', 'faces', 'busy', 'images', 'drawn', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
+/** 页面突然没了：只留几个数字和英文代号拼成回执（编号由调用方按 receiptSignature 算）。 */
+export function pageReloadReceiptFields(ended, version = '') {
+    const page = ended?.page && typeof ended.page === 'object' ? ended.page : {};
+    return {
+        kind: 'failure', version: ascii(version, 32), code: 'PAGE_RELOADED', phase: ended?.background ? 'background' : 'foreground',
+        steps: ascii(ended?.steps, 200),
+        page: Object.fromEntries(PAGE_KEYS.map(key => [key, key === 'gapS' ? ended?.gapS : page[key]]).filter(([, value]) => typeof value === 'boolean' || Number.isFinite(Number(value)) && value !== null && value !== '')
+            .map(([key, value]) => [key, typeof value === 'boolean' ? value : Math.round(Number(value) * 100) / 100])),
+    };
+}
 const TRANSPORT_KEYS = ['status', 'contentType', 'parserFormat', 'receivedBytes', 'contentChars', 'finishReason', 'termination', 'failureCategory', 'endedNormally', 'prematureClose', 'frames', 'frameFinish', 'reasoningOnly', 'frameError', 'lastFrameKeys', 'firstTextMs', 'lastTextMs', 'textReads', 'hiddenMs'];
 function onlyPlain(value) {
     if (typeof value === 'string') return ascii(value, 200);
@@ -151,6 +180,7 @@ export function failurePayload(entry, { sentVersion = '' } = {}) {
         if (entry?.[key] === undefined) continue;
         if (key === 'modes') payload.modes = (Array.isArray(entry.modes) ? entry.modes : []).slice(0, 5).map(mode => ascii(mode, 12));
         else if (key === 'transport') payload.transport = Object.fromEntries(TRANSPORT_KEYS.filter(name => entry.transport?.[name] !== undefined).map(name => [name, onlyPlain(entry.transport[name])]));
+        else if (key === 'page') payload.page = Object.fromEntries(PAGE_KEYS.filter(name => entry.page?.[name] !== undefined).map(name => [name, onlyPlain(entry.page[name])]));
         else payload[key] = onlyPlain(entry[key]);
     }
     payload.sentVersion = ascii(sentVersion, 32);
