@@ -154,7 +154,19 @@ export function receiptSignature(receipt) {
 }
 
 /** 一张回执要发的内容：只挑下面这些字段，字都只留英文、数字和符号。 */
-const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'behaviorRuleMode', 'behaviorRuleSent', 'heat', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt'];
+const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'behaviorRuleMode', 'behaviorRuleSent', 'heat', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt', 'steps', 'page'];
+// 2.64.2 页面突然没了又回来（PAGE_RELOADED）的回执：没了之前页面上的几个数字（见 stepTrail.js），没有一个字的内容
+const PAGE_KEYS = ['gapS', 'ageS', 'up', 'hidden', 'nodes', 'messages', 'faces', 'busy', 'images', 'drawn', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
+/** 页面突然没了：只留几个数字和英文代号拼成回执（编号由调用方按 receiptSignature 算）。 */
+export function pageReloadReceiptFields(ended, version = '') {
+    const page = ended?.page && typeof ended.page === 'object' ? ended.page : {};
+    return {
+        kind: 'failure', version: ascii(version, 32), code: 'PAGE_RELOADED', phase: ended?.background ? 'background' : 'foreground',
+        steps: ascii(ended?.steps, 200),
+        page: Object.fromEntries(PAGE_KEYS.map(key => [key, key === 'gapS' ? ended?.gapS : page[key]]).filter(([, value]) => typeof value === 'boolean' || Number.isFinite(Number(value)) && value !== null && value !== '')
+            .map(([key, value]) => [key, typeof value === 'boolean' ? value : Math.round(Number(value) * 100) / 100])),
+    };
+}
 const TRANSPORT_KEYS = ['status', 'contentType', 'parserFormat', 'receivedBytes', 'contentChars', 'finishReason', 'termination', 'failureCategory', 'endedNormally', 'prematureClose', 'frames', 'frameFinish', 'reasoningOnly', 'frameError', 'lastFrameKeys', 'firstTextMs', 'lastTextMs', 'textReads', 'hiddenMs'];
 function onlyPlain(value) {
     if (typeof value === 'string') return ascii(value, 200);
@@ -168,6 +180,7 @@ export function failurePayload(entry, { sentVersion = '' } = {}) {
         if (entry?.[key] === undefined) continue;
         if (key === 'modes') payload.modes = (Array.isArray(entry.modes) ? entry.modes : []).slice(0, 5).map(mode => ascii(mode, 12));
         else if (key === 'transport') payload.transport = Object.fromEntries(TRANSPORT_KEYS.filter(name => entry.transport?.[name] !== undefined).map(name => [name, onlyPlain(entry.transport[name])]));
+        else if (key === 'page') payload.page = Object.fromEntries(PAGE_KEYS.filter(name => entry.page?.[name] !== undefined).map(name => [name, onlyPlain(entry.page[name])]));
         else payload[key] = onlyPlain(entry[key]);
     }
     payload.sentVersion = ascii(sentVersion, 32);
