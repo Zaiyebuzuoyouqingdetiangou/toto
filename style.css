@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.67.1');
+@import url('./settings-ui.css?rmv=2.68.0');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1842,6 +1842,16 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rabbit-mirror-health-dialog.rm-ts-panel{width:min(440px,100%);}
 
 .rabbit-mirror-health-dialog.rm-nm-panel{width:min(460px,100%);}
+
+.rabbit-mirror-health-dialog.rm-ca-panel{width:min(420px,100%);}
+.rm-ca-body .rm-ca-lead{margin:0 0 10px;}
+.rm-ca-field{margin:0 0 10px;padding:6px 10px 8px;border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.28));border-radius:10px;}
+.rm-ca-field legend{padding:0 4px;font-size:12px;opacity:.8;}
+.rm-ca-choice{display:flex;align-items:center;gap:8px;min-height:34px;cursor:pointer;}
+.rm-ca-choice input{flex:0 0 auto;margin:0;width:18px;height:18px;}
+.rm-ca-keep{margin:0 0 12px;}
+.rm-ca-actions{display:flex;flex-wrap:wrap;gap:8px;}
+.rm-ca-actions .menu_button{margin:0 !important;flex:1 1 auto;min-height:38px;}
 .rm-nm-body .rm-nm-note{margin:0 0 10px;font-size:12px;opacity:.78;}
 .rm-nm-people{display:grid;gap:8px;}
 .rm-nm-person{border:1px solid var(--SmartThemeBorderColor,rgba(128,128,128,.28));border-radius:10px;padding:8px 10px;}
@@ -1919,6 +1929,7 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
   .rabbit-mirror-health-dialog{width:100%;height:100%;max-height:100%;border-radius:12px;}
   .rabbit-mirror-health-dialog.rm-ts-panel{height:auto;align-self:center;}
   .rabbit-mirror-health-dialog.rm-nm-panel{height:auto;align-self:center;}
+  .rabbit-mirror-health-dialog.rm-ca-panel{height:auto;align-self:center;}
   .rabbit-mirror-health-body .rm-health-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
   .rabbit-mirror-health-body .rm-health-bar{grid-template-columns:minmax(0,7.5em) minmax(0,1fr) 2em;}
 }
