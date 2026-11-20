@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.72.2');
+@import url('./settings-ui.css?rmv=2.72.3');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3604,3 +3604,18 @@ dialog[data-rm-face-demo] > [data-rm-demo-pill] > button{ min-height:30px !impor
   .rm-gp-sprite .rm-gp-room-drift{ animation:none !important; }
   .rm-gp-sprite .rm-gp-room-drift-0{ opacity:1; }
 }
+
+.rabbit-mirror-generation-progress .rm-gp-chase{
+  position:absolute !important; left:0 !important; bottom:0 !important; top:0 !important; z-index:2 !important;
+  width:calc((100% - 84px) * var(--rm-gp-p, 0)) !important; overflow:hidden !important; pointer-events:none !important;
+  display:none !important;
+  filter:drop-shadow(0 0 1px rgba(255,255,255,.55)) !important;
+}
+.rabbit-mirror-generation-progress[data-rm-gp-chase-out]:is([data-rm-gp-phase="sewing"],[data-rm-gp-phase="sewn"],[data-rm-gp-phase="finishing"]) .rm-gp-chase{ display:block !important; }
+.rabbit-mirror-generation-progress .rm-gp-chase-cat{ position:absolute !important; right:0 !important; bottom:0 !important; width:40px !important; height:24px !important; max-width:none !important; margin:0 !important; image-rendering:pixelated !important; }
+.rm-gp-chase-cat .rm-gp-chase-b{ opacity:0; }
+.rabbit-mirror-generation-progress[data-rm-gp-phase="sewing"] .rm-gp-chase-cat .rm-gp-chase-a{ animation:rm-gp-frame-a .42s steps(1,end) infinite; }
+.rabbit-mirror-generation-progress[data-rm-gp-phase="sewing"] .rm-gp-chase-cat .rm-gp-chase-b{ animation:rm-gp-frame-b .42s steps(1,end) infinite; }
+.rabbit-mirror-generation-progress[data-rm-gp-chase]:is([data-rm-gp-phase="sewing"],[data-rm-gp-phase="sewn"],[data-rm-gp-phase="finishing"]) .rm-gp-sprite :is(.rm-gp-room-cat,.rm-gp-room-yarn){ display:none; }
+
+@media (prefers-reduced-motion: reduce){ .rabbit-mirror-generation-progress .rm-gp-chase-cat *{ animation:none !important; } }
