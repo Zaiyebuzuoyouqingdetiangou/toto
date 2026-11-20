@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.69.2');
+@import url('./settings-ui.css?rmv=2.69.3');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3577,3 +3577,8 @@ dialog[data-rm-face-demo] > [data-rm-demo-pill]:hover{ opacity:1 !important; }
 dialog[data-rm-face-demo] > [data-rm-demo-pill] > button{ min-height:30px !important; padding:3px 10px !important; border-radius:999px !important; background:rgba(255,255,255,.14) !important; color:#fff !important; font-size:12.5px !important; }
 
 [data-rm-top-layer]::backdrop { background: transparent !important; backdrop-filter: none !important; }
+
+[data-rm-step-mark="auto"] [data-rm-step][data-rm-done="true"]:empty{position:relative;}
+[data-rm-step-mark="auto"] [data-rm-step][data-rm-done="true"]:empty::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:max(10px,.8em);line-height:1;font-weight:700;color:currentColor;pointer-events:none;}
+[data-rm-step-mark="auto"] :is(button,span,label,a,li)[data-rm-step][data-rm-done="true"]:not(:empty){opacity:.72;}
+[data-rm-step-mark="auto"] :is(button,span,label,a,li)[data-rm-step][data-rm-done="true"]:not(:empty)::before{content:"✓ ";font-weight:700;}
