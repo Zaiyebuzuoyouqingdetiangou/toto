@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.71.0');
+@import url('./settings-ui.css?rmv=2.71.1');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1393,6 +1393,7 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 @keyframes rm-gp-err-2{ 0%{opacity:1} 50%{opacity:0} 100%{opacity:0} }
 @keyframes rm-gp-err-3{ 0%{opacity:1} 33.333%{opacity:0} 100%{opacity:0} }
 @keyframes rm-gp-err-4{ 0%{opacity:1} 25%{opacity:0} 100%{opacity:0} }
+@keyframes rm-gp-err-5{ 0%{opacity:1} 20%{opacity:0} 100%{opacity:0} }
 
 .rm-busy-rabbit{ display:inline-block !important; vertical-align:middle !important; line-height:0 !important; margin:0 6px 0 0 !important; pointer-events:none !important; flex:0 0 auto !important; }
 .rm-busy-rabbit[data-rm-busy-layout="float"]{ float:left !important; margin:0 8px 2px 0 !important; }
