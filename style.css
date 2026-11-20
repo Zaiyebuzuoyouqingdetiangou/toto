@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.67.0');
+@import url('./settings-ui.css?rmv=2.67.1');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3513,3 +3513,5 @@ dialog[data-rm-face-demo] > [data-rm-demo-pill] > [data-rm-demo-step]{ min-width
 dialog[data-rm-face-demo][data-rm-demo-paused="true"] > [data-rm-demo-pill],
 dialog[data-rm-face-demo] > [data-rm-demo-pill]:hover{ opacity:1 !important; }
 dialog[data-rm-face-demo] > [data-rm-demo-pill] > button{ min-height:30px !important; padding:3px 10px !important; border-radius:999px !important; background:rgba(255,255,255,.14) !important; color:#fff !important; font-size:12.5px !important; }
+
+[data-rm-top-layer]::backdrop { background: transparent !important; backdrop-filter: none !important; }
