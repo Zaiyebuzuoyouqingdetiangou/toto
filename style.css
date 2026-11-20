@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.69.10');
+@import url('./settings-ui.css?rmv=2.70.0');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1879,6 +1879,10 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rm-ca-dot{color:var(--rm-ca-soft);font-size:12px;}
 .rm-ca-link{min-height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:var(--rm-ca-soft);font-size:12px !important;cursor:pointer;}
 .rm-ca-link:hover{color:var(--rm-ca-ink);}
+
+.rm-cr-panel .rm-ca-grid{grid-template-columns:1fr;}
+.rm-ca-choice.rm-cr-go{background:var(--rm-ca-rose);color:#fff;font-weight:600;}
+.rm-ca-choice.rm-cr-go:hover,.rm-ca-choice.rm-cr-go:focus-visible{background:color-mix(in srgb,var(--rm-ca-rose) 85%,#000);}
 
 .rm-ca-panel.rm-av-panel{width:min(355px,100%);max-height:100%;display:flex;flex-direction:column;padding:0;overflow:hidden;}
 .rm-av-top{flex:0 0 auto;padding:24px 22px 12px;}
