@@ -156,7 +156,8 @@ export function receiptSignature(receipt) {
 /** 一张回执要发的内容：只挑下面这些字段，字都只留英文、数字和符号。 */
 const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'behaviorRuleMode', 'behaviorRuleSent', 'heat', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt', 'steps', 'page'];
 // 2.64.2 页面突然没了又回来（PAGE_RELOADED）的回执：没了之前页面上的几个数字（见 stepTrail.js），没有一个字的内容
-const PAGE_KEYS = ['gapS', 'ageS', 'up', 'hidden', 'nodes', 'messages', 'faces', 'busy', 'images', 'drawn', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
+// 2.76.23 多几样数：回到前台多久（fgS）、读好的图整页／面里多少百万像素、画布几块多大、内嵌页面几个、网页字体下了几包
+const PAGE_KEYS = ['gapS', 'ageS', 'fgS', 'up', 'hidden', 'nodes', 'messages', 'faces', 'busy', 'images', 'drawn', 'drawnMP', 'imgMP', 'canvases', 'canvasMP', 'iframes', 'fonts', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
 /** 页面突然没了：只留几个数字和英文代号拼成回执（编号由调用方按 receiptSignature 算）。 */
 export function pageReloadReceiptFields(ended, version = '') {
     const page = ended?.page && typeof ended.page === 'object' ? ended.page : {};
