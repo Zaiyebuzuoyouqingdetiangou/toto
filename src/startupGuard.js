@@ -78,6 +78,7 @@ function readMuted() {
     }
 }
 function isMuted(signature) { return readMuted().includes(signature); }
+export function rabbitMirrorEntryRemovalMuted() { return readMuted().some(item => String(item).startsWith('hidden:removed:')); }
 function mute(signature) {
     try {
         const list = readMuted().filter(item => item !== signature);
