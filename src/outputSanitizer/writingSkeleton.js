@@ -11,7 +11,7 @@ const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description',
 const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self(?:-think)?$|data-rm-hatch$|data-rm-face-recipe$|data-rm-owner-|data-rm-title-label$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
 // 插件自己挂在镜面里的工具（维修兔、反馈猫、工具栏、诊断面板）不是写法的一部分，骨架里去掉。
-const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-diagnostic-panel], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
+const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-interaction-diagnostic], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
 
 export function maskFaceText(value) {
     const text = String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -69,18 +69,38 @@ function scrubCssAddresses(text) {
         .replace(/Bearer\s+\S+/gi, 'Bearer …')
         .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '…');
 }
+// 2.78.11 content 里写的字（::before／::after 画出来的）以前一律清成空的：密码锁的拨盘把数字写在 content 里、勾上哪个显示哪个，
+// 清空以后每个状态都一样，重放时怎么按都「没变化」，这类样本永远修不完也删不掉。
+// 现在换成占位：原来几个字就几个字，不一样的两段换成不一样的占位（带中文的换 A、B、C…，只有英文数字符号的换 a、b、c…），
+// 看得出「换了一段」，看不出原来写的什么。空的还是空的（纯画形状的伪元素不能凭空多出字来）。
+const CONTENT_WIDE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const CONTENT_NARROW = 'abcdefghijklmnopqrstuvwxyz';
+const CONTENT_SEEN = new WeakMap(); // 这一面的代号表 → 见过的 content 字符串（不占代号表里的号）
+function contentPlaceholder(inner, keys) {
+    if (!inner) return '';
+    let seen = CONTENT_SEEN.get(keys);
+    if (!seen) { seen = new Map(); CONTENT_SEEN.set(keys, seen); }
+    if (!seen.has(inner)) seen.set(inner, seen.size);
+    const index = seen.get(inner);
+    const narrow = !/[^\x00-\x7f]/.test(inner.replace(/\\[0-9a-f]{1,6}\s?/gi, ''));
+    const pool = narrow ? CONTENT_NARROW : CONTENT_WIDE;
+    // CSS 转义（\201C 这类）算一个字
+    const length = Math.max(1, Math.min(8, [...inner.replace(/\\[0-9a-f]{1,6}\s?/gi, 'x').replace(/\\./g, 'x')].length));
+    return (index < pool.length ? pool[index] : (narrow ? 'x' : 'X')).repeat(length);
+}
 function scrubCss(text, keys = new Map()) {
     const source = scrubCssAddresses(String(text || '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/url\(\s*(['"]?)[^)]*\1\s*\)/gi, 'url()'));
     let out = '';
     let depth = 0;
     let inValue = false; // 进了声明块、见过冒号、还没到分号
+    let declAt = 0;      // 这一条声明在 out 里从哪开始（认它是不是 content）
     for (let index = 0; index < source.length; index += 1) {
         const char = source[index];
         if (char === '"' || char === "'") {
             let end = index + 1;
             while (end < source.length && source[end] !== char) end += source[end] === '\\' ? 2 : 1;
             const inner = source.slice(index + 1, end);
-            if (inValue) out += `${char}${char}`;
+            if (inValue) out += /^\s*content\s*:/i.test(out.slice(declAt)) ? `${char}${contentPlaceholder(inner, keys)}${char}` : `${char}${char}`;
             else out += `${char}${PLAIN_KEY.test(inner) ? inner : maskKeys(inner, keys)}${char}`;
             index = end;
             continue;
@@ -98,6 +118,7 @@ function scrubCss(text, keys = new Map()) {
         else if (char === ':' && depth > 0) inValue = true;
         else if (char === ';') inValue = false;
         out += char;
+        if (char === '{' || char === '}' || char === ';') declAt = out.length;
     }
     return out;
 }
