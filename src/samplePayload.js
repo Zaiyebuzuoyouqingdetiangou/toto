@@ -5,6 +5,7 @@
 // 发的只有两种：
 //   1. 待修样本：一面兔子镜的「写法骨架」。文字全换成了占位「字」「字×12」，图片和链接地址换成「…」，
 //      只留标签、类名、样式。另外带维修兔自己写的一句结论（里面提到的按钮名也换成了「字×N」）。
+//      2.77.0 起，那一面量过看不看得清的，结论后面跟着几个数（对比度、字号、用了几种颜色），不带面里的字。
 //      用户在维修兔菜单里点「发给作者」、自己写了备注的，备注原样带上（2.25.0，最多 500 字；不写就没有这一项）。
 //   2. 失败回执：副 API 没生成出来时的错误类别、模型型号和几个数字。没有任何一段文字。
 // 这里只挑认得的字段，别的一概不带；骨架里只要还有占位以外的汉字，这一份就不发。
@@ -157,7 +158,8 @@ export function receiptSignature(receipt) {
 const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxTokens', 'requestChars', 'faces', 'modes', 'dispatch', 'samplingMode', 'behaviorRuleMode', 'behaviorRuleSent', 'heat', 'transport', 'errorStatus', 'errorKind', 'errorText', 'ms', 'hits', 'at', 'firstAt', 'steps', 'page'];
 // 2.64.2 页面突然没了又回来（PAGE_RELOADED）的回执：没了之前页面上的几个数字（见 stepTrail.js），没有一个字的内容
 // 2.76.23 多几样数：回到前台多久（fgS）、读好的图整页／面里多少百万像素、画布几块多大、内嵌页面几个、网页字体下了几包
-const PAGE_KEYS = ['gapS', 'ageS', 'fgS', 'up', 'hidden', 'nodes', 'messages', 'faces', 'busy', 'images', 'drawn', 'drawnMP', 'imgMP', 'canvases', 'canvasMP', 'iframes', 'fonts', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
+// 2.77.1 再多两样：最后一步之后页面还活了多久（stepS）、这份聊天一共多少楼（chat；messages 只是页面上摆着的那几楼）
+const PAGE_KEYS = ['gapS', 'ageS', 'fgS', 'stepS', 'up', 'hidden', 'nodes', 'messages', 'chat', 'faces', 'busy', 'images', 'drawn', 'drawnMP', 'imgMP', 'canvases', 'canvasMP', 'iframes', 'fonts', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
 /** 页面突然没了：只留几个数字和英文代号拼成回执（编号由调用方按 receiptSignature 算）。 */
 export function pageReloadReceiptFields(ended, version = '') {
     const page = ended?.page && typeof ended.page === 'object' ? ended.page : {};
