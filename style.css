@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.78.3');
+@import url('./settings-ui.css?rmv=2.78.4');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -2317,6 +2317,12 @@ details + [data-rm-face-swipe-position="bottom"][data-rm-pager-tone="dark"] .rab
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
+}
+
+#chat .rabbit-mirror-external-shell[data-rm-placement="external"] > details > [data-rabbit-mirror-reference-note="true"],
+#chat .rabbit-mirror-external-shell[data-rm-placement="inline"][data-rm-inline-title="true"] > details > [data-rabbit-mirror-reference-note="true"],
+#chat toto[data-rabbit-mirror="true"][data-rm-inline-title="true"] > details > [data-rabbit-mirror-reference-note="true"] {
+    color: var(--SmartThemeBodyColor, inherit) !important;
 }
 html[data-rabbit-mirror-external-sampling-enabled="false"] [data-rabbit-mirror-reference-note="true"] {
     display: none !important;
