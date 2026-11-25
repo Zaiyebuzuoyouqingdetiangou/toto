@@ -7,6 +7,8 @@
 //      只留标签、类名、样式。另外带维修兔自己写的一句结论（里面提到的按钮名也换成了「字×N」）。
 //      2.77.0 起，那一面量过看不看得清的，结论后面跟着几个数（对比度、字号、用了几种颜色），不带面里的字。
 //      用户在维修兔菜单里点「发给作者」、自己写了备注的，备注原样带上（2.25.0，最多 500 字；不写就没有这一项）。
+//      2.78.13 用户手动点「发给作者」的，另带几个数：屏幕宽高、这一面宽高、是不是展开着，最后点的是哪一种控件
+//      （只有标签名和兔子镜认的控件名，比如 button:data-rm-next）、点完变没变、点了多久以前。
 //   2. 失败回执：副 API 没生成出来时的错误类别、模型型号和几个数字。没有任何一段文字。
 // 这里只挑认得的字段，别的一概不带；骨架里只要还有占位以外的汉字，这一份就不发。
 // 本文件不引用别的文件：要拼什么、挑哪些字段，全在下面。
@@ -62,10 +64,22 @@ export function samplePayload(entry, { resanitize = null, sentVersion = '' } = {
         dialect,
         hits: Number(entry?.hits) || 1, at: Number(entry?.at) || Date.now(),
         source: clean(entry?.source), rendered: clean(entry?.rendered),
+        ...(entry?.device ? { device: deviceFields(entry.device) } : {}),
         // 2.25.0 用户自己写的备注（只有手动「发给作者」时写了才有）：原样带上，不打码
         ...(entry?.note ? { note: String(entry.note).trim().slice(0, 500) } : {}),
         // version 是记下这份样本时的版本；sentVersion 是发出去时正在用的版本。
         sentVersion: String(sentVersion || ''),
+    };
+}
+
+// 2.78.13 手动发来的那几个数：只留认得的几项，数是非负整数（像素比留两位小数），控件种类只许小写英文、数字和 : _ -
+function deviceFields(device) {
+    const whole = value => (Number.isFinite(Number(value)) && Number(value) >= 0 ? Math.round(Number(value)) : null);
+    const kind = /^[a-z0-9:_-]{1,40}$/.test(String(device?.tap || '')) ? String(device.tap) : null;
+    return {
+        vw: whole(device?.vw), vh: whole(device?.vh), dpr: Number.isFinite(Number(device?.dpr)) ? Math.round(Number(device.dpr) * 100) / 100 : null,
+        faceW: whole(device?.faceW), faceH: whole(device?.faceH), open: typeof device?.open === 'boolean' ? device.open : null,
+        ...(kind ? { tap: kind, tapChanged: typeof device?.tapChanged === 'boolean' ? device.tapChanged : null, tapAgoS: whole(device?.tapAgoS) } : {}),
     };
 }
 
