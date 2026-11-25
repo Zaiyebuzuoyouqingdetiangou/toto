@@ -226,9 +226,11 @@ const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 export function scrubReportText(text, names = []) {
     let out = String(text || '');
-    out = out.replace(/\b(?:https?|wss?|ftp):\/\/[^\s'"<>）)】」]+/gi, '[网址]');
+    // 「://」后面什么都没有的也换（收件处见到「http://」就整份不收）
+    out = out.replace(/\b(?:https?|wss?|ftp):\/\/[^\s'"<>）)】」]*/gi, '[网址]');
     out = out.replace(/\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b/g, '[邮箱]');
-    out = out.replace(/\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?\b/g, '[地址]');
+    // IP 地址。前面紧挨着斜杠、点、字母数字的不算（浏览器版本号「Chrome/131.0.0.0」不是地址）
+    out = out.replace(/(?<![\w./-])(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?![\w.])/g, '[地址]');
     out = out.replace(/\b(?:sk|pk|rk|ak)-[A-Za-z0-9_-]{8,}/g, '[密钥]');
     out = out.replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '[密钥]');
     out = out.replace(/\bAIza[0-9A-Za-z_-]{20,}/g, '[密钥]');

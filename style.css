@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.79.2');
+@import url('./settings-ui.css?rmv=2.79.3');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3760,6 +3760,8 @@ textarea.rm-wz-text{resize:vertical;line-height:1.6;}
 
 .rm-rs-panel { max-height: min(88vh, calc(100dvh - 40px)); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .rm-rs-panel .rm-ca-sub { margin-bottom: 12px; }
+
+.rm-rs-top .rm-rs-panel { align-self: flex-start; margin-top: max(12px, env(safe-area-inset-top)); margin-bottom: auto; max-height: min(60vh, calc(100dvh - 40px)); }
 .rm-rs-note {
     display: block; width: 100%; box-sizing: border-box; min-height: 84px; margin: 0 0 4px; padding: 8px 10px;
     font: inherit; font-size: 16px; line-height: 1.5; resize: vertical; border-radius: 12px;
