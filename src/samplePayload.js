@@ -10,9 +10,12 @@
 //      2.78.13 用户手动点「发给作者」的，另带几个数：屏幕宽高、这一面宽高、是不是展开着，最后点的是哪一种控件
 //      （只有标签名和兔子镜认的控件名，比如 button:data-rm-next）、点完变没变、点了多久以前。
 //   2. 失败回执：副 API 没生成出来时的错误类别、模型型号和几个数字。没有任何一段文字。
-//   3. 报告（2.79.0）：工具里各处「📮 发给作者」，只有用户自己点、看过要发的内容、再点「确定发送」才发，从不自动发。
+//   3. 报告（2.79.0）：工具里各处「📮 发给作者」，只有用户自己点、在小窗里再点「直接发送」或写完备注点「发送」才发，从不自动发
+//      （小窗里「看看会发什么」能把要发的原样摊开）。用户自己写的备注原样带上（最多 500 字）。
 //      是兔子镜自己写的诊断文字（存档清单、闪退自查、卡顿自查……），本来就不含聊天正文；发之前再过一遍 scrubReportText：
 //      网址、IP、邮箱、像密钥的字串换成代号，这个聊天里的人名、聊天名换成 {{user}}、{{char}}、[角色]、[聊天名]。
+//      「生成内容取证」发的是另做的打码版（generationEvidence.js 的 maskedEvidenceForAuthor）：聊天正文、提示词、模型写的字一个不带，
+//      请求里每条消息只留多少字，模型的回复和成品换成和待修样本一样的骨架（文字全是占位），加上设置、耗时和做到哪一步。
 // 这里只挑认得的字段，别的一概不带；骨架里只要还有占位以外的汉字，这一份就不发。
 // 本文件不引用别的文件：要拼什么、挑哪些字段，全在下面。
 
@@ -214,7 +217,7 @@ export function payloadText(payload) {
 
 // —— 3. 报告 ——
 /** 报告能是哪几种（收件处也只认这几种）。 */
-export const REPORT_TOPICS = Object.freeze(['trouble', 'crash', 'inventory', 'manual', 'trace', 'lag', 'external', 'health']);
+export const REPORT_TOPICS = Object.freeze(['trouble', 'crash', 'inventory', 'manual', 'trace', 'lag', 'external', 'health', 'evidence']);
 export const REPORT_MAX_CHARS = 120000;
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
@@ -237,9 +240,11 @@ export function scrubReportText(text, names = []) {
     return out;
 }
 /** 报告那一份：编号、版本、哪一种、内容（过长的截掉，说明截了）。 */
-export function reportPayload({ id, topic, text, version = '', sentVersion = '', at = Date.now() }) {
+export function reportPayload({ id, topic, text, version = '', sentVersion = '', at = Date.now(), note = '' }) {
     const body = String(text || '');
     const cut = body.length > REPORT_MAX_CHARS ? `${body.slice(0, REPORT_MAX_CHARS)}\n……（太长，后面截掉了 ${body.length - REPORT_MAX_CHARS} 字）` : body;
     return { kind: 'report', id: ascii(id, 64), version: ascii(version, 32), sentVersion: ascii(sentVersion, 32),
-        topic: REPORT_TOPICS.includes(topic) ? topic : 'trouble', at: Math.round(Number(at) || Date.now()), text: cut };
+        topic: REPORT_TOPICS.includes(topic) ? topic : 'trouble', at: Math.round(Number(at) || Date.now()),
+        // 用户在小窗里点「✏️ 写备注」自己写的（最多 500 字，原样带上；没写就没有这一项）
+        ...(String(note || '').trim() ? { note: String(note).trim().slice(0, 500) } : {}), text: cut };
 }
