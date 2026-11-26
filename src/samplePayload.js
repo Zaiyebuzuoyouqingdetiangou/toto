@@ -10,6 +10,12 @@
 //      2.78.13 用户手动点「发给作者」的，另带几个数：屏幕宽高、这一面宽高、是不是展开着，最后点的是哪一种控件
 //      （只有标签名和兔子镜认的控件名，比如 button:data-rm-next）、点完变没变、点了多久以前。
 //   2. 失败回执：副 API 没生成出来时的错误类别、模型型号和几个数字。没有任何一段文字。
+//   3. 报告（2.79.0）：工具里各处「📮 发给作者」，只有用户自己点、在小窗里再点「直接发送」或写完备注点「发送」才发，从不自动发
+//      （小窗里「看看会发什么」能把要发的原样摊开）。用户自己写的备注原样带上（最多 500 字）。
+//      是兔子镜自己写的诊断文字（存档清单、闪退自查、卡顿自查……），本来就不含聊天正文；发之前再过一遍 scrubReportText：
+//      网址、IP、邮箱、像密钥的字串换成代号，这个聊天里的人名、聊天名换成 {{user}}、{{char}}、[角色]、[聊天名]。
+//      「生成内容取证」发的是另做的打码版（generationEvidence.js 的 maskedEvidenceForAuthor）：聊天正文、提示词、模型写的字一个不带，
+//      请求里每条消息只留多少字，模型的回复和成品换成和待修样本一样的骨架（文字全是占位），加上设置、耗时和做到哪一步。
 // 这里只挑认得的字段，别的一概不带；骨架里只要还有占位以外的汉字，这一份就不发。
 // 本文件不引用别的文件：要拼什么、挑哪些字段，全在下面。
 
@@ -207,4 +213,42 @@ export function failurePayload(entry, { sentVersion = '' } = {}) {
 /** 真正发出去的那串字：就是这一份 JSON（发样本、发回执都一样）。 */
 export function payloadText(payload) {
     return JSON.stringify(payload);
+}
+
+// —— 3. 报告 ——
+/** 报告能是哪几种（收件处也只认这几种）。 */
+export const REPORT_TOPICS = Object.freeze(['trouble', 'crash', 'inventory', 'manual', 'trace', 'lag', 'external', 'health', 'evidence']);
+export const REPORT_MAX_CHARS = 120000;
+const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/**
+ * 报告发出去之前再过一遍：网址、IP、邮箱、像密钥的字串换成代号；names 里的每个名字（[原名, 代号]）换成代号。
+ * 名字按长的先换（「某某某」不会被「某某」先换掉一半）；一个字的名字不换（会把别的字也换掉）。
+ */
+export function scrubReportText(text, names = []) {
+    let out = String(text || '');
+    // 「://」后面什么都没有的也换（收件处见到「http://」就整份不收）
+    out = out.replace(/\b(?:https?|wss?|ftp):\/\/[^\s'"<>）)】」]*/gi, '[网址]');
+    out = out.replace(/\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b/g, '[邮箱]');
+    // IP 地址。前面紧挨着斜杠、点、字母数字的不算（浏览器版本号「Chrome/131.0.0.0」不是地址）
+    out = out.replace(/(?<![\w./-])(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?(?![\w.])/g, '[地址]');
+    // 本机路径里的用户名（/Users/名字/、/home/名字/、C:\Users\名字\）：酒馆报错常带安装目录
+    out = out.replace(/([\\/](?:Users|home)[\\/])[^\\/\s'"<>]+/gi, '$1[用户]');
+    out = out.replace(/\b(?:sk|pk|rk|ak)-[A-Za-z0-9_-]{8,}/g, '[密钥]');
+    out = out.replace(/\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, '[密钥]');
+    out = out.replace(/\bAIza[0-9A-Za-z_-]{20,}/g, '[密钥]');
+    const list = (Array.isArray(names) ? names : [])
+        .map(([name, as]) => [String(name || '').trim(), String(as || '[名字]')])
+        .filter(([name]) => [...name].length >= 2)
+        .sort((a, b) => b[0].length - a[0].length);
+    for (const [name, as] of list) out = out.replace(new RegExp(escapeRegExp(name), 'g'), as);
+    return out;
+}
+/** 报告那一份：编号、版本、哪一种、内容（过长的截掉，说明截了）。 */
+export function reportPayload({ id, topic, text, version = '', sentVersion = '', at = Date.now(), note = '' }) {
+    const body = String(text || '');
+    const cut = body.length > REPORT_MAX_CHARS ? `${body.slice(0, REPORT_MAX_CHARS)}\n……（太长，后面截掉了 ${body.length - REPORT_MAX_CHARS} 字）` : body;
+    return { kind: 'report', id: ascii(id, 64), version: ascii(version, 32), sentVersion: ascii(sentVersion, 32),
+        topic: REPORT_TOPICS.includes(topic) ? topic : 'trouble', at: Math.round(Number(at) || Date.now()),
+        // 用户在小窗里点「✏️ 写备注」自己写的（最多 500 字，原样带上；没写就没有这一项）
+        ...(String(note || '').trim() ? { note: String(note).trim().slice(0, 500) } : {}), text: cut };
 }

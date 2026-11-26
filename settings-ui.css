@@ -244,3 +244,16 @@
 #rabbit_mirror_theater_settings .rh-ui-wizard-arrow{font-size:18px;color:var(--rh-primary);}
 #rabbit_mirror_theater_settings .rh-ui-wizard-or{margin:2px 4px -4px;font-size:12px;color:var(--rh-muted);}
 #rabbit_mirror_theater_settings .rm-wz-return{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;min-height:46px;padding:0 22px;border:0;border-radius:23px;background:var(--rh-primary);color:#fff;font-size:15px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.22);cursor:pointer;}
+
+#rabbit_mirror_theater_settings .rh-trouble-ask{display:flex;align-items:center;gap:10px;margin:2px 0 10px;font-size:14px;line-height:1.5;}
+#rabbit_mirror_theater_settings .rh-trouble-art{flex:0 0 auto;width:42px;height:42px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;}
+#rabbit_mirror_theater_settings .rh-trouble-art svg{width:42px !important;height:42px !important;}
+#rabbit_mirror_theater_settings .rh-trouble-picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:8px;}
+
+#rabbit_mirror_theater_settings .rh-trouble-pick{min-height:46px;width:100% !important;margin:0;padding:8px 12px;text-align:left;justify-content:flex-start !important;white-space:normal !important;word-break:normal !important;overflow-wrap:anywhere !important;line-height:1.45 !important;box-sizing:border-box;}
+#rabbit_mirror_theater_settings :is(.rh-trouble-detail,.rh-crash-check-tips,#rh_crash_check_block) .menu_button{white-space:normal !important;overflow-wrap:anywhere !important;text-align:left;}
+#rabbit_mirror_theater_settings .rh-trouble-pick[aria-pressed="true"]{border-color:var(--rh-primary,currentColor);box-shadow:inset 0 0 0 1px var(--rh-primary,currentColor);}
+#rabbit_mirror_theater_settings .rh-trouble-detail{margin-top:14px;padding:12px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:12px;min-width:0;}
+#rabbit_mirror_theater_settings .rh-trouble-title{margin:0 0 6px;font-size:15px;}
+#rabbit_mirror_theater_settings .rh-trouble-say p{margin:4px 0;font-size:13px;line-height:1.7;}
+#rabbit_mirror_theater_settings .rh-trouble-report,#rabbit_mirror_theater_settings .rh-crash-check-result{margin:6px 0 8px;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font-size:12px;line-height:1.6;font-family:inherit;border-radius:8px;background:color-mix(in srgb,currentColor 6%,transparent);max-width:100%;box-sizing:border-box;}
