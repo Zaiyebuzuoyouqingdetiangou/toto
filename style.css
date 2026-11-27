@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.83.3');
+@import url('./settings-ui.css?rmv=2.83.4');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3390,6 +3390,10 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 
 #chat svg.rm-gp-sprite,
 #chat svg.rm-gp-scene{ pointer-events:auto !important; cursor:pointer !important; }
+
+#chat [data-rm-draw-frame] .rabbit-mirror-draw-wait-art,
+#chat [data-rm-draw-frame] svg.rm-gp-sprite,
+#chat [data-rm-draw-frame] svg.rm-gp-scene{ pointer-events:inherit !important; }
 #chat summary svg.rm-gp-sprite,
 #chat summary svg.rm-gp-scene,
 #chat .rabbit-mirror-external-error-art svg{ cursor:inherit !important; }
