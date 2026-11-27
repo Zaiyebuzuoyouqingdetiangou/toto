@@ -11,7 +11,7 @@ const CONTENT_ATTRS = new Set(['alt', 'title', 'aria-label', 'aria-description',
 const CONTENT_ATTR_RE = /^(?:data-rm-vs|data-rm-self(?:-think)?$|data-rm-hatch$|data-rm-face-recipe$|data-rm-owner-|data-rm-title-label$|data-rm-draw-|data-rm-image|data-rabbit-mirror-(?:external-owner|owner-|labeled-checked-last|generic-probe)|data-rm-key$|data-rm-avatar)/;
 const URL_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'cite', 'data', 'xlink:href']);
 // 插件自己挂在镜面里的工具（维修兔、反馈猫、工具栏、诊断面板）不是写法的一部分，骨架里去掉。
-const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-interaction-diagnostic], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal]';
+const TOOL_UI = '[data-rabbit-mirror-tool-entry-host], [data-rabbit-mirror-interaction-diagnostic], .rabbit-mirror-maintenance-menu, [data-rm-face-swipe-host], [data-rabbit-mirror-maintenance-rabbit], [data-rabbit-mirror-feedback-cat], [data-rm-image-region], [data-rm-image-portal], [data-rm-answer-hint]';
 
 export function maskFaceText(value) {
     const text = String(value ?? '').replace(/\s+/g, ' ').trim();

@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.82.1');
+@import url('./settings-ui.css?rmv=2.83.0');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -1385,7 +1385,14 @@ details + [data-rm-face-swipe-position="bottom"] .rabbit-mirror-face-swipe-bar b
 .rm-gp-scene .rm-gp-err-frame,
 .rm-gp-scene .rm-gp-err-stars{ opacity:0; }
 .rm-gp-scene .rm-gp-err-stars{ animation:rm-gp-err-2 .8s steps(1,end) infinite; }
-.rabbit-mirror-external-error-art[data-rm-err-rest]{ cursor:pointer !important; }
+.rabbit-mirror-external-error-art[data-rm-err-rest]:not([data-rm-err-poke]){ cursor:pointer !important; }
+
+.rabbit-mirror-external-error-art[data-rm-err-poke]{ position:relative !important; -webkit-tap-highlight-color:transparent !important; }
+.rabbit-mirror-external-error-art[data-rm-err-poke] svg, #chat .rabbit-mirror-external-error-art[data-rm-err-poke] svg{ cursor:pointer !important; touch-action:manipulation !important; }
+
+.rabbit-mirror-external-error-art .rabbit-mirror-external-error-say{ position:absolute !important; left:calc(50% + 28px) !important; top:0 !important; display:inline-block !important; width:max-content !important; max-width:min(9em, calc(50% - 44px)) !important; box-sizing:border-box !important; touch-action:manipulation !important; cursor:pointer !important; padding:3px 9px !important; border:1px solid currentColor !important; border-radius:10px 10px 10px 2px !important; font-size:12px !important; line-height:1.4 !important; opacity:.85 !important; white-space:normal !important; animation:rm-err-say-in .18s ease-out both; }
+.rabbit-mirror-external-error-art .rabbit-mirror-external-error-say[hidden]{ display:none !important; }
+@keyframes rm-err-say-in{ from{ opacity:0; transform:translateY(3px); } to{ opacity:.85; transform:none; } }
 .rabbit-mirror-external-error-art[data-rm-err-rest] *{ animation:none !important; }
 .rabbit-mirror-external-error-art[data-rm-err-rest] .rm-gp-err-frame-0,
 .rabbit-mirror-external-error-art[data-rm-err-rest] .rm-gp-fail-1,
