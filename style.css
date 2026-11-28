@@ -1,4 +1,4 @@
-@import url('./settings-ui.css?rmv=2.85.2');
+@import url('./settings-ui.css?rmv=2.86.0');
 
 #rabbit_mirror_theater_settings #rh_independent_excluded_params{min-width:0;margin:0;padding:10px;border:1px solid var(--SmartThemeBorderColor,currentColor);border-radius:8px;}
 #rabbit_mirror_theater_settings .rabbit-mirror-exclusion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0;}
@@ -3788,3 +3788,18 @@ textarea.rm-wz-text{resize:vertical;line-height:1.6;}
     background: color-mix(in srgb, currentColor 6%, transparent); user-select: text; -webkit-user-select: text;
 }
 .rm-rs-text[hidden] { display: none; }
+
+#chat [data-rm-capture-slot][data-rm-capture-mounted="true"] { display: none !important; }
+details[data-rm-capture] [data-rm-capture-topic] {
+    margin: 0 0 .9em !important;
+    font-size: .86em !important;
+    opacity: .72;
+    letter-spacing: .02em;
+}
+details[data-rm-capture] [data-rm-capture-cut] {
+    margin: 1.1em 0 0 !important;
+    padding-top: .6em !important;
+    border-top: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+    font-size: .86em !important;
+    opacity: .72;
+}
