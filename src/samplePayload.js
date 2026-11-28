@@ -179,7 +179,8 @@ const RECEIPT_KEYS = ['id', 'version', 'code', 'phase', 'model', 'stream', 'maxT
 // 2.64.2 页面突然没了又回来（PAGE_RELOADED）的回执：没了之前页面上的几个数字（见 stepTrail.js），没有一个字的内容
 // 2.76.23 多几样数：回到前台多久（fgS）、读好的图整页／面里多少百万像素、画布几块多大、内嵌页面几个、网页字体下了几包
 // 2.77.1 再多两样：最后一步之后页面还活了多久（stepS）、这份聊天一共多少楼（chat；messages 只是页面上摆着的那几楼）
-const PAGE_KEYS = ['gapS', 'ageS', 'fgS', 'stepS', 'up', 'hidden', 'nodes', 'messages', 'chat', 'faces', 'busy', 'images', 'drawn', 'drawnMP', 'imgMP', 'canvases', 'canvasMP', 'iframes', 'fonts', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
+// 2.83.7 再多四样：网页字体文件几个、一共多少 KB（fontFiles、fontKB），内嵌页面里兔子镜自己的几个（ownFrames）、别的里面一共多少节点（frameNodes）
+const PAGE_KEYS = ['gapS', 'ageS', 'fgS', 'stepS', 'up', 'hidden', 'nodes', 'messages', 'chat', 'faces', 'busy', 'images', 'drawn', 'drawnMP', 'imgMP', 'canvases', 'canvasMP', 'iframes', 'ownFrames', 'frameNodes', 'fonts', 'fontFiles', 'fontKB', 'anims', 'heapMB', 'vw', 'vh', 'dpr'];
 /** 页面突然没了：只留几个数字和英文代号拼成回执（编号由调用方按 receiptSignature 算）。 */
 export function pageReloadReceiptFields(ended, version = '') {
     const page = ended?.page && typeof ended.page === 'object' ? ended.page : {};
